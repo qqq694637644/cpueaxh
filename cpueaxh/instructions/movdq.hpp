@@ -35,6 +35,7 @@ int decode_movdq_mm_rm_index(uint8_t modrm) {
 void decode_modrm_movdq(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -46,6 +47,7 @@ void decode_modrm_movdq(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* cod
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -67,6 +69,7 @@ void decode_modrm_movdq(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* cod
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -145,6 +148,7 @@ DecodedInstruction decode_movdq_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset + 2 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {

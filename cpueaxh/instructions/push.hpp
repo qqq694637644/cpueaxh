@@ -17,6 +17,9 @@ void push_rm16(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint6
     }
     else {
         value = read_memory_word(ctx, mem_addr);
+        if (cpu_has_exception(ctx)) {
+            return;
+        }
     }
 
     push_value16(ctx, value);
@@ -37,6 +40,9 @@ void push_rm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint6
     }
     else {
         value = read_memory_dword(ctx, mem_addr);
+        if (cpu_has_exception(ctx)) {
+            return;
+        }
     }
 
     push_value32(ctx, value);
@@ -57,6 +63,9 @@ void push_rm64(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint6
     }
     else {
         value = read_memory_qword(ctx, mem_addr);
+        if (cpu_has_exception(ctx)) {
+            return;
+        }
     }
 
     push_value64(ctx, value);
@@ -143,6 +152,7 @@ void push_sreg64(CPU_CONTEXT* ctx, int seg_index) {
 void decode_modrm_push(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
     inst->has_modrm = true;
     inst->modrm = code[(*offset)++];
@@ -154,6 +164,7 @@ void decode_modrm_push(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -176,6 +187,7 @@ void decode_modrm_push(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->displacement = 0;
         for (int i = 0; i < inst->disp_size; i++) {
@@ -232,6 +244,7 @@ DecodedInstruction decode_push_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -290,6 +303,7 @@ DecodedInstruction decode_push_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
         inst.imm_size = 1;
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = code[offset++];
         break;
@@ -304,6 +318,7 @@ DecodedInstruction decode_push_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
         }
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = 0;
         for (int i = 0; i < inst.imm_size; i++) {
@@ -343,6 +358,7 @@ DecodedInstruction decode_push_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
     case 0x0F:
         if (offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.opcode = code[offset++];
         // Mark as two-byte opcode by setting bit 8 in a local variable
@@ -512,6 +528,9 @@ inline void execute_push_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
 
 void execute_push(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_push_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_push_with_decoded(ctx, &inst);
 }
 

@@ -35,6 +35,7 @@ static int decode_pcmpestrm_xmm_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {
 static void decode_modrm_pcmpestrm(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -46,6 +47,7 @@ static void decode_modrm_pcmpestrm(CPU_CONTEXT* ctx, DecodedInstruction* inst, u
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -67,6 +69,7 @@ static void decode_modrm_pcmpestrm(CPU_CONTEXT* ctx, DecodedInstruction* inst, u
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -160,6 +163,7 @@ DecodedInstruction decode_pcmpestrm_instruction(CPU_CONTEXT* ctx, uint8_t* code,
 
     if (offset + 4 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F || code[offset++] != 0x3A) {
@@ -183,6 +187,7 @@ DecodedInstruction decode_pcmpestrm_instruction(CPU_CONTEXT* ctx, uint8_t* code,
     inst.imm_size = 1;
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
     inst.immediate = code[offset++];
 
@@ -195,6 +200,9 @@ DecodedInstruction decode_pcmpestrm_instruction(CPU_CONTEXT* ctx, uint8_t* code,
 
 void execute_pcmpestrm(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_pcmpestrm_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int lhs_index = decode_pcmpestrm_xmm_reg_index(ctx, inst.modrm);
     __m128i lhs = avx_xmm_to_m128i(get_xmm128(ctx, lhs_index));
     __m128i rhs = avx_xmm_to_m128i(read_pcmpestrm_source(ctx, &inst));

@@ -47,10 +47,12 @@ DecodedInstruction decode_flags_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
-    if (inst.opcode != 0xF8 && inst.opcode != 0xF9 &&
+    if (inst.opcode != 0xF5 &&
+        inst.opcode != 0xF8 && inst.opcode != 0xF9 &&
         inst.opcode != 0xFC && inst.opcode != 0xFD) {
         raise_ud_ctx(ctx);
     }
@@ -69,6 +71,9 @@ inline void execute_flags_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructio
     const DecodedInstruction& inst = *inst_ptr;
 
     switch (inst.opcode) {
+    case 0xF5:
+        set_flag(ctx, RFLAGS_CF, (ctx->rflags & RFLAGS_CF) == 0);
+        break;
     case 0xF8:
         set_flag(ctx, RFLAGS_CF, false);
         break;
@@ -88,6 +93,9 @@ inline void execute_flags_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructio
 
 void execute_flags(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_flags_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_flags_with_decoded(ctx, &inst);
 }
 

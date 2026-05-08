@@ -3,6 +3,7 @@
 static void decode_x87_control_modrm(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -14,6 +15,7 @@ static void decode_x87_control_modrm(CPU_CONTEXT* ctx, DecodedInstruction* inst,
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -35,6 +37,7 @@ static void decode_x87_control_modrm(CPU_CONTEXT* ctx, DecodedInstruction* inst,
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;

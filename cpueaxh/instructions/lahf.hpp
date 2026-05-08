@@ -26,6 +26,12 @@ void apply_sahf_value(CPU_CONTEXT* ctx, uint8_t value) {
     set_flag(ctx, RFLAGS_SF, (value & 0x80) != 0);
 }
 
+static inline bool cpu_has_lahf_sahf_feature() {
+    int cpu_info[4] = {};
+    cpu_query_cpuid(cpu_info, 0x80000001U, 0);
+    return (cpu_info[2] & 0x1) != 0;
+}
+
 DecodedInstruction decode_lahf_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = {};
     size_t offset = 0;
@@ -73,6 +79,7 @@ DecodedInstruction decode_lahf_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -81,6 +88,9 @@ DecodedInstruction decode_lahf_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
     }
 
     if (has_lock_prefix) {
+        raise_ud_ctx(ctx);
+    }
+    if (cpu_is_64bit_code(ctx) && !cpu_has_lahf_sahf_feature()) {
         raise_ud_ctx(ctx);
     }
 
@@ -103,6 +113,9 @@ inline void execute_lahf_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
 
 void execute_lahf(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_lahf_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_lahf_with_decoded(ctx, &inst);
 }
 

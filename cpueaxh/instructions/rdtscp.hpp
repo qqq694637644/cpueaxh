@@ -2,6 +2,25 @@
 
 #include <intrin.h>
 
+static inline bool cpu_has_rdtscp_feature() {
+    int cpu_info[4] = {};
+    cpu_query_cpuid(cpu_info, 0x80000000u, 0);
+    if (static_cast<uint32_t>(cpu_info[0]) < 0x80000001u) {
+        return false;
+    }
+    cpu_query_cpuid(cpu_info, 0x80000001u, 0);
+    return (cpu_info[3] & (1 << 27)) != 0;
+}
+
+static inline bool rdtscp_tsd_forbidden(CPU_CONTEXT* ctx) {
+    if (!ctx) {
+        return false;
+    }
+    const bool protected_mode = (ctx->control_regs[0] & 0x1ULL) != 0;
+    const bool tsd = (ctx->control_regs[4] & (1ULL << 2)) != 0;
+    return protected_mode && tsd && ctx->cpl > 0;
+}
+
 DecodedInstruction decode_rdtscp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = {};
     size_t offset = 0;
@@ -48,6 +67,7 @@ DecodedInstruction decode_rdtscp_instruction(CPU_CONTEXT* ctx, uint8_t* code, si
 
     if (offset + 3 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {
@@ -58,7 +78,7 @@ DecodedInstruction decode_rdtscp_instruction(CPU_CONTEXT* ctx, uint8_t* code, si
         raise_ud_ctx(ctx);
     }
 
-    if (has_lock_prefix) {
+    if (has_lock_prefix || !cpu_has_rdtscp_feature()) {
         raise_ud_ctx(ctx);
     }
 
@@ -70,6 +90,11 @@ DecodedInstruction decode_rdtscp_instruction(CPU_CONTEXT* ctx, uint8_t* code, si
 }
 
 inline void execute_rdtscp_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction* /*inst_ptr*/) {
+    if (rdtscp_tsd_forbidden(ctx)) {
+        raise_gp_ctx(ctx, 0);
+        return;
+    }
+
     unsigned int tsc_aux = 0;
     unsigned __int64 tsc = __rdtscp(&tsc_aux);
     set_reg32(ctx, REG_RAX, (uint32_t)(tsc & 0xFFFFFFFFULL));
@@ -79,6 +104,9 @@ inline void execute_rdtscp_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructi
 
 void execute_rdtscp(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_rdtscp_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_rdtscp_with_decoded(ctx, &inst);
 }
 

@@ -33,15 +33,14 @@ inline bool cpu_decoder_classify_no_fault(
     if (prefix_len < 0 || prefix_len >= fetched) {
         return false;
     }
-
-    // Single-byte short jumps and the long-form Jcc / unconditional JMP
-    // variants. None of them touch memory.
-    if (opc >= 0x0070 && opc <= 0x007F) return true;       // Jcc rel8
-    if (opc >= 0x0F80 && opc <= 0x0F8F) return true;       // Jcc rel32
-    if (opc == 0x00EB || opc == 0x00E9) return true;       // JMP rel8 / rel32
-
-    // Loop-branch family.
-    if (opc == 0x00E0 || opc == 0x00E1 || opc == 0x00E2 || opc == 0x00E3) return true;
+    for (int index = 0; index < prefix_len; ++index) {
+        if (buf[index] == 0xF0) {
+            return false;
+        }
+        if (buf[index] == 0x66 && (opc == 0x00E9 || (opc >= 0x0F80 && opc <= 0x0F8F))) {
+            return false;
+        }
+    }
 
     // 1-byte INC/DEC reg encodings (only valid in 32-bit mode; in 64-bit
     // these byte values are REX prefixes and would never reach this branch).
@@ -114,9 +113,10 @@ inline bool cpu_decoder_classify_no_fault(
         if (mod == 3) return true;
     }
 
-    // FF /0,/1,/4 INC/DEC/JMP indirect on register; /2,/3 (CALL indirect) and
-    // /5 (far JMP) touch the stack/segments and stay snapshot-protected.
-    if (raw_opc == 0xFF && (ff_reg == 0 || ff_reg == 1 || ff_reg == 4)) {
+    // FF /0,/1 INC/DEC on register. Control-transfer variants can fault on
+    // target validation, and CALL also touches the stack, so they stay
+    // snapshot-protected.
+    if (raw_opc == 0xFF && (ff_reg == 0 || ff_reg == 1)) {
         const uint8_t mod = peek_modrm_mod_field(buf, fetched, prefix_len, 1);
         if (mod == 3) return true;
     }
@@ -534,7 +534,7 @@ inline void cpu_decode_instruction(
         dec->inline_jcc_cond = (uint8_t)(opc & 0x0F);
         dec->inline_jcc_disp = (int8_t)buf[1];
         dec->length = 2;
-        dec->flags |= DECODED_FLAG_BRANCH | DECODED_FLAG_NO_FAULT;
+        dec->flags |= DECODED_FLAG_BRANCH;
         return;
     }
 
@@ -552,7 +552,7 @@ inline void cpu_decode_instruction(
         dec->inline_jcc_cond = (uint8_t)(opc & 0x0F);
         dec->inline_jcc_disp32 = rel32;
         dec->length = 6;
-        dec->flags |= DECODED_FLAG_BRANCH | DECODED_FLAG_NO_FAULT;
+        dec->flags |= DECODED_FLAG_BRANCH;
         return;
     }
 
@@ -817,6 +817,7 @@ inline void cpu_decode_instruction(
                 raw_opc == 0xAC || raw_opc == 0xAD ||
                 raw_opc == 0xAE || raw_opc == 0xAF)) {
             handler = execute_rep;
+            dec->flags |= DECODED_FLAG_PARTIAL_PROGRESS;
         }
         else if (raw_opc == 0xA4 || raw_opc == 0xA5) {
             handler = execute_movs;
@@ -839,7 +840,7 @@ inline void cpu_decode_instruction(
         else if ((handler = cpu_decoder_resolve_x87(buf, (size_t)fetched, raw_opc, prefix_len)) != NULL) {
             // handler set
         }
-        else if (raw_opc == 0xF8 || raw_opc == 0xF9 || raw_opc == 0xFC || raw_opc == 0xFD) {
+        else if (raw_opc == 0xF5 || raw_opc == 0xF8 || raw_opc == 0xF9 || raw_opc == 0xFC || raw_opc == 0xFD) {
             handler = execute_flags;
         }
         else if (raw_opc == 0x9C || raw_opc == 0x9D) {
@@ -967,7 +968,7 @@ inline void cpu_decode_instruction(
         else if (raw_opc == 0xE8 || raw_opc == 0x9A) {
             handler = execute_call;
         }
-        else if (raw_opc == 0xE3) {
+        else if (raw_opc >= 0xE0 && raw_opc <= 0xE3) {
             handler = execute_jcc;
         }
         else if (raw_opc == 0xEB || raw_opc == 0xE9 || raw_opc == 0xEA) {
@@ -1119,7 +1120,7 @@ inline void cpu_decoder_try_attach_fast_handler(CPU_CONTEXT* ctx,
     if (dec->handler == execute_sbb) { attach_one(decode_sbb_instruction, execute_sbb_fast); return; }
     if (dec->handler == execute_neg) { attach_one(decode_neg_instruction, execute_neg_fast); return; }
     if (dec->handler == execute_not) { attach_one(decode_not_instruction, execute_not_fast); return; }
-    if (dec->handler == execute_xchg){ attach_one(decode_xchg_instruction,execute_xchg_fast); return; }
+    if (dec->handler == execute_xchg){ attach_one_recompute_addr(decode_xchg_instruction,execute_xchg_fast); return; }
     if (dec->handler == execute_movsx){attach_one_recompute_addr(decode_movsx_instruction,execute_movsx_fast);return; }
     if (dec->handler == execute_movzx){attach_one_recompute_addr(decode_movzx_instruction,execute_movzx_fast);return; }
     if (dec->handler == execute_movsxd){attach_one_recompute_addr(decode_movsxd_instruction,execute_movsxd_fast);return; }
@@ -1146,8 +1147,8 @@ inline void cpu_decoder_try_attach_fast_handler(CPU_CONTEXT* ctx,
     if (dec->handler == execute_pause){attach_one(decode_pause_instruction,execute_pause_fast);return; }
     if (dec->handler == execute_bt)   { attach_one(decode_bt_instruction,   execute_bt_fast);   return; }
     if (dec->handler == execute_bsf)  { attach_one(decode_bsf_instruction,  execute_bsf_fast);  return; }
-    if (dec->handler == execute_xadd) { attach_one(decode_xadd_instruction, execute_xadd_fast); return; }
-    if (dec->handler == execute_cmpxchg){attach_one(decode_cmpxchg_instruction,execute_cmpxchg_fast);return; }
+    if (dec->handler == execute_xadd) { attach_one_recompute_addr(decode_xadd_instruction, execute_xadd_fast); return; }
+    if (dec->handler == execute_cmpxchg){attach_one_recompute_addr(decode_cmpxchg_instruction,execute_cmpxchg_fast);return; }
     if (dec->handler == execute_cpuid){ attach_one(decode_cpuid_instruction,execute_cpuid_fast);return; }
     if (dec->handler == execute_rdtsc){ attach_one(decode_rdtsc_instruction,execute_rdtsc_fast);return; }
     if (dec->handler == execute_rdtscp){attach_one(decode_rdtscp_instruction,execute_rdtscp_fast);return; }

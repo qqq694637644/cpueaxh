@@ -43,6 +43,7 @@ constexpr std::uint64_t kIncDecMask = kFlagPF | kFlagAF | kFlagZF | kFlagSF | kF
 constexpr std::uint64_t kRotationMask = kFlagCF | kFlagOF;
 constexpr std::uint64_t kBitTestMask = kFlagCF;
 constexpr std::uint64_t kBitScanMask = kFlagZF;
+constexpr std::uint64_t kBitCountMask = kFlagCF | kFlagZF;
 constexpr std::uint64_t kSeedCount = 128;
 constexpr std::uint64_t kExceptionSeedCount = 128;
 constexpr std::uint64_t kHostStackSeedCount = 64;
@@ -215,12 +216,15 @@ enum class BitOp : std::uint8_t {
     Bswap,
     BsfAlt,
     BswapAlt,
+    Tzcnt,
+    Lzcnt,
 };
 
 enum class FlagProgram : std::uint8_t {
     Setcc,
     Cmovcc,
     Jcc,
+    Cmc,
 };
 
 enum class MoveProgram : std::uint8_t {
@@ -320,6 +324,9 @@ enum class ControlProgram : std::uint8_t {
     CallAdd,
     CallXor,
     CallLea,
+    Loopnz,
+    Loopz,
+    Loop,
 };
 
 struct PairSpec {
@@ -370,6 +377,8 @@ struct HostFeatures {
     bool sse42 = false;
     bool aes = false;
     bool rdpid = false;
+    bool bmi1 = false;
+    bool lzcnt = false;
 };
 
 inline constexpr std::array<std::uint8_t, 4> kAesKeygenAssistImmediates = {{ 0x01, 0x1B, 0x36, 0x80 }};
@@ -519,8 +528,15 @@ inline HostFeatures query_host_features() {
     if (max_leaf >= 7) {
         __cpuidex(cpu_info, 7, 0);
         features.avx2 = features.avx && (cpu_info[1] & (1 << 5)) != 0;
+        features.bmi1 = (cpu_info[1] & (1 << 3)) != 0;
         features.sha = (cpu_info[1] & (1 << 29)) != 0;
         features.rdpid = (cpu_info[2] & (1 << 22)) != 0;
+    }
+    __cpuid(cpu_info, 0x80000000);
+    const std::uint32_t max_extended_leaf = static_cast<std::uint32_t>(cpu_info[0]);
+    if (max_extended_leaf >= 0x80000001u) {
+        __cpuidex(cpu_info, 0x80000001, 0);
+        features.lzcnt = (cpu_info[2] & (1 << 5)) != 0;
     }
     return features;
 }
@@ -842,6 +858,11 @@ public:
         rel32(label);
     }
 
+    void loopcc(std::uint8_t opcode, Label label) {
+        emit8(opcode);
+        rel8(label);
+    }
+
     void mov_reg_reg(Reg dst, Reg src) {
         emit_rex(true, static_cast<std::uint8_t>(src), 0, static_cast<std::uint8_t>(dst));
         emit8(0x89);
@@ -952,6 +973,22 @@ public:
         emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
         emit8(0x0F);
         emit8(0xBC);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void tzcnt(Reg dst, Reg src) {
+        emit8(0xF3);
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0xBC);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void lzcnt(Reg dst, Reg src) {
+        emit8(0xF3);
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0xBD);
         emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
     }
 
@@ -1085,6 +1122,10 @@ public:
 
     void pushf() {
         emit8(0x9C);
+    }
+
+    void cmc() {
+        emit8(0xF5);
     }
 
     void lahf() {
@@ -1705,11 +1746,14 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Bswap), 0, kStatusMask, "bswap_r11" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BsfAlt), 0, kBitScanMask, "bsf_r9_r10" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BswapAlt), 0, kStatusMask, "bswap_rax" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Tzcnt), 0, features.bmi1 ? kBitCountMask : kBitScanMask, features.bmi1 ? "tzcnt_rdx_rbx" : "f3_bsf_rdx_rbx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Lzcnt), 0, features.lzcnt ? kBitCountMask : kBitScanMask, features.lzcnt ? "lzcnt_r9_r10" : "f3_bsr_r9_r10" });
     for (const CondSpec& condition : kConditions) {
         specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Setcc), condition.code, kStatusMask, std::string("set") + condition.name });
         specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cmovcc), condition.code, kStatusMask, std::string("cmov") + condition.name });
         specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Jcc), condition.code, kStatusMask, std::string("j") + condition.name });
     }
+    specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cmc), 0, kFlagCF, "cmc" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovA), 0, 0, "mov_rax_r8" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovB), 0, 0, "mov_r9_rbx" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovzxByte), 0, 0, "movzx_byte" });
@@ -1832,6 +1876,9 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::CallAdd), 0, kStatusMask, "call_add" });
     specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::CallXor), 0, kLogicMask, "call_xor" });
     specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::CallLea), 0, 0, "call_lea" });
+    specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Loopnz), 0, kStatusMask, "loopnz_taken" });
+    specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Loopz), 0, kStatusMask, "loopz_taken" });
+    specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Loop), 0, kStatusMask, "loop_taken" });
     return specs;
 }
 
@@ -1912,6 +1959,12 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         case BitOp::BswapAlt:
             code.bswap(Reg::RAX);
             break;
+        case BitOp::Tzcnt:
+            code.tzcnt(Reg::RDX, Reg::RBX);
+            break;
+        case BitOp::Lzcnt:
+            code.lzcnt(Reg::R9, Reg::R10);
+            break;
         }
         break;
     }
@@ -1925,13 +1978,16 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         else if (program == FlagProgram::Cmovcc) {
             code.cmovcc(cc, Reg::R10, Reg::R11);
         }
-        else {
+        else if (program == FlagProgram::Jcc) {
             code.jcc32(cc, label_true);
             code.mov_reg_reg(Reg::R12, Reg::R13);
             code.jmp32(label_end);
             code.mark(label_true);
             code.mov_reg_reg(Reg::R12, Reg::R14);
             code.mark(label_end);
+        }
+        else {
+            code.cmc();
         }
         break;
     }
@@ -2402,6 +2458,39 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             code.lea_scaled(Reg::R14, Reg::RAX, Reg::RBX, 1, 0x10);
             code.ret();
             code.mark(after_helper);
+            break;
+        case ControlProgram::Loopnz:
+            code.mov_r32_imm(Reg::RAX, 1);
+            code.mov_r32_imm(Reg::RBX, 2);
+            code.mov_r32_imm(Reg::RCX, 2);
+            code.binary_reg_reg(BinaryOp::Cmp, Reg::RAX, Reg::RBX);
+            code.loopcc(0xE0, label_true);
+            code.mov_reg_reg(Reg::R12, Reg::R13);
+            code.jmp32(label_end);
+            code.mark(label_true);
+            code.mov_reg_reg(Reg::R12, Reg::R14);
+            code.mark(label_end);
+            break;
+        case ControlProgram::Loopz:
+            code.mov_r32_imm(Reg::RAX, 1);
+            code.mov_r32_imm(Reg::RBX, 1);
+            code.mov_r32_imm(Reg::RCX, 2);
+            code.binary_reg_reg(BinaryOp::Cmp, Reg::RAX, Reg::RBX);
+            code.loopcc(0xE1, label_true);
+            code.mov_reg_reg(Reg::R12, Reg::R13);
+            code.jmp32(label_end);
+            code.mark(label_true);
+            code.mov_reg_reg(Reg::R12, Reg::R14);
+            code.mark(label_end);
+            break;
+        case ControlProgram::Loop:
+            code.mov_r32_imm(Reg::RCX, 2);
+            code.loopcc(0xE2, label_true);
+            code.mov_reg_reg(Reg::R12, Reg::R13);
+            code.jmp32(label_end);
+            code.mark(label_true);
+            code.mov_reg_reg(Reg::R12, Reg::R14);
+            code.mark(label_end);
             break;
         }
         break;
@@ -4027,6 +4116,98 @@ inline bool run_manual_x87_public_cr0_exception_case(
     return ok;
 }
 
+inline bool run_manual_public_cr4_exception_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    std::uint64_t cr4_value,
+    std::uint32_t expected_exception,
+    Failure& failure) {
+    cpueaxh_engine* engine = nullptr;
+    cpueaxh_err err = cpueaxh_open(CPUEAXH_ARCH_X86, CPUEAXH_MODE_64, &engine);
+    if (err != CPUEAXH_ERR_OK) {
+        failure.case_name = name;
+        failure.detail = "cpueaxh_open failed";
+        return false;
+    }
+
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        if (!initialize_manual_engine(engine, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+        if (!write_engine_reg(engine, CPUEAXH_X86_REG_CR4, cr4_value)) {
+            failure.case_name = name;
+            failure.detail = "cr4 write failed";
+            break;
+        }
+
+        err = cpueaxh_emu_start(engine, kGuestCodeBase, 0, 0, 1);
+        if (err != CPUEAXH_ERR_EXCEPTION) {
+            failure.case_name = name;
+            failure.detail = "expected CPUEAXH_ERR_EXCEPTION";
+            break;
+        }
+        if (cpueaxh_code_exception(engine) != expected_exception) {
+            failure.case_name = name;
+            failure.detail = "unexpected exception code";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    cpueaxh_close(engine);
+    return ok;
+}
+
+inline bool run_manual_cr4_exception_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    std::uint64_t cr4_value,
+    std::uint32_t expected_exception,
+    Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        std::vector<std::uint8_t> image = code;
+        image.push_back(0x90);
+        image.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, image, initial, guest_rsp, failure, name)) {
+            break;
+        }
+        context.control_regs[4] = cr4_value;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException) {
+            failure.case_name = name;
+            failure.detail = "expected CPU_STEP_EXCEPTION";
+            break;
+        }
+        if (context.exception.code != expected_exception) {
+            failure.case_name = name;
+            failure.detail = "unexpected exception code";
+            break;
+        }
+        if (context.regs[REG_RAX] != initial.regs[0]) {
+            failure.case_name = name;
+            failure.detail = "rax changed unexpectedly";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
 inline bool run_manual_exception_case(
     const std::string& name,
     const std::vector<std::uint8_t>& code,
@@ -4068,6 +4249,16 @@ inline bool run_manual_exception_case(
             failure.detail = "flags changed unexpectedly";
             break;
         }
+        if (context.regs[REG_RSP] != guest_rsp) {
+            failure.case_name = name;
+            failure.detail = "rsp changed unexpectedly";
+            break;
+        }
+        if (context.rip != kGuestCodeBase) {
+            failure.case_name = name;
+            failure.detail = "rip changed unexpectedly";
+            break;
+        }
 
         cpu_clear_exception(&context);
         context.rip = kGuestCodeBase + static_cast<std::uint64_t>(code.size());
@@ -4097,6 +4288,1226 @@ inline bool run_manual_exception_case(
             failure.detail = "resume rip 1 mismatch";
             break;
         }
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_movs_source_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::vector<std::uint8_t> code = { 0x48, 0xA5, 0x90, 0x90 };
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        constexpr std::uint64_t source_address = kGuestGdtBase;
+        const std::uint64_t dest_address = guest_rsp + 0x40;
+        constexpr std::uint64_t sentinel = 0x1122334455667788ull;
+        if (!write_internal_dword(memory_manager, dest_address, static_cast<std::uint32_t>(sentinel & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, dest_address + 4, static_cast<std::uint32_t>(sentinel >> 32))) {
+            failure.case_name = name;
+            failure.detail = "sentinel write failed";
+            break;
+        }
+
+        context.regs[REG_RSI] = source_address;
+        context.regs[REG_RDI] = dest_address;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected MOVS source #PF";
+            break;
+        }
+        if (context.rip != kGuestCodeBase ||
+            context.regs[REG_RSI] != source_address ||
+            context.regs[REG_RDI] != dest_address ||
+            context.regs[REG_RSP] != guest_rsp) {
+            failure.case_name = name;
+            failure.detail = "MOVS scalar state changed after #PF";
+            break;
+        }
+
+        std::uint32_t low = 0;
+        std::uint32_t high = 0;
+        if (!read_internal_dword(memory_manager, dest_address, low) ||
+            !read_internal_dword(memory_manager, dest_address + 4, high)) {
+            failure.case_name = name;
+            failure.detail = "sentinel readback failed";
+            break;
+        }
+        const std::uint64_t actual = static_cast<std::uint64_t>(low) | (static_cast<std::uint64_t>(high) << 32);
+        if (actual != sentinel) {
+            failure.case_name = name;
+            failure.detail = "MOVS destination changed after source #PF";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_rep_movs_source_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::uint64_t source_page = kGuestGdtBase;
+        const std::uint64_t source_linear = source_page + kCodePageSize - 16;
+        const std::uint64_t dest_linear = kGuestStackBase + 0x100;
+        const std::uint64_t source_value0 = seeded(seed, 0xE181);
+        const std::uint64_t source_value1 = seeded(seed, 0xE182);
+        const std::uint64_t dest_sentinel = 0x8877665544332211ull;
+        const std::vector<std::uint8_t> code = { 0xF3, 0x48, 0xA5, 0x90, 0x90 };
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+        if (!mm_map_internal(&memory_manager, source_page, kCodePageSize, MM_PROT_READ | MM_PROT_WRITE)) {
+            failure.case_name = name;
+            failure.detail = "REP MOVS split source map failed";
+            break;
+        }
+        if (!write_internal_dword(memory_manager, source_linear, static_cast<std::uint32_t>(source_value0 & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, source_linear + 4, static_cast<std::uint32_t>(source_value0 >> 32)) ||
+            !write_internal_dword(memory_manager, source_linear + 8, static_cast<std::uint32_t>(source_value1 & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, source_linear + 12, static_cast<std::uint32_t>(source_value1 >> 32)) ||
+            !write_internal_dword(memory_manager, dest_linear, static_cast<std::uint32_t>(dest_sentinel & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, dest_linear + 4, static_cast<std::uint32_t>(dest_sentinel >> 32)) ||
+            !write_internal_dword(memory_manager, dest_linear + 8, static_cast<std::uint32_t>(dest_sentinel & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, dest_linear + 12, static_cast<std::uint32_t>(dest_sentinel >> 32)) ||
+            !write_internal_dword(memory_manager, dest_linear + 16, static_cast<std::uint32_t>(dest_sentinel & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, dest_linear + 20, static_cast<std::uint32_t>(dest_sentinel >> 32))) {
+            failure.case_name = name;
+            failure.detail = "REP MOVS split setup write failed";
+            break;
+        }
+
+        const std::uint64_t source_index = source_linear - cpu_segment_base_for_addressing(&context, SEG_DS);
+        const std::uint64_t dest_index = dest_linear - cpu_segment_base_for_addressing(&context, SEG_ES);
+        context.regs[REG_RSI] = source_index;
+        context.regs[REG_RDI] = dest_index;
+        context.regs[REG_RCX] = 3;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected REP MOVS split source #PF";
+            break;
+        }
+        if (context.rip != kGuestCodeBase ||
+            context.regs[REG_RSI] != source_index + 16 ||
+            context.regs[REG_RDI] != dest_index + 16 ||
+            context.regs[REG_RCX] != 1 ||
+            context.regs[REG_RSP] != guest_rsp) {
+            failure.case_name = name;
+            failure.detail = std::string("REP MOVS split source exception changed scalar state incorrectly rsi=") +
+                std::to_string(context.regs[REG_RSI]) + " rdi=" + std::to_string(context.regs[REG_RDI]) +
+                " rcx=" + std::to_string(context.regs[REG_RCX]) + " rsp=" + std::to_string(context.regs[REG_RSP]) +
+                " rip=" + std::to_string(context.rip) + " cr2=" + std::to_string(context.control_regs[REG_CR2]);
+            break;
+        }
+        if (context.rex_present ||
+            context.rex_w ||
+            context.rex_r ||
+            context.rex_x ||
+            context.rex_b ||
+            context.operand_size_override ||
+            context.address_size_override ||
+            context.segment_override != -1) {
+            failure.case_name = name;
+            failure.detail = "REP MOVS split source exception left decode transient state live";
+            break;
+        }
+
+        std::uint32_t low0 = 0;
+        std::uint32_t high0 = 0;
+        std::uint32_t low1 = 0;
+        std::uint32_t high1 = 0;
+        std::uint32_t low2 = 0;
+        std::uint32_t high2 = 0;
+        if (!read_internal_dword(memory_manager, dest_linear, low0) ||
+            !read_internal_dword(memory_manager, dest_linear + 4, high0) ||
+            !read_internal_dword(memory_manager, dest_linear + 8, low1) ||
+            !read_internal_dword(memory_manager, dest_linear + 12, high1) ||
+            !read_internal_dword(memory_manager, dest_linear + 16, low2) ||
+            !read_internal_dword(memory_manager, dest_linear + 20, high2)) {
+            failure.case_name = name;
+            failure.detail = "REP MOVS split destination readback failed";
+            break;
+        }
+        const std::uint64_t copied0 = static_cast<std::uint64_t>(low0) | (static_cast<std::uint64_t>(high0) << 32);
+        const std::uint64_t copied1 = static_cast<std::uint64_t>(low1) | (static_cast<std::uint64_t>(high1) << 32);
+        const std::uint64_t untouched = static_cast<std::uint64_t>(low2) | (static_cast<std::uint64_t>(high2) << 32);
+        if (copied0 != source_value0 || copied1 != source_value1 || untouched != dest_sentinel) {
+            failure.case_name = name;
+            failure.detail = "REP MOVS split destination commit mismatch";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_rep_movs_dest_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::uint64_t source_page = kGuestGdtBase;
+        const std::uint64_t source_linear = source_page + 0x100;
+        const std::uint64_t dest_linear = kGuestStackBase + kStackSize - 20;
+        const std::uint64_t source_value0 = seeded(seed, 0xE191);
+        const std::uint64_t source_value1 = seeded(seed, 0xE192);
+        const std::uint64_t source_value2 = seeded(seed, 0xE193);
+        const std::uint64_t dest_sentinel0 = 0x8877665544332211ull;
+        const std::uint32_t dest_sentinel2_low = 0xA5A55A5Au;
+        const std::vector<std::uint8_t> code = { 0xF3, 0x48, 0xA5, 0x90, 0x90 };
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+        if (!mm_map_internal(&memory_manager, source_page, kCodePageSize, MM_PROT_READ | MM_PROT_WRITE)) {
+            failure.case_name = name;
+            failure.detail = "REP MOVS split dest source map failed";
+            break;
+        }
+        if (!write_internal_dword(memory_manager, source_linear, static_cast<std::uint32_t>(source_value0 & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, source_linear + 4, static_cast<std::uint32_t>(source_value0 >> 32)) ||
+            !write_internal_dword(memory_manager, source_linear + 8, static_cast<std::uint32_t>(source_value1 & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, source_linear + 12, static_cast<std::uint32_t>(source_value1 >> 32)) ||
+            !write_internal_dword(memory_manager, source_linear + 16, static_cast<std::uint32_t>(source_value2 & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, source_linear + 20, static_cast<std::uint32_t>(source_value2 >> 32)) ||
+            !write_internal_dword(memory_manager, dest_linear, static_cast<std::uint32_t>(dest_sentinel0 & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, dest_linear + 4, static_cast<std::uint32_t>(dest_sentinel0 >> 32)) ||
+            !write_internal_dword(memory_manager, dest_linear + 8, static_cast<std::uint32_t>(dest_sentinel0 & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, dest_linear + 12, static_cast<std::uint32_t>(dest_sentinel0 >> 32)) ||
+            !write_internal_dword(memory_manager, dest_linear + 16, dest_sentinel2_low)) {
+            failure.case_name = name;
+            failure.detail = "REP MOVS split dest setup write failed";
+            break;
+        }
+
+        const std::uint64_t source_index = source_linear - cpu_segment_base_for_addressing(&context, SEG_DS);
+        const std::uint64_t dest_index = dest_linear - cpu_segment_base_for_addressing(&context, SEG_ES);
+        context.regs[REG_RSI] = source_index;
+        context.regs[REG_RDI] = dest_index;
+        context.regs[REG_RCX] = 3;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected REP MOVS split dest #PF";
+            break;
+        }
+        if (context.rip != kGuestCodeBase ||
+            context.regs[REG_RSI] != source_index + 16 ||
+            context.regs[REG_RDI] != dest_index + 16 ||
+            context.regs[REG_RCX] != 1 ||
+            context.regs[REG_RSP] != guest_rsp) {
+            failure.case_name = name;
+            failure.detail = "REP MOVS split dest exception changed scalar state incorrectly";
+            break;
+        }
+
+        std::uint32_t low0 = 0;
+        std::uint32_t high0 = 0;
+        std::uint32_t low1 = 0;
+        std::uint32_t high1 = 0;
+        std::uint32_t low2 = 0;
+        if (!read_internal_dword(memory_manager, dest_linear, low0) ||
+            !read_internal_dword(memory_manager, dest_linear + 4, high0) ||
+            !read_internal_dword(memory_manager, dest_linear + 8, low1) ||
+            !read_internal_dword(memory_manager, dest_linear + 12, high1) ||
+            !read_internal_dword(memory_manager, dest_linear + 16, low2)) {
+            failure.case_name = name;
+            failure.detail = "REP MOVS split dest readback failed";
+            break;
+        }
+        const std::uint64_t copied0 = static_cast<std::uint64_t>(low0) | (static_cast<std::uint64_t>(high0) << 32);
+        const std::uint64_t copied1 = static_cast<std::uint64_t>(low1) | (static_cast<std::uint64_t>(high1) << 32);
+        if (copied0 != source_value0 || copied1 != source_value1 || low2 != dest_sentinel2_low) {
+            failure.case_name = name;
+            failure.detail = "REP MOVS split dest commit mismatch";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_stack_source_exception_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    bool use_unmapped_rbp,
+    Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        std::vector<std::uint8_t> image = code;
+        image.push_back(0x90);
+        image.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, image, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        const std::uint64_t saved_rax = context.regs[REG_RAX];
+        const std::uint64_t saved_rbp = context.regs[REG_RBP];
+        if (use_unmapped_rbp) {
+            context.regs[REG_RBP] = kGuestGdtBase;
+        }
+        else {
+            context.regs[REG_RSP] = kGuestGdtBase;
+        }
+        const std::uint64_t expected_rsp = context.regs[REG_RSP];
+        const std::uint64_t expected_rbp = context.regs[REG_RBP];
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected stack source #PF";
+            break;
+        }
+        if (context.rip != kGuestCodeBase ||
+            context.regs[REG_RSP] != expected_rsp ||
+            context.regs[REG_RBP] != expected_rbp ||
+            context.regs[REG_RAX] != saved_rax) {
+            failure.case_name = name;
+            failure.detail = "stack source exception changed scalar state";
+            break;
+        }
+        if (!use_unmapped_rbp && context.regs[REG_RBP] != saved_rbp) {
+            failure.case_name = name;
+            failure.detail = "rbp changed unexpectedly";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_stack_write_exception_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        std::vector<std::uint8_t> image = code;
+        image.push_back(0x90);
+        image.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, image, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        const std::uint64_t saved_rax = context.regs[REG_RAX];
+        context.regs[REG_RSP] = kGuestGdtBase;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected stack write #PF";
+            break;
+        }
+        if (context.rip != kGuestCodeBase ||
+            context.regs[REG_RSP] != kGuestGdtBase ||
+            context.regs[REG_RAX] != saved_rax) {
+            failure.case_name = name;
+            failure.detail = "stack write exception changed scalar state";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_xmm_store_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::uint64_t split_address = kGuestStackBase + kStackSize - 8;
+        const std::uint64_t sentinel = 0x8877665544332211ull;
+        const std::vector<std::uint8_t> code = {
+            0x0F, 0x11, 0x04, 0x25,
+            static_cast<std::uint8_t>(split_address & 0xFFu),
+            static_cast<std::uint8_t>((split_address >> 8) & 0xFFu),
+            static_cast<std::uint8_t>((split_address >> 16) & 0xFFu),
+            static_cast<std::uint8_t>((split_address >> 24) & 0xFFu),
+            0x90, 0x90
+        };
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        if (!write_internal_dword(memory_manager, split_address, static_cast<std::uint32_t>(sentinel & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, split_address + 4, static_cast<std::uint32_t>(sentinel >> 32))) {
+            failure.case_name = name;
+            failure.detail = "split sentinel write failed";
+            break;
+        }
+
+        context.xmm[0].low = 0x0102030405060708ull;
+        context.xmm[0].high = 0x1112131415161718ull;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected split XMM store #PF";
+            break;
+        }
+        if (context.rip != kGuestCodeBase || context.regs[REG_RSP] != guest_rsp) {
+            failure.case_name = name;
+            failure.detail = "split XMM store changed scalar state";
+            break;
+        }
+
+        std::uint32_t low = 0;
+        std::uint32_t high = 0;
+        if (!read_internal_dword(memory_manager, split_address, low) ||
+            !read_internal_dword(memory_manager, split_address + 4, high)) {
+            failure.case_name = name;
+            failure.detail = "split sentinel readback failed";
+            break;
+        }
+        const std::uint64_t actual = static_cast<std::uint64_t>(low) | (static_cast<std::uint64_t>(high) << 32);
+        if (actual != sentinel) {
+            failure.case_name = name;
+            failure.detail = "split XMM store partially wrote first page";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_maskmovdqu_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::uint64_t split_address = kGuestStackBase + kStackSize - 8;
+        const std::uint64_t sentinel = 0x1020304050607080ull;
+        const std::vector<std::uint8_t> code = {
+            0x66, 0x0F, 0xF7, 0xC1,
+            0x90, 0x90
+        };
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        if (!write_internal_dword(memory_manager, split_address, static_cast<std::uint32_t>(sentinel & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, split_address + 4, static_cast<std::uint32_t>(sentinel >> 32))) {
+            failure.case_name = name;
+            failure.detail = "maskmov sentinel write failed";
+            break;
+        }
+
+        context.regs[REG_RDI] = split_address;
+        context.xmm[0].low = 0x0102030405060708ull;
+        context.xmm[0].high = 0x1112131415161718ull;
+        context.xmm[1].low = 0x8080808080808080ull;
+        context.xmm[1].high = 0x8080808080808080ull;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected split MASKMOVDQU #PF";
+            break;
+        }
+        if (context.rip != kGuestCodeBase ||
+            context.regs[REG_RSP] != guest_rsp ||
+            context.regs[REG_RDI] != split_address) {
+            failure.case_name = name;
+            failure.detail = "split MASKMOVDQU changed scalar state";
+            break;
+        }
+
+        std::uint32_t low = 0;
+        std::uint32_t high = 0;
+        if (!read_internal_dword(memory_manager, split_address, low) ||
+            !read_internal_dword(memory_manager, split_address + 4, high)) {
+            failure.case_name = name;
+            failure.detail = "maskmov sentinel readback failed";
+            break;
+        }
+        const std::uint64_t actual = static_cast<std::uint64_t>(low) | (static_cast<std::uint64_t>(high) << 32);
+        if (actual != sentinel) {
+            failure.case_name = name;
+            failure.detail = "split MASKMOVDQU partially wrote first page";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline void append_abs32(std::vector<std::uint8_t>& code, std::uint64_t address) {
+    code.push_back(static_cast<std::uint8_t>(address & 0xFFu));
+    code.push_back(static_cast<std::uint8_t>((address >> 8) & 0xFFu));
+    code.push_back(static_cast<std::uint8_t>((address >> 16) & 0xFFu));
+    code.push_back(static_cast<std::uint8_t>((address >> 24) & 0xFFu));
+}
+
+inline bool run_x87_env_store_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::uint64_t split_address = kGuestStackBase + kStackSize - 16;
+        const std::uint32_t sentinel[4] = { 0x11223344u, 0x55667788u, 0x99AABBCCu, 0xDDEEFF00u };
+        std::vector<std::uint8_t> code = { 0xD9, 0x34, 0x25 };
+        append_abs32(code, split_address);
+        code.push_back(0x90);
+        code.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        for (int index = 0; index < 4; ++index) {
+            if (!write_internal_dword(memory_manager, split_address + static_cast<std::uint64_t>(index * 4), sentinel[index])) {
+                failure.case_name = name;
+                failure.detail = "x87 env sentinel write failed";
+                goto done;
+            }
+        }
+
+        context.x87_control_word = 0x1234u;
+        context.x87_status_word = 0x5678u;
+        context.x87_tag_word = 0x9ABCu;
+        context.x87_last_opcode = 0x0DEFu;
+        context.x87_instruction_pointer = 0xCAFEBABEull;
+        context.x87_data_pointer = 0x10203040ull;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected split FNSTENV #PF";
+            break;
+        }
+        if (context.rip != kGuestCodeBase || context.x87_control_word != 0x1234u) {
+            failure.case_name = name;
+            failure.detail = "split FNSTENV changed CPU state";
+            break;
+        }
+
+        for (int index = 0; index < 4; ++index) {
+            std::uint32_t actual = 0;
+            if (!read_internal_dword(memory_manager, split_address + static_cast<std::uint64_t>(index * 4), actual) ||
+                actual != sentinel[index]) {
+                failure.case_name = name;
+                failure.detail = "split FNSTENV partially wrote first page";
+                goto done;
+            }
+        }
+
+        ok = true;
+    } while (false);
+
+done:
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_x87_env_load_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::uint64_t split_address = kGuestStackBase + kStackSize - 16;
+        std::vector<std::uint8_t> code = { 0xD9, 0x24, 0x25 };
+        append_abs32(code, split_address);
+        code.push_back(0x90);
+        code.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        if (!write_internal_dword(memory_manager, split_address + 0x00, 0x00001111u) ||
+            !write_internal_dword(memory_manager, split_address + 0x04, 0x00002222u) ||
+            !write_internal_dword(memory_manager, split_address + 0x08, 0x00003333u) ||
+            !write_internal_dword(memory_manager, split_address + 0x0C, 0x44445555u)) {
+            failure.case_name = name;
+            failure.detail = "x87 env source write failed";
+            break;
+        }
+
+        context.x87_control_word = 0xAAAAu;
+        context.x87_status_word = 0xBBBBu;
+        context.x87_tag_word = 0xCCCCu;
+        context.x87_last_opcode = 0xDDDDu;
+        context.x87_instruction_pointer = 0x11112222ull;
+        context.x87_data_pointer = 0x33334444ull;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected split FLDENV #PF";
+            break;
+        }
+        if (context.x87_control_word != 0xAAAAu ||
+            context.x87_status_word != 0xBBBBu ||
+            context.x87_tag_word != 0xCCCCu ||
+            context.x87_last_opcode != 0xDDDDu ||
+            context.x87_instruction_pointer != 0x11112222ull ||
+            context.x87_data_pointer != 0x33334444ull) {
+            failure.case_name = name;
+            failure.detail = "split FLDENV partially changed x87 state";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_fxsave_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::uint64_t split_address = kGuestStackBase + kStackSize - 0x20;
+        std::uint32_t sentinel[8] = {};
+        std::vector<std::uint8_t> code = { 0x0F, 0xAE, 0x04, 0x25 };
+        append_abs32(code, split_address);
+        code.push_back(0x90);
+        code.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        for (int index = 0; index < 8; ++index) {
+            sentinel[index] = static_cast<std::uint32_t>(0xA0B0C000u + index);
+            if (!write_internal_dword(memory_manager, split_address + static_cast<std::uint64_t>(index * 4), sentinel[index])) {
+                failure.case_name = name;
+                failure.detail = "fxsave sentinel write failed";
+                goto done;
+            }
+        }
+
+        context.mxcsr = 0x1F80u;
+        context.mm[0] = 0x0102030405060708ull;
+        context.xmm[0].low = 0x1112131415161718ull;
+        context.xmm[0].high = 0x2122232425262728ull;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected split FXSAVE #PF";
+            break;
+        }
+
+        for (int index = 0; index < 8; ++index) {
+            std::uint32_t actual = 0;
+            if (!read_internal_dword(memory_manager, split_address + static_cast<std::uint64_t>(index * 4), actual) ||
+                actual != sentinel[index]) {
+                failure.case_name = name;
+                failure.detail = "split FXSAVE partially wrote first page";
+                goto done;
+            }
+        }
+
+        ok = true;
+    } while (false);
+
+done:
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_fxrstor_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::uint64_t split_address = kGuestStackBase + kStackSize - 0x20;
+        std::vector<std::uint8_t> code = { 0x0F, 0xAE, 0x0C, 0x25 };
+        append_abs32(code, split_address);
+        code.push_back(0x90);
+        code.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        if (!write_internal_dword(memory_manager, split_address + 0x18, 0x00001F80u)) {
+            failure.case_name = name;
+            failure.detail = "fxrstor mxcsr source write failed";
+            break;
+        }
+
+        context.mxcsr = 0x00001F81u;
+        context.mm[0] = 0xAAAAAAAAAAAAAAAAull;
+        context.xmm[0].low = 0xBBBBBBBBBBBBBBBBull;
+        context.xmm[0].high = 0xCCCCCCCCCCCCCCCCull;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected split FXRSTOR #PF";
+            break;
+        }
+        if (context.mxcsr != 0x00001F81u ||
+            context.mm[0] != 0xAAAAAAAAAAAAAAAAull ||
+            context.xmm[0].low != 0xBBBBBBBBBBBBBBBBull ||
+            context.xmm[0].high != 0xCCCCCCCCCCCCCCCCull) {
+            failure.case_name = name;
+            failure.detail = "split FXRSTOR partially changed SIMD state";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_far_call_stack_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + 8;
+        const std::uint64_t pointer_address = kGuestStackBase + 0x100;
+        const std::uint64_t sentinel = 0x8877665544332211ull;
+        const std::uint64_t target = kGuestCodeBase + 0x80;
+        std::vector<std::uint8_t> code = { 0x48, 0xFF, 0x1C, 0x25 };
+        append_abs32(code, pointer_address);
+        code.push_back(0x90);
+        code.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+        if (!mm_map_internal(&memory_manager, kGuestGdtBase, kCodePageSize, MM_PROT_READ | MM_PROT_WRITE)) {
+            failure.case_name = name;
+            failure.detail = "far call gdt map failed";
+            break;
+        }
+
+        const std::uint64_t descriptor = encode_segment_descriptor(0, 0x000FFFFFu, 0x0Bu, 0, true, true, false, true);
+        if (!write_internal_dword(memory_manager, kGuestGdtBase + 0x08, static_cast<std::uint32_t>(descriptor & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, kGuestGdtBase + 0x0C, static_cast<std::uint32_t>(descriptor >> 32)) ||
+            !write_internal_dword(memory_manager, pointer_address, static_cast<std::uint32_t>(target & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, pointer_address + 4, static_cast<std::uint32_t>(target >> 32)) ||
+            !write_internal_word(memory_manager, pointer_address + 8, 0x08u) ||
+            !write_internal_dword(memory_manager, kGuestStackBase, static_cast<std::uint32_t>(sentinel & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, kGuestStackBase + 4, static_cast<std::uint32_t>(sentinel >> 32))) {
+            failure.case_name = name;
+            failure.detail = "far call setup write failed";
+            break;
+        }
+
+        context.gdtr_base = kGuestGdtBase;
+        context.gdtr_limit = 0x0F;
+        context.cs.selector = 0x08u;
+        context.cs.descriptor.base = 0;
+        context.cs.descriptor.limit = 0xFFFFFFFFu;
+        context.cs.descriptor.type = 0x0Bu;
+        context.cs.descriptor.dpl = 0;
+        context.cs.descriptor.present = true;
+        context.cs.descriptor.granularity = true;
+        context.cs.descriptor.db = false;
+        context.cs.descriptor.long_mode = true;
+        context.cached_mode_key_valid = 0;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = std::string("expected far CALL split stack #PF status=") + std::to_string(status) +
+                " exc=" + std::to_string(context.exception.code);
+            break;
+        }
+        if (context.rip != kGuestCodeBase || context.regs[REG_RSP] != guest_rsp) {
+            failure.case_name = name;
+            failure.detail = "far CALL split stack changed scalar state";
+            break;
+        }
+
+        std::uint32_t low = 0;
+        std::uint32_t high = 0;
+        if (!read_internal_dword(memory_manager, kGuestStackBase, low) ||
+            !read_internal_dword(memory_manager, kGuestStackBase + 4, high)) {
+            failure.case_name = name;
+            failure.detail = "far call sentinel readback failed";
+            break;
+        }
+        const std::uint64_t actual = static_cast<std::uint64_t>(low) | (static_cast<std::uint64_t>(high) << 32);
+        if (actual != sentinel) {
+            failure.case_name = name;
+            failure.detail = "far CALL partially wrote first stack slot";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_multi_pop_stack_split_exception_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kStackSize - 8;
+        const std::uint64_t first_value = kGuestCodeBase + 0x80;
+        std::vector<std::uint8_t> image = code;
+        image.push_back(0x90);
+        image.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, image, initial, guest_rsp, failure, name)) {
+            break;
+        }
+        if (!write_internal_dword(memory_manager, guest_rsp, static_cast<std::uint32_t>(first_value & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, guest_rsp + 4, static_cast<std::uint32_t>(first_value >> 32))) {
+            failure.case_name = name;
+            failure.detail = "multi-pop stack setup write failed";
+            break;
+        }
+
+        const std::uint64_t saved_rsp = context.regs[REG_RSP];
+        const std::uint64_t saved_rip = context.rip;
+        const std::uint64_t saved_rflags = context.rflags;
+        const std::uint16_t saved_cs = context.cs.selector;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = std::string("expected multi-pop split stack #PF status=") + std::to_string(status) +
+                " exc=" + std::to_string(context.exception.code);
+            break;
+        }
+        if (context.rip != saved_rip ||
+            context.regs[REG_RSP] != saved_rsp ||
+            context.rflags != saved_rflags ||
+            context.cs.selector != saved_cs) {
+            failure.case_name = name;
+            failure.detail = "multi-pop split stack changed scalar state";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_enter_stack_write_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + 4;
+        const std::vector<std::uint8_t> code = { 0xC8, 0x00, 0x00, 0x00, 0x90, 0x90 };
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        const std::uint64_t saved_rsp = context.regs[REG_RSP];
+        const std::uint64_t saved_rbp = context.regs[REG_RBP];
+        const std::uint64_t saved_rip = context.rip;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected ENTER stack write #PF";
+            break;
+        }
+        if (context.rip != saved_rip ||
+            context.regs[REG_RSP] != saved_rsp ||
+            context.regs[REG_RBP] != saved_rbp) {
+            failure.case_name = name;
+            failure.detail = "ENTER stack write exception changed scalar state";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_enter_nested_frame_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::uint64_t first_push_address = guest_rsp - 8;
+        const std::uint64_t sentinel = 0xA5A5CC3301020304ull;
+        const std::vector<std::uint8_t> code = { 0xC8, 0x00, 0x00, 0x02, 0x90, 0x90 };
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+        if (!write_internal_dword(memory_manager, first_push_address, static_cast<std::uint32_t>(sentinel & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, first_push_address + 4, static_cast<std::uint32_t>(sentinel >> 32))) {
+            failure.case_name = name;
+            failure.detail = "ENTER nested setup write failed";
+            break;
+        }
+
+        context.regs[REG_RBP] = kGuestStackBase + kStackSize + 4;
+        const std::uint64_t saved_rsp = context.regs[REG_RSP];
+        const std::uint64_t saved_rbp = context.regs[REG_RBP];
+        const std::uint64_t saved_rip = context.rip;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected ENTER nested frame #PF";
+            break;
+        }
+        if (context.rip != saved_rip ||
+            context.regs[REG_RSP] != saved_rsp ||
+            context.regs[REG_RBP] != saved_rbp) {
+            failure.case_name = name;
+            failure.detail = "ENTER nested frame exception changed scalar state";
+            break;
+        }
+
+        std::uint32_t low = 0;
+        std::uint32_t high = 0;
+        if (!read_internal_dword(memory_manager, first_push_address, low) ||
+            !read_internal_dword(memory_manager, first_push_address + 4, high)) {
+            failure.case_name = name;
+            failure.detail = "ENTER nested sentinel readback failed";
+            break;
+        }
+        const std::uint64_t actual = static_cast<std::uint64_t>(low) | (static_cast<std::uint64_t>(high) << 32);
+        if (actual != sentinel) {
+            failure.case_name = name;
+            failure.detail = "ENTER nested frame fault partially wrote stack";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_leave_frame_source_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::vector<std::uint8_t> code = { 0xC9, 0x90, 0x90 };
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        context.regs[REG_RBP] = kGuestStackBase + kStackSize;
+        const std::uint64_t saved_rsp = context.regs[REG_RSP];
+        const std::uint64_t saved_rbp = context.regs[REG_RBP];
+        const std::uint64_t saved_rip = context.rip;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected LEAVE frame source #PF";
+            break;
+        }
+        if (context.rip != saved_rip ||
+            context.regs[REG_RSP] != saved_rsp ||
+            context.regs[REG_RBP] != saved_rbp) {
+            failure.case_name = name;
+            failure.detail = "LEAVE frame source exception changed scalar state";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_pop_memory_dest_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::uint64_t stack_value = seeded(seed, 0xE171);
+        const std::uint64_t dest_address = kGuestStackBase + kStackSize;
+        std::vector<std::uint8_t> code = { 0x8F, 0x04, 0x25 };
+        append_abs32(code, dest_address);
+        code.push_back(0x90);
+        code.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+        if (!write_internal_dword(memory_manager, guest_rsp, static_cast<std::uint32_t>(stack_value & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, guest_rsp + 4, static_cast<std::uint32_t>(stack_value >> 32))) {
+            failure.case_name = name;
+            failure.detail = "POP memory dest setup write failed";
+            break;
+        }
+
+        const std::uint64_t saved_rsp = context.regs[REG_RSP];
+        const std::uint64_t saved_rip = context.rip;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_PF) {
+            failure.case_name = name;
+            failure.detail = "expected POP memory dest #PF";
+            break;
+        }
+        if (context.rip != saved_rip || context.regs[REG_RSP] != saved_rsp) {
+            failure.case_name = name;
+            failure.detail = "POP memory dest exception changed scalar state";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_pop_sreg_invalid_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::uint16_t invalid_selector = 0x20u;
+        const std::vector<std::uint8_t> code = { 0x0F, 0xA1, 0x90, 0x90 };
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+        if (!write_internal_dword(memory_manager, guest_rsp, invalid_selector) ||
+            !write_internal_dword(memory_manager, guest_rsp + 4, 0)) {
+            failure.case_name = name;
+            failure.detail = "POP sreg setup write failed";
+            break;
+        }
+
+        const std::uint64_t saved_rsp = context.regs[REG_RSP];
+        const std::uint64_t saved_rip = context.rip;
+        const std::uint16_t saved_fs = context.fs.selector;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_GP) {
+            failure.case_name = name;
+            failure.detail = "expected POP sreg #GP";
+            break;
+        }
+        if (context.rip != saved_rip ||
+            context.regs[REG_RSP] != saved_rsp ||
+            context.fs.selector != saved_fs) {
+            failure.case_name = name;
+            failure.detail = "POP sreg exception changed scalar state";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_noncanonical_control_transfer_exception_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    bool target_in_rax,
+    Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        constexpr std::uint64_t noncanonical_target = 0x0000800000000000ull;
+        constexpr std::uint64_t stack_sentinel = 0xD1D2D3D4A1A2A3A4ull;
+        std::vector<std::uint8_t> image = code;
+        image.push_back(0x90);
+        image.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, image, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        if (target_in_rax) {
+            context.regs[REG_RAX] = noncanonical_target;
+        }
+        else if (!write_internal_dword(memory_manager, guest_rsp, static_cast<std::uint32_t>(noncanonical_target & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, guest_rsp + 4, static_cast<std::uint32_t>(noncanonical_target >> 32))) {
+            failure.case_name = name;
+            failure.detail = "noncanonical RET stack setup write failed";
+            break;
+        }
+
+        if (!write_internal_dword(memory_manager, guest_rsp - 8, static_cast<std::uint32_t>(stack_sentinel & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, guest_rsp - 4, static_cast<std::uint32_t>(stack_sentinel >> 32))) {
+            failure.case_name = name;
+            failure.detail = "noncanonical control stack sentinel write failed";
+            break;
+        }
+
+        const std::uint64_t saved_rip = context.rip;
+        const std::uint64_t saved_rsp = context.regs[REG_RSP];
+        const std::uint64_t saved_rax = context.regs[REG_RAX];
+        const std::uint64_t saved_rflags = context.rflags;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_GP) {
+            failure.case_name = name;
+            failure.detail = "expected noncanonical control transfer #GP";
+            break;
+        }
+        if (context.rip != saved_rip ||
+            context.regs[REG_RSP] != saved_rsp ||
+            context.regs[REG_RAX] != saved_rax ||
+            context.rflags != saved_rflags) {
+            failure.case_name = name;
+            failure.detail = "noncanonical control transfer changed scalar state";
+            break;
+        }
+
+        std::uint32_t low = 0;
+        std::uint32_t high = 0;
+        if (!read_internal_dword(memory_manager, guest_rsp - 8, low) ||
+            !read_internal_dword(memory_manager, guest_rsp - 4, high)) {
+            failure.case_name = name;
+            failure.detail = "noncanonical control stack sentinel readback failed";
+            break;
+        }
+        const std::uint64_t actual_sentinel = static_cast<std::uint64_t>(low) | (static_cast<std::uint64_t>(high) << 32);
+        if (actual_sentinel != stack_sentinel) {
+            failure.case_name = name;
+            failure.detail = "noncanonical CALL partially wrote stack";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
+inline bool run_iret_invalid_selector_exception_case(const std::string& name, std::uint64_t seed, Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        const std::vector<std::uint8_t> code = { 0xCF, 0x90, 0x90 };
+        if (!initialize_manual_cpu_context(context, memory_manager, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        const std::uint64_t target_rip = kGuestCodeBase + 0x80;
+        const std::uint16_t invalid_selector = 0x20u;
+        if (!write_internal_dword(memory_manager, guest_rsp, static_cast<std::uint32_t>(target_rip & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, guest_rsp + 4, static_cast<std::uint32_t>(target_rip >> 32)) ||
+            !write_internal_dword(memory_manager, guest_rsp + 8, invalid_selector) ||
+            !write_internal_dword(memory_manager, guest_rsp + 12, 0) ||
+            !write_internal_dword(memory_manager, guest_rsp + 16, static_cast<std::uint32_t>(initial.rflags & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, guest_rsp + 20, static_cast<std::uint32_t>(initial.rflags >> 32)) ||
+            !write_internal_dword(memory_manager, guest_rsp + 24, static_cast<std::uint32_t>(guest_rsp & 0xFFFFFFFFu)) ||
+            !write_internal_dword(memory_manager, guest_rsp + 28, static_cast<std::uint32_t>(guest_rsp >> 32)) ||
+            !write_internal_dword(memory_manager, guest_rsp + 32, context.ss.selector) ||
+            !write_internal_dword(memory_manager, guest_rsp + 36, 0)) {
+            failure.case_name = name;
+            failure.detail = "IRET invalid selector stack setup write failed";
+            break;
+        }
+
+        const std::uint64_t saved_rip = context.rip;
+        const std::uint64_t saved_rsp = context.regs[REG_RSP];
+        const std::uint64_t saved_rflags = context.rflags;
+        const std::uint16_t saved_cs = context.cs.selector;
+        const SegmentDescriptor saved_cs_desc = context.cs.descriptor;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepException || context.exception.code != CPUEAXH_EXCEPTION_GP) {
+            failure.case_name = name;
+            failure.detail = "expected IRET invalid selector #GP";
+            break;
+        }
+        if (context.rip != saved_rip ||
+            context.regs[REG_RSP] != saved_rsp ||
+            context.rflags != saved_rflags ||
+            context.cs.selector != saved_cs ||
+            context.cs.descriptor.type != saved_cs_desc.type ||
+            context.cs.descriptor.long_mode != saved_cs_desc.long_mode) {
+            failure.case_name = name;
+            failure.detail = "IRET invalid selector changed scalar state";
+            break;
+        }
+
         ok = true;
     } while (false);
 
@@ -5352,13 +6763,34 @@ inline bool run_public_aesimc_case(
 
 inline bool emit_host_mov_reg_imm64(std::vector<std::uint8_t>& code, std::uint8_t reg_low3, std::uint64_t imm);
 inline bool run_host_stack_roundtrip_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_cached_rmw_recompute_case(const std::string& name, std::uint64_t seed, std::uint8_t opcode_kind, Failure& failure);
+inline bool run_movs_source_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_rep_movs_source_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_rep_movs_dest_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_stack_source_exception_case(const std::string& name, const std::vector<std::uint8_t>& code, std::uint64_t seed, bool use_unmapped_rbp, Failure& failure);
+inline bool run_stack_write_exception_case(const std::string& name, const std::vector<std::uint8_t>& code, std::uint64_t seed, Failure& failure);
+inline bool run_xmm_store_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_maskmovdqu_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_x87_env_store_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_x87_env_load_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_fxsave_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_fxrstor_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_far_call_stack_split_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_multi_pop_stack_split_exception_case(const std::string& name, const std::vector<std::uint8_t>& code, std::uint64_t seed, Failure& failure);
+inline bool run_enter_stack_write_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_enter_nested_frame_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_leave_frame_source_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_pop_memory_dest_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_pop_sreg_invalid_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+inline bool run_noncanonical_control_transfer_exception_case(const std::string& name, const std::vector<std::uint8_t>& code, std::uint64_t seed, bool target_in_rax, Failure& failure);
+inline bool run_iret_invalid_selector_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
 
 inline std::uint64_t manual_special_case_count(const HostFeatures& features) {
-    const std::uint64_t per_seed_special = (features.avx ? 47ull : 46ull) + (features.popcnt ? 3ull : 0ull) + 14ull
+    const std::uint64_t per_seed_special = (features.avx ? 45ull : 44ull) + (features.popcnt ? 3ull : 0ull) + 12ull + (features.rdpid ? 3ull : 0ull)
         + (features.aes ? 2ull : 0ull)
         + ((features.aes && features.avx) ? 2ull : 0ull);
-    const std::uint64_t exception_special = 41ull + ((features.aes && features.avx) ? 2ull : 0ull);
-    return kSeedCount * per_seed_special + kExceptionSeedCount * exception_special + kHostStackSeedCount + kContextApiSeedCount;
+    const std::uint64_t exception_special = 80ull + ((features.aes && features.avx) ? 2ull : 0ull);
+    return kSeedCount * per_seed_special + kExceptionSeedCount * exception_special + kHostStackSeedCount * 4ull + kContextApiSeedCount;
 }
 
 inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t& executed, std::uint64_t total) {
@@ -5368,10 +6800,32 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> rdsspd = { 0xF3, 0x0F, 0x1E, 0xC8, 0xC3 };
     const std::vector<std::uint8_t> rdpid64 = { 0xF3, 0x48, 0x0F, 0xC7, 0xF8, 0xC3 };
     const std::vector<std::uint8_t> rdpid32 = { 0xF3, 0x0F, 0xC7, 0xF8, 0xC3 };
+    const std::vector<std::uint8_t> rdpid_with_66 = { 0x66, 0xF3, 0x48, 0x0F, 0xC7, 0xF8, 0xC3 };
+    const std::vector<std::uint8_t> setcc_ignored_modrm_reg = {
+        0x0F, 0x94, 0x64, 0x24, 0x40, // setz byte ptr [rsp+0x40] with ModRM.reg=4; SETcc ignores reg bits
+        0xC3
+    };
     const std::vector<std::uint8_t> invalid_endbr_lock = { 0xF0, 0xF3, 0x0F, 0x1E, 0xFA };
     const std::vector<std::uint8_t> invalid_rdssp_lock = { 0xF0, 0xF3, 0x48, 0x0F, 0x1E, 0xC8 };
     const std::vector<std::uint8_t> invalid_rdpid_no_f3 = { 0x48, 0x0F, 0xC7, 0xF8 };
-    const std::vector<std::uint8_t> invalid_rdpid_with_66 = { 0x66, 0xF3, 0x48, 0x0F, 0xC7, 0xF8 };
+    const std::vector<std::uint8_t> xgetbv = { 0x0F, 0x01, 0xD0 };
+    const std::vector<std::uint8_t> shl_unmapped = { 0x48, 0xC1, 0x24, 0x25, 0x00, 0x00, 0x40, 0x00, 0x01 };
+    const std::vector<std::uint8_t> mul_unmapped = { 0x48, 0xF7, 0x24, 0x25, 0x00, 0x00, 0x40, 0x00 };
+    const std::vector<std::uint8_t> imul_unmapped = { 0x48, 0x0F, 0xAF, 0x04, 0x25, 0x00, 0x00, 0x40, 0x00 };
+    const std::vector<std::uint8_t> bsf_unmapped = { 0x48, 0x0F, 0xBC, 0x04, 0x25, 0x00, 0x00, 0x40, 0x00 };
+    const std::vector<std::uint8_t> bt_unmapped = { 0x48, 0x0F, 0xBA, 0x24, 0x25, 0x00, 0x00, 0x40, 0x00, 0x00 };
+    const std::vector<std::uint8_t> cmpxchg_unmapped = { 0x48, 0x0F, 0xB1, 0x04, 0x25, 0x00, 0x00, 0x40, 0x00 };
+    const std::vector<std::uint8_t> xadd_unmapped = { 0x48, 0x0F, 0xC1, 0x04, 0x25, 0x00, 0x00, 0x40, 0x00 };
+    const std::vector<std::uint8_t> push_unmapped = { 0x48, 0xFF, 0x34, 0x25, 0x00, 0x00, 0x40, 0x00 };
+    const std::vector<std::uint8_t> call_unmapped = { 0x48, 0xFF, 0x14, 0x25, 0x00, 0x00, 0x40, 0x00 };
+    const std::vector<std::uint8_t> jmp_unmapped = { 0x48, 0xFF, 0x24, 0x25, 0x00, 0x00, 0x40, 0x00 };
+    const std::vector<std::uint8_t> jmp_rax = { 0x48, 0xFF, 0xE0 };
+    const std::vector<std::uint8_t> call_rax = { 0x48, 0xFF, 0xD0 };
+    const std::vector<std::uint8_t> pop_stack_unmapped = { 0x58 };
+    const std::vector<std::uint8_t> ret_stack_unmapped = { 0xC3 };
+    const std::vector<std::uint8_t> leave_stack_unmapped = { 0xC9 };
+    const std::vector<std::uint8_t> push_stack_unmapped = { 0x50 };
+    const std::vector<std::uint8_t> call_stack_unmapped = { 0xE8, 0x00, 0x00, 0x00, 0x00 };
     const std::vector<std::uint8_t> fninit = { 0xDB, 0xE3 };
     const std::vector<std::uint8_t> fnstsw_ax_only = { 0xDF, 0xE0 };
     const std::vector<std::uint8_t> finit_only = { 0x9B, 0xDB, 0xE3 };
@@ -5503,13 +6957,23 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         const std::uint64_t seed_rdsspd = seeded(seed_index, 0xE012);
         if (!tick(run_manual_special_case("rdsspd:" + std::to_string(seed_rdsspd), rdsspd, seed_rdsspd, 0, false, failure), failure)) return false;
 
-        const std::uint64_t seed2 = seeded(seed_index, 0xE003);
-        const std::uint32_t processor_id = static_cast<std::uint32_t>(seeded(seed2, 0x90));
-        if (!tick(run_manual_special_case("rdpid64:" + std::to_string(seed2), rdpid64, seed2, processor_id, true, failure), failure)) return false;
+        if (features.rdpid) {
+            const std::uint64_t seed2 = seeded(seed_index, 0xE003);
+            const std::uint32_t processor_id = static_cast<std::uint32_t>(seeded(seed2, 0x90));
+            if (!tick(run_manual_special_case("rdpid64:" + std::to_string(seed2), rdpid64, seed2, processor_id, true, failure), failure)) return false;
 
-        const std::uint64_t seed_rdpid32 = seeded(seed_index, 0xE013);
-        const std::uint32_t processor_id32 = static_cast<std::uint32_t>(seeded(seed_rdpid32, 0x91));
-        if (!tick(run_manual_special_case("rdpid32:" + std::to_string(seed_rdpid32), rdpid32, seed_rdpid32, processor_id32, true, failure), failure)) return false;
+            const std::uint64_t seed_rdpid32 = seeded(seed_index, 0xE013);
+            const std::uint32_t processor_id32 = static_cast<std::uint32_t>(seeded(seed_rdpid32, 0x91));
+            if (!tick(run_manual_special_case("rdpid32:" + std::to_string(seed_rdpid32), rdpid32, seed_rdpid32, processor_id32, true, failure), failure)) return false;
+
+            const std::uint64_t seed_rdpid66 = seeded(seed_index, 0xE017);
+            const std::uint32_t processor_id66 = static_cast<std::uint32_t>(seeded(seed_rdpid66, 0x92));
+            if (!tick(run_manual_special_case("rdpid66:" + std::to_string(seed_rdpid66), rdpid_with_66, seed_rdpid66, processor_id66, true, failure), failure)) return false;
+        }
+
+
+        const std::uint64_t seed_setcc = seeded(seed_index, 0xE016);
+        if (!tick(run_manual_special_case("setcc_ignored_modrm_reg:" + std::to_string(seed_setcc), setcc_ignored_modrm_reg, seed_setcc, 0, false, failure), failure)) return false;
 
         const std::uint64_t seed_fnstcw = seeded(seed_index, 0xE014);
         if (!tick(run_manual_store_case("fnstcw:" + std::to_string(seed_fnstcw), fnstcw_rsp, seed_fnstcw, static_cast<std::uint32_t>(kInitialMxcsr), 0x40, 2, kInitialX87ControlWord, failure), failure)) return false;
@@ -6355,9 +7819,117 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         if (!tick(run_manual_exception_case_public("public_rdpid_no_f3_ud:" + std::to_string(seed5), invalid_rdpid_no_f3, seed5, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
         if (!tick(run_manual_exception_case("rdpid_no_f3_ud:" + std::to_string(seed5), invalid_rdpid_no_f3, seed5, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
 
-        const std::uint64_t seed6 = seeded(seed_index, 0xE007);
-        if (!tick(run_manual_exception_case_public("public_rdpid_66_ud:" + std::to_string(seed6), invalid_rdpid_with_66, seed6, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
-        if (!tick(run_manual_exception_case("rdpid_66_ud:" + std::to_string(seed6), invalid_rdpid_with_66, seed6, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+        const std::uint64_t seed_xgetbv_osxsave = seeded(seed_index, 0xE007);
+        if (!tick(run_manual_public_cr4_exception_case("public_xgetbv_osxsave_ud:" + std::to_string(seed_xgetbv_osxsave), xgetbv, seed_xgetbv_osxsave, 0, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+        if (!tick(run_manual_cr4_exception_case("xgetbv_osxsave_ud:" + std::to_string(seed_xgetbv_osxsave), xgetbv, seed_xgetbv_osxsave, 0, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+
+        const std::uint64_t seed_shl_unmapped = seeded(seed_index, 0xE008);
+        if (!tick(run_manual_exception_case("shl_unmapped_pf:" + std::to_string(seed_shl_unmapped), shl_unmapped, seed_shl_unmapped, CPUEAXH_EXCEPTION_PF, failure), failure)) return false;
+
+        const std::uint64_t seed_mul_unmapped = seeded(seed_index, 0xE009);
+        if (!tick(run_manual_exception_case("mul_unmapped_pf:" + std::to_string(seed_mul_unmapped), mul_unmapped, seed_mul_unmapped, CPUEAXH_EXCEPTION_PF, failure), failure)) return false;
+
+        const std::uint64_t seed_imul_unmapped = seeded(seed_index, 0xE00A);
+        if (!tick(run_manual_exception_case("imul_unmapped_pf:" + std::to_string(seed_imul_unmapped), imul_unmapped, seed_imul_unmapped, CPUEAXH_EXCEPTION_PF, failure), failure)) return false;
+
+        const std::uint64_t seed_bsf_unmapped = seeded(seed_index, 0xE00B);
+        if (!tick(run_manual_exception_case("bsf_unmapped_pf:" + std::to_string(seed_bsf_unmapped), bsf_unmapped, seed_bsf_unmapped, CPUEAXH_EXCEPTION_PF, failure), failure)) return false;
+
+        const std::uint64_t seed_bt_unmapped = seeded(seed_index, 0xE00C);
+        if (!tick(run_manual_exception_case("bt_unmapped_pf:" + std::to_string(seed_bt_unmapped), bt_unmapped, seed_bt_unmapped, CPUEAXH_EXCEPTION_PF, failure), failure)) return false;
+
+        const std::uint64_t seed_cmpxchg_unmapped = seeded(seed_index, 0xE00D);
+        if (!tick(run_manual_exception_case("cmpxchg_unmapped_pf:" + std::to_string(seed_cmpxchg_unmapped), cmpxchg_unmapped, seed_cmpxchg_unmapped, CPUEAXH_EXCEPTION_PF, failure), failure)) return false;
+
+        const std::uint64_t seed_xadd_unmapped = seeded(seed_index, 0xE00E);
+        if (!tick(run_manual_exception_case("xadd_unmapped_pf:" + std::to_string(seed_xadd_unmapped), xadd_unmapped, seed_xadd_unmapped, CPUEAXH_EXCEPTION_PF, failure), failure)) return false;
+
+        const std::uint64_t seed_push_unmapped = seeded(seed_index, 0xE00F);
+        if (!tick(run_manual_exception_case("push_unmapped_pf:" + std::to_string(seed_push_unmapped), push_unmapped, seed_push_unmapped, CPUEAXH_EXCEPTION_PF, failure), failure)) return false;
+
+        const std::uint64_t seed_call_unmapped = seeded(seed_index, 0xE010);
+        if (!tick(run_manual_exception_case("call_unmapped_pf:" + std::to_string(seed_call_unmapped), call_unmapped, seed_call_unmapped, CPUEAXH_EXCEPTION_PF, failure), failure)) return false;
+
+        const std::uint64_t seed_jmp_unmapped = seeded(seed_index, 0xE011);
+        if (!tick(run_manual_exception_case("jmp_unmapped_pf:" + std::to_string(seed_jmp_unmapped), jmp_unmapped, seed_jmp_unmapped, CPUEAXH_EXCEPTION_PF, failure), failure)) return false;
+
+        const std::uint64_t seed_jmp_noncanonical = seeded(seed_index, 0xE06D);
+        if (!tick(run_noncanonical_control_transfer_exception_case("jmp_rax_noncanonical_gp:" + std::to_string(seed_jmp_noncanonical), jmp_rax, seed_jmp_noncanonical, true, failure), failure)) return false;
+
+        const std::uint64_t seed_call_noncanonical = seeded(seed_index, 0xE06E);
+        if (!tick(run_noncanonical_control_transfer_exception_case("call_rax_noncanonical_gp:" + std::to_string(seed_call_noncanonical), call_rax, seed_call_noncanonical, true, failure), failure)) return false;
+
+        const std::uint64_t seed_ret_noncanonical = seeded(seed_index, 0xE06F);
+        if (!tick(run_noncanonical_control_transfer_exception_case("ret_noncanonical_gp:" + std::to_string(seed_ret_noncanonical), ret_stack_unmapped, seed_ret_noncanonical, false, failure), failure)) return false;
+
+        const std::uint64_t seed_iret_invalid_selector = seeded(seed_index, 0xE070);
+        if (!tick(run_iret_invalid_selector_exception_case("iret_invalid_selector_gp:" + std::to_string(seed_iret_invalid_selector), seed_iret_invalid_selector, failure), failure)) return false;
+
+        const std::uint64_t seed_movs_unmapped = seeded(seed_index, 0xE018);
+        if (!tick(run_movs_source_exception_case("movsq_source_unmapped_pf:" + std::to_string(seed_movs_unmapped), seed_movs_unmapped, failure), failure)) return false;
+
+        const std::uint64_t seed_rep_movs_split = seeded(seed_index, 0xE06B);
+        if (!tick(run_rep_movs_source_split_exception_case("rep_movsq_source_split_pf:" + std::to_string(seed_rep_movs_split), seed_rep_movs_split, failure), failure)) return false;
+
+        const std::uint64_t seed_rep_movs_dest_split = seeded(seed_index, 0xE06C);
+        if (!tick(run_rep_movs_dest_split_exception_case("rep_movsq_dest_split_pf:" + std::to_string(seed_rep_movs_dest_split), seed_rep_movs_dest_split, failure), failure)) return false;
+
+        const std::uint64_t seed_pop_stack_unmapped = seeded(seed_index, 0xE019);
+        if (!tick(run_stack_source_exception_case("pop_stack_unmapped_pf:" + std::to_string(seed_pop_stack_unmapped), pop_stack_unmapped, seed_pop_stack_unmapped, false, failure), failure)) return false;
+
+        const std::uint64_t seed_ret_stack_unmapped = seeded(seed_index, 0xE01A);
+        if (!tick(run_stack_source_exception_case("ret_stack_unmapped_pf:" + std::to_string(seed_ret_stack_unmapped), ret_stack_unmapped, seed_ret_stack_unmapped, false, failure), failure)) return false;
+
+        const std::uint64_t seed_leave_stack_unmapped = seeded(seed_index, 0xE01B);
+        if (!tick(run_stack_source_exception_case("leave_stack_unmapped_pf:" + std::to_string(seed_leave_stack_unmapped), leave_stack_unmapped, seed_leave_stack_unmapped, true, failure), failure)) return false;
+
+        const std::uint64_t seed_push_stack_unmapped = seeded(seed_index, 0xE01C);
+        if (!tick(run_stack_write_exception_case("push_stack_unmapped_pf:" + std::to_string(seed_push_stack_unmapped), push_stack_unmapped, seed_push_stack_unmapped, failure), failure)) return false;
+
+        const std::uint64_t seed_call_stack_unmapped = seeded(seed_index, 0xE01D);
+        if (!tick(run_stack_write_exception_case("call_stack_unmapped_pf:" + std::to_string(seed_call_stack_unmapped), call_stack_unmapped, seed_call_stack_unmapped, failure), failure)) return false;
+
+        const std::uint64_t seed_xmm_split_store = seeded(seed_index, 0xE01E);
+        if (!tick(run_xmm_store_split_exception_case("xmm_store_split_pf:" + std::to_string(seed_xmm_split_store), seed_xmm_split_store, failure), failure)) return false;
+
+        const std::uint64_t seed_maskmov_split_store = seeded(seed_index, 0xE05E);
+        if (!tick(run_maskmovdqu_split_exception_case("maskmovdqu_split_pf:" + std::to_string(seed_maskmov_split_store), seed_maskmov_split_store, failure), failure)) return false;
+
+        const std::uint64_t seed_x87_env_split_store = seeded(seed_index, 0xE05F);
+        if (!tick(run_x87_env_store_split_exception_case("x87_env_store_split_pf:" + std::to_string(seed_x87_env_split_store), seed_x87_env_split_store, failure), failure)) return false;
+
+        const std::uint64_t seed_x87_env_split_load = seeded(seed_index, 0xE060);
+        if (!tick(run_x87_env_load_split_exception_case("x87_env_load_split_pf:" + std::to_string(seed_x87_env_split_load), seed_x87_env_split_load, failure), failure)) return false;
+
+        const std::uint64_t seed_fxsave_split = seeded(seed_index, 0xE061);
+        if (!tick(run_fxsave_split_exception_case("fxsave_split_pf:" + std::to_string(seed_fxsave_split), seed_fxsave_split, failure), failure)) return false;
+
+        const std::uint64_t seed_fxrstor_split = seeded(seed_index, 0xE062);
+        if (!tick(run_fxrstor_split_exception_case("fxrstor_split_pf:" + std::to_string(seed_fxrstor_split), seed_fxrstor_split, failure), failure)) return false;
+
+        const std::uint64_t seed_far_call_stack_split = seeded(seed_index, 0xE063);
+        if (!tick(run_far_call_stack_split_exception_case("far_call_stack_split_pf:" + std::to_string(seed_far_call_stack_split), seed_far_call_stack_split, failure), failure)) return false;
+
+        const std::uint64_t seed_far_ret_stack_split = seeded(seed_index, 0xE064);
+        if (!tick(run_multi_pop_stack_split_exception_case("far_ret_stack_split_pf:" + std::to_string(seed_far_ret_stack_split), { 0xCB }, seed_far_ret_stack_split, failure), failure)) return false;
+
+        const std::uint64_t seed_iret_stack_split = seeded(seed_index, 0xE065);
+        if (!tick(run_multi_pop_stack_split_exception_case("iret_stack_split_pf:" + std::to_string(seed_iret_stack_split), { 0xCF }, seed_iret_stack_split, failure), failure)) return false;
+
+        const std::uint64_t seed_enter_stack_write = seeded(seed_index, 0xE066);
+        if (!tick(run_enter_stack_write_exception_case("enter_stack_write_pf:" + std::to_string(seed_enter_stack_write), seed_enter_stack_write, failure), failure)) return false;
+
+        const std::uint64_t seed_enter_nested_frame = seeded(seed_index, 0xE067);
+        if (!tick(run_enter_nested_frame_exception_case("enter_nested_frame_pf:" + std::to_string(seed_enter_nested_frame), seed_enter_nested_frame, failure), failure)) return false;
+
+        const std::uint64_t seed_leave_frame_source = seeded(seed_index, 0xE068);
+        if (!tick(run_leave_frame_source_exception_case("leave_frame_source_pf:" + std::to_string(seed_leave_frame_source), seed_leave_frame_source, failure), failure)) return false;
+
+        const std::uint64_t seed_pop_memory_dest = seeded(seed_index, 0xE069);
+        if (!tick(run_pop_memory_dest_exception_case("pop_memory_dest_pf:" + std::to_string(seed_pop_memory_dest), seed_pop_memory_dest, failure), failure)) return false;
+
+        const std::uint64_t seed_pop_sreg_invalid = seeded(seed_index, 0xE06A);
+        if (!tick(run_pop_sreg_invalid_exception_case("pop_sreg_invalid_gp:" + std::to_string(seed_pop_sreg_invalid), seed_pop_sreg_invalid, failure), failure)) return false;
 
         const std::uint64_t seed_fninit_nm = seeded(seed_index, 0xE020);
         if (!tick(run_manual_x87_public_cr0_exception_case("public_fninit_nm:" + std::to_string(seed_fninit_nm), fninit, seed_fninit_nm, 0x80000019ull, CPUEAXH_EXCEPTION_NM, failure), failure)) return false;
@@ -6518,6 +8090,15 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         Failure failure;
         const std::uint64_t seed7 = seeded(seed_index, 0xE251);
         if (!tick(run_host_stack_roundtrip_case("host_stack_roundtrip:" + std::to_string(seed7), seed7, failure), failure)) return false;
+
+        const std::uint64_t seed_xchg_cache = seeded(seed_index, 0xE261);
+        if (!tick(run_cached_rmw_recompute_case("cached_xchg_mem_recompute:" + std::to_string(seed_xchg_cache), seed_xchg_cache, 0, failure), failure)) return false;
+
+        const std::uint64_t seed_xadd_cache = seeded(seed_index, 0xE262);
+        if (!tick(run_cached_rmw_recompute_case("cached_xadd_mem_recompute:" + std::to_string(seed_xadd_cache), seed_xadd_cache, 1, failure), failure)) return false;
+
+        const std::uint64_t seed_cmpxchg_cache = seeded(seed_index, 0xE263);
+        if (!tick(run_cached_rmw_recompute_case("cached_cmpxchg_mem_recompute:" + std::to_string(seed_cmpxchg_cache), seed_cmpxchg_cache, 2, failure), failure)) return false;
     }
 
     for (std::uint64_t seed_index = 0; seed_index < kContextApiSeedCount; ++seed_index) {
@@ -6671,6 +8252,132 @@ inline bool run_host_stack_roundtrip_case(const std::string& name, std::uint64_t
     if (engine) {
         cpueaxh_close(engine);
     }
+    return ok;
+}
+
+inline void append_u32(std::vector<std::uint8_t>& code, std::uint32_t value) {
+    for (int shift = 0; shift < 32; shift += 8) {
+        code.push_back(static_cast<std::uint8_t>((value >> shift) & 0xFFu));
+    }
+}
+
+inline void append_u64(std::vector<std::uint8_t>& code, std::uint64_t value) {
+    for (int shift = 0; shift < 64; shift += 8) {
+        code.push_back(static_cast<std::uint8_t>((value >> shift) & 0xFFu));
+    }
+}
+
+inline bool run_cached_rmw_recompute_case(const std::string& name, std::uint64_t seed, std::uint8_t opcode_kind, Failure& failure) {
+    cpueaxh_engine* engine = nullptr;
+    cpueaxh_err err = cpueaxh_open(CPUEAXH_ARCH_X86, CPUEAXH_MODE_64, &engine);
+    if (err != CPUEAXH_ERR_OK) {
+        failure.case_name = name;
+        failure.detail = "cpueaxh_open failed";
+        return false;
+    }
+
+    constexpr std::size_t data_offset = 0x80;
+    const std::uint64_t data_address = kGuestCodeBase + data_offset;
+    std::vector<std::uint8_t> code;
+    code.reserve(data_offset + 8);
+
+    code.push_back(0x48); code.push_back(0xBB); append_u64(code, data_address); // mov rbx, data
+    code.push_back(0xB9); append_u32(code, 2);                                  // mov ecx, 2
+
+    if (opcode_kind == 2) {
+        code.push_back(0xB8); append_u32(code, 5);                              // mov eax, 5
+        code.push_back(0xBA); append_u32(code, 9);                              // mov edx, 9
+    }
+    else {
+        code.push_back(0xB8); append_u32(code, opcode_kind == 0 ? 0x10u : 1u);   // mov eax, imm32
+    }
+
+    const std::size_t loop_offset = code.size();
+    if (opcode_kind == 0) {
+        code.push_back(0x87); code.push_back(0x03);                             // xchg dword ptr [rbx], eax
+    }
+    else if (opcode_kind == 1) {
+        code.push_back(0x0F); code.push_back(0xC1); code.push_back(0x03);        // xadd dword ptr [rbx], eax
+    }
+    else {
+        code.push_back(0x0F); code.push_back(0xB1); code.push_back(0x13);        // cmpxchg dword ptr [rbx], edx
+    }
+    code.push_back(0x48); code.push_back(0x83); code.push_back(0xC3); code.push_back(0x04); // add rbx, 4
+    code.push_back(0xFF); code.push_back(0xC9);                                  // dec ecx
+    code.push_back(0x75);
+    const std::ptrdiff_t jnz_next = static_cast<std::ptrdiff_t>(code.size() + 1);
+    code.push_back(static_cast<std::uint8_t>(static_cast<std::int8_t>(static_cast<std::ptrdiff_t>(loop_offset) - jnz_next))); // jnz loop
+    code.push_back(0xC3);
+
+    while (code.size() < data_offset) {
+        code.push_back(0xCC);
+    }
+
+    const std::uint32_t initial0 = opcode_kind == 2 ? 5u : (opcode_kind == 1 ? 10u : 0x11111111u);
+    const std::uint32_t initial1 = opcode_kind == 2 ? 7u : (opcode_kind == 1 ? 20u : 0x22222222u);
+    append_u32(code, initial0);
+    append_u32(code, initial1);
+
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        if (!initialize_manual_engine(engine, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        err = cpueaxh_emu_start_function(engine, kGuestCodeBase, 0, 1000);
+        if (err != CPUEAXH_ERR_OK || cpueaxh_code_exception(engine) != CPUEAXH_EXCEPTION_NONE) {
+            failure.case_name = name;
+            failure.detail = "cached rmw execution failed";
+            break;
+        }
+
+        std::uint32_t memory0 = 0;
+        std::uint32_t memory1 = 0;
+        if (cpueaxh_mem_read(engine, data_address, &memory0, sizeof(memory0)) != CPUEAXH_ERR_OK ||
+            cpueaxh_mem_read(engine, data_address + 4, &memory1, sizeof(memory1)) != CPUEAXH_ERR_OK) {
+            failure.case_name = name;
+            failure.detail = "cached rmw memory readback failed";
+            break;
+        }
+
+        std::uint64_t rax = 0;
+        if (!read_engine_reg(engine, CPUEAXH_X86_REG_RAX, rax)) {
+            failure.case_name = name;
+            failure.detail = "cached rmw rax readback failed";
+            break;
+        }
+
+        std::uint32_t expected0 = 0;
+        std::uint32_t expected1 = 0;
+        std::uint32_t expected_eax = 0;
+        if (opcode_kind == 0) {
+            expected0 = 0x10u;
+            expected1 = 0x11111111u;
+            expected_eax = 0x22222222u;
+        }
+        else if (opcode_kind == 1) {
+            expected0 = 11u;
+            expected1 = 30u;
+            expected_eax = 20u;
+        }
+        else {
+            expected0 = 9u;
+            expected1 = 7u;
+            expected_eax = 7u;
+        }
+
+        if (memory0 != expected0 || memory1 != expected1 || static_cast<std::uint32_t>(rax) != expected_eax) {
+            failure.case_name = name;
+            failure.detail = "cached rmw replay used stale effective address";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    cpueaxh_close(engine);
     return ok;
 }
 

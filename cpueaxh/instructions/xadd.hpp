@@ -119,6 +119,9 @@ void xadd_rm_reg(CPU_CONTEXT* ctx, uint8_t modrm, uint64_t mem_addr, int operand
     }
 
     uint64_t dst_value = read_xadd_rm_operand(ctx, modrm, mem_addr, operand_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     uint64_t result = xadd_compute_result(ctx, operand_size, dst_value, src_value);
 
     write_xadd_reg_operand(ctx, reg_index, operand_size, dst_value);
@@ -128,6 +131,7 @@ void xadd_rm_reg(CPU_CONTEXT* ctx, uint8_t modrm, uint64_t mem_addr, int operand
 void decode_modrm_xadd(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -138,6 +142,7 @@ void decode_modrm_xadd(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -159,6 +164,7 @@ void decode_modrm_xadd(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->displacement = 0;
         for (int index = 0; index < inst->disp_size; index++) {
@@ -227,6 +233,7 @@ DecodedInstruction decode_xadd_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
     if (offset + 2 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {
@@ -275,11 +282,21 @@ inline void execute_xadd_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
 
 void execute_xadd(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_xadd_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_xadd_with_decoded(ctx, &inst);
 }
 
 inline void execute_xadd_fast(CPU_CONTEXT* ctx, const DecodedInst* dec) {
     decoded_inst_apply_prefix(ctx, dec);
     ctx->last_inst_size = dec->length;
-    execute_xadd_with_decoded(ctx, &dec->cached);
+    if (!decoded_inst_needs_mem_recompute(&dec->cached)) {
+        execute_xadd_with_decoded(ctx, &dec->cached);
+        return;
+    }
+    DecodedInstruction live = dec->cached;
+    live.mem_address = get_effective_address(ctx, live.modrm, &live.sib, &live.displacement,
+                                             live.address_size, dec->length);
+    execute_xadd_with_decoded(ctx, &live);
 }

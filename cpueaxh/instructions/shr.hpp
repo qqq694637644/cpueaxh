@@ -117,6 +117,9 @@ void shr_rm(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_t
     uint64_t mask = get_shr_operand_mask(ctx, operand_size);
     unsigned int count = raw_count & get_shr_count_mask(operand_size);
     uint64_t original = read_shr_rm_operand(ctx, modrm, mem_addr, operand_size) & mask;
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     if (count == 0) {
         return;
@@ -137,6 +140,7 @@ void shr_rm(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_t
 void decode_modrm_shr(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -148,6 +152,7 @@ void decode_modrm_shr(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -169,6 +174,7 @@ void decode_modrm_shr(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -240,6 +246,7 @@ DecodedInstruction decode_shr_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -270,6 +277,7 @@ DecodedInstruction decode_shr_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         if (inst.opcode == 0xC0) {
             if (offset >= code_size) {
                 raise_gp_ctx(ctx, 0);
+return inst;
             }
             inst.immediate = code[offset++];
             inst.imm_size = 1;
@@ -286,6 +294,7 @@ DecodedInstruction decode_shr_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         if (inst.opcode == 0xC1) {
             if (offset >= code_size) {
                 raise_gp_ctx(ctx, 0);
+return inst;
             }
             inst.immediate = code[offset++];
             inst.imm_size = 1;
@@ -309,6 +318,9 @@ inline void execute_shr_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
 
 void execute_shr(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_shr_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_shr_with_decoded(ctx, &inst);
 }
 

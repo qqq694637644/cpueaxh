@@ -97,6 +97,7 @@ void xchg_acc_reg(CPU_CONTEXT* ctx, uint8_t opcode, int operand_size) {
 void decode_modrm_xchg(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
     inst->has_modrm = true;
     inst->modrm = code[(*offset)++];
@@ -105,6 +106,7 @@ void decode_modrm_xchg(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -124,6 +126,7 @@ void decode_modrm_xchg(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->displacement = 0;
         for (int index = 0; index < inst->disp_size; index++) {
@@ -186,6 +189,7 @@ DecodedInstruction decode_xchg_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
     }
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
     inst.opcode = code[offset++];
     inst.operand_size = 32;
@@ -254,11 +258,21 @@ inline void execute_xchg_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
 
 void execute_xchg(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_xchg_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_xchg_with_decoded(ctx, &inst);
 }
 
 inline void execute_xchg_fast(CPU_CONTEXT* ctx, const DecodedInst* dec) {
     decoded_inst_apply_prefix(ctx, dec);
     ctx->last_inst_size = dec->length;
-    execute_xchg_with_decoded(ctx, &dec->cached);
+    if (!decoded_inst_needs_mem_recompute(&dec->cached)) {
+        execute_xchg_with_decoded(ctx, &dec->cached);
+        return;
+    }
+    DecodedInstruction live = dec->cached;
+    live.mem_address = get_effective_address(ctx, live.modrm, &live.sib, &live.displacement,
+                                             live.address_size, dec->length);
+    execute_xchg_with_decoded(ctx, &live);
 }

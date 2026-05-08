@@ -19,6 +19,7 @@ int decode_sse2_misc_xmm_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {
 void decode_modrm_sse2_misc(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -30,6 +31,7 @@ void decode_modrm_sse2_misc(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t*
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -51,6 +53,7 @@ void decode_modrm_sse2_misc(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t*
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -137,6 +140,7 @@ DecodedInstruction decode_sse2_misc_instruction(CPU_CONTEXT* ctx, uint8_t* code,
 
     if (offset + 2 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {
@@ -179,6 +183,31 @@ void sse2_misc_xmm_to_bytes(XMMRegister value, uint8_t bytes[16]) {
     }
 }
 
+void sse2_misc_write_maskmovdqu_bytes(CPU_CONTEXT* ctx, uint64_t address, const uint8_t src_bytes[16], const uint8_t mask_bytes[16]) {
+    bool element_mask[16] = {};
+    uint64_t element_values[16] = {};
+    uint8_t* byte_ptrs[16] = {};
+
+    for (int i = 0; i < 16; ++i) {
+        element_mask[i] = (mask_bytes[i] & 0x80U) != 0;
+        element_values[i] = src_bytes[i];
+    }
+
+    if (!cpu_resolve_masked_write_element_ptrs(ctx, address, element_mask, element_values, 16, 1, byte_ptrs)) {
+        return;
+    }
+
+    if (cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_WRITE)) {
+        for (int i = 0; i < 16; ++i) {
+            if (element_mask[i]) {
+                cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + (uint64_t)i, 1, src_bytes[i]);
+            }
+        }
+    }
+
+    cpu_commit_masked_write_elements(src_bytes, element_mask, 16, 1, byte_ptrs);
+}
+
 uint64_t get_sse2_misc_maskmovdqu_address(CPU_CONTEXT* ctx, const DecodedInstruction* inst) {
     switch (inst->address_size) {
     case 16:
@@ -205,11 +234,7 @@ void execute_maskmovdqu_misc(CPU_CONTEXT* ctx, const DecodedInstruction* inst) {
     sse2_misc_xmm_to_bytes(get_xmm128(ctx, src), src_bytes);
     sse2_misc_xmm_to_bytes(get_xmm128(ctx, mask), mask_bytes);
 
-    for (int i = 0; i < 16; i++) {
-        if (mask_bytes[i] & 0x80U) {
-            write_memory_byte(ctx, address + i, src_bytes[i]);
-        }
-    }
+    sse2_misc_write_maskmovdqu_bytes(ctx, address, src_bytes, mask_bytes);
 }
 
 void execute_sse2_misc(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {

@@ -145,6 +145,7 @@ DecodedInstruction decode_cmps_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -178,7 +179,13 @@ inline void execute_cmps_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
         return;
     }
     uint64_t source_value = read_cmps_value(ctx, source_addr, inst.operand_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     uint64_t dest_value = read_cmps_value(ctx, dest_addr, inst.operand_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     uint64_t step = (uint64_t)(inst.operand_size / 8);
 
     update_cmps_flags(ctx, inst.operand_size, source_value, dest_value);
@@ -195,6 +202,9 @@ inline void execute_cmps_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
 
 void execute_cmps(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_cmps_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_cmps_with_decoded(ctx, &inst);
 }
 

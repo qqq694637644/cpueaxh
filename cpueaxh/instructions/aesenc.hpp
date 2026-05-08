@@ -1,5 +1,11 @@
 // instrusments/aesenc.hpp - AESENC/AESENCLAST/VAESENC/VAESENCLAST implementation
 
+static inline bool cpu_has_aes_feature() {
+    int cpu_info[4] = {};
+    cpu_query_cpuid(cpu_info, 1, 0);
+    return (cpu_info[2] & (1 << 25)) != 0;
+}
+
 static int decode_aesenc_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int reg = (modrm >> 3) & 0x07;
     if (ctx->rex_r) {
@@ -19,6 +25,7 @@ static int decode_aesenc_xmm_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {
 static void decode_modrm_aesenc(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -30,6 +37,7 @@ static void decode_modrm_aesenc(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -51,6 +59,7 @@ static void decode_modrm_aesenc(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -174,7 +183,7 @@ inline DecodedInstruction decode_aes_round_instruction(CPU_CONTEXT* ctx, uint8_t
         }
     }
 
-    if (has_lock_prefix || has_unsupported_simd_prefix || mandatory_prefix != 0x66) {
+    if (has_lock_prefix || has_unsupported_simd_prefix || mandatory_prefix != 0x66 || !cpu_has_aes_feature()) {
         raise_ud_ctx(ctx);
         return inst;
     }

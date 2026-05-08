@@ -107,6 +107,7 @@ void movzx_r64_rm16(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, 
 void decode_modrm_movzx(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -118,6 +119,7 @@ void decode_modrm_movzx(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* cod
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -139,6 +141,7 @@ void decode_modrm_movzx(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* cod
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -210,6 +213,7 @@ DecodedInstruction decode_movzx_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -219,6 +223,7 @@ DecodedInstruction decode_movzx_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -282,6 +287,9 @@ inline void execute_movzx_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructio
 
 void execute_movzx(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_movzx_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_movzx_with_decoded(ctx, &inst);
 }
 

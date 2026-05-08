@@ -8,6 +8,12 @@ int decode_rdrand_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     return rm;
 }
 
+static inline bool cpu_has_rdrand_feature() {
+    int cpu_info[4] = {};
+    cpu_query_cpuid(cpu_info, 1, 0);
+    return (cpu_info[2] & (1 << 30)) != 0;
+}
+
 bool is_rdrand_instruction(const uint8_t* code, size_t code_size) {
     size_t offset = 0;
 
@@ -80,12 +86,13 @@ DecodedInstruction decode_rdrand_instruction(CPU_CONTEXT* ctx, const uint8_t* co
         }
     }
 
-    if (has_lock_prefix) {
+    if (has_lock_prefix || !cpu_has_rdrand_feature()) {
         raise_ud_ctx(ctx);
     }
 
     if (offset + 3 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {
@@ -156,5 +163,8 @@ void execute_rdrand_register(CPU_CONTEXT* ctx, const DecodedInstruction* inst) {
 
 void execute_rdrand(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_rdrand_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_rdrand_register(ctx, &inst);
 }

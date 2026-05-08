@@ -91,6 +91,11 @@ enum DecodedFlags : uint16_t {
     // hit on this PC reports "definitely not an escape". Default (flag clear)
     // preserves the legacy "always classify on every step" behaviour.
     DECODED_FLAG_KNOWN_NOT_ESCAPE = 1u << 6,
+
+    // REP string instructions may commit completed iterations before a later
+    // iteration faults. The exception path must preserve scalar progress
+    // (RCX/RSI/RDI/RFLAGS), unlike ordinary single-instruction rollback.
+    DECODED_FLAG_PARTIAL_PROGRESS = 1u << 7,
 };
 
 // Inline kind discriminator for the small set of instructions the executor

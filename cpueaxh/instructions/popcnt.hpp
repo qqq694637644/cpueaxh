@@ -63,6 +63,7 @@ static inline void write_popcnt_reg_operand(CPU_CONTEXT* ctx, uint8_t modrm, int
 static inline void decode_modrm_popcnt(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+        return;
     }
 
     inst->has_modrm = true;
@@ -74,6 +75,7 @@ static inline void decode_modrm_popcnt(CPU_CONTEXT* ctx, DecodedInstruction* ins
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+            return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -95,6 +97,7 @@ static inline void decode_modrm_popcnt(CPU_CONTEXT* ctx, DecodedInstruction* ins
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+            return;
         }
 
         inst->displacement = 0;
@@ -180,6 +183,7 @@ static inline DecodedInstruction decode_popcnt_instruction(CPU_CONTEXT* ctx, uin
 
     if (offset + 2 > code_size) {
         raise_gp_ctx(ctx, 0);
+        return inst;
     }
 
     if (code[offset++] != 0x0F) {

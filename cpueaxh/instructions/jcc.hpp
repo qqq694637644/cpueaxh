@@ -50,40 +50,27 @@ bool eval_condition(CPU_CONTEXT* ctx, uint8_t cond) {
 // --- JCC execution helpers ---
 
 // Perform the near branch: sign-extend displacement, add to RIP, mask for operand size
-void jcc_branch(CPU_CONTEXT* ctx, int64_t disp, int operand_size) {
-    if (operand_size == 64) {
-        ctx->rip = (uint64_t)(ctx->rip + disp);
-    }
-    else if (operand_size == 32) {
-        uint32_t eip = (uint32_t)(ctx->rip + disp);
-        ctx->rip = eip;
-    }
-    else {
-        // 16-bit: clear upper two bytes of EIP
-        uint16_t ip = (uint16_t)(ctx->rip + disp);
-        ctx->rip = ip;
-    }
+bool jcc_branch(CPU_CONTEXT* ctx, uint64_t base_rip, int64_t disp, int operand_size) {
+    return cpu_assign_rip_checked(ctx, base_rip + (uint64_t)disp, operand_size);
 }
 
 // Short Jcc rel8 (opcodes 0x70-0x7F): sign-extend 8-bit displacement
 void execute_jcc_short(CPU_CONTEXT* ctx, uint8_t cond, int8_t rel8, uint64_t next_rip, int operand_size) {
     if (eval_condition(ctx, cond)) {
-        ctx->rip = next_rip;
-        jcc_branch(ctx, (int64_t)rel8, operand_size);
+        jcc_branch(ctx, next_rip, (int64_t)rel8, operand_size);
     }
     else {
-        ctx->rip = next_rip;
+        cpu_assign_rip_checked(ctx, next_rip, operand_size);
     }
 }
 
 // Near Jcc rel16/rel32 (opcodes 0x0F 0x80-0x8F): sign-extend 16/32-bit displacement
 void execute_jcc_near(CPU_CONTEXT* ctx, uint8_t cond, int32_t rel, uint64_t next_rip, int operand_size) {
     if (eval_condition(ctx, cond)) {
-        ctx->rip = next_rip;
-        jcc_branch(ctx, (int64_t)rel, operand_size);
+        jcc_branch(ctx, next_rip, (int64_t)rel, operand_size);
     }
     else {
-        ctx->rip = next_rip;
+        cpu_assign_rip_checked(ctx, next_rip, operand_size);
     }
 }
 
@@ -101,11 +88,46 @@ void execute_jcxz(CPU_CONTEXT* ctx, int8_t rel8, uint64_t next_rip, int addr_siz
     }
 
     if (is_zero) {
-        ctx->rip = next_rip;
-        jcc_branch(ctx, (int64_t)rel8, operand_size);
+        jcc_branch(ctx, next_rip, (int64_t)rel8, operand_size);
     }
     else {
-        ctx->rip = next_rip;
+        cpu_assign_rip_checked(ctx, next_rip, operand_size);
+    }
+}
+
+uint64_t decrement_loop_count(CPU_CONTEXT* ctx, int addr_size) {
+    if (addr_size == 64) {
+        ctx->regs[REG_RCX]--;
+        return ctx->regs[REG_RCX];
+    }
+    if (addr_size == 32) {
+        uint32_t ecx = (uint32_t)ctx->regs[REG_RCX];
+        ecx--;
+        ctx->regs[REG_RCX] = (ctx->regs[REG_RCX] & ~0xFFFFFFFFULL) | ecx;
+        return ecx;
+    }
+
+    uint16_t cx = (uint16_t)ctx->regs[REG_RCX];
+    cx--;
+    ctx->regs[REG_RCX] = (ctx->regs[REG_RCX] & ~0xFFFFULL) | cx;
+    return cx;
+}
+
+void execute_loopcc(CPU_CONTEXT* ctx, uint8_t opcode, int8_t rel8, uint64_t next_rip, int addr_size, int operand_size) {
+    const uint64_t count = decrement_loop_count(ctx, addr_size);
+    bool branch = count != 0;
+    if (opcode == 0xE0) {
+        branch = branch && ((ctx->rflags & RFLAGS_ZF) == 0);
+    }
+    else if (opcode == 0xE1) {
+        branch = branch && ((ctx->rflags & RFLAGS_ZF) != 0);
+    }
+
+    if (branch) {
+        jcc_branch(ctx, next_rip, (int64_t)rel8, operand_size);
+    }
+    else {
+        cpu_assign_rip_checked(ctx, next_rip, operand_size);
     }
 }
 
@@ -142,6 +164,7 @@ void execute_jcc(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
         else if (prefix == 0xF0) {
             // LOCK prefix is #UD for Jcc
             raise_ud_ctx(ctx);
+            offset++;
         }
         else if (prefix == 0x26 || prefix == 0x2E || prefix == 0x36 || prefix == 0x3E ||
             prefix == 0x64 || prefix == 0x65 || prefix == 0xF2 || prefix == 0xF3) {
@@ -154,6 +177,10 @@ void execute_jcc(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
+    }
+    if (cpu_has_exception(ctx)) {
+        return;
     }
 
     // In 64-bit mode: operand size fixed at 64; rel8/rel32 sign-extended to 64 bits
@@ -184,15 +211,21 @@ void execute_jcc(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
 
     uint8_t opcode = code[offset++];
 
-    if (opcode == 0xE3) {
-        // JRCXZ / JECXZ / JCXZ - test CX/ECX/RCX == 0
+    if (opcode >= 0xE0 && opcode <= 0xE3) {
         if (offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         int8_t rel8 = (int8_t)code[offset++];
         ctx->last_inst_size = (int)offset;
         uint64_t next_rip = ctx->rip + (uint64_t)offset;
-        execute_jcxz(ctx, rel8, next_rip, addr_size, operand_size);
+        if (opcode == 0xE3) {
+            // JRCXZ / JECXZ / JCXZ - test CX/ECX/RCX == 0
+            execute_jcxz(ctx, rel8, next_rip, addr_size, operand_size);
+        }
+        else {
+            execute_loopcc(ctx, opcode, rel8, next_rip, addr_size, operand_size);
+        }
         return;
     }
 
@@ -200,6 +233,7 @@ void execute_jcc(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
         // Short Jcc: rel8
         if (offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         int8_t rel8 = (int8_t)code[offset++];
         uint8_t cond = opcode & 0x0F;
@@ -213,6 +247,7 @@ void execute_jcc(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
         // Near Jcc: 0x0F 0x80-0x8F
         if (offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         uint8_t opcode2 = code[offset++];
         if (opcode2 < 0x80 || opcode2 > 0x8F) {
@@ -235,6 +270,7 @@ void execute_jcc(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
 
         if (offset + imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         int32_t rel = 0;

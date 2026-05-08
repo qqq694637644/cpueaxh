@@ -116,6 +116,7 @@ DecodedInstruction decode_nop_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.address_size = ctx->address_size_override ? 32 : 64;
@@ -129,6 +130,7 @@ DecodedInstruction decode_nop_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
     else if (inst.opcode == 0x0F) {
         if (offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         else {
             uint8_t opcode2 = code[offset++];

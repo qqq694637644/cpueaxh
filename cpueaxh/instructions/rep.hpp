@@ -171,6 +171,7 @@ void execute_rep(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
 
     if (prefix_len >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     uint8_t opcode = code[prefix_len];
@@ -188,6 +189,9 @@ void execute_rep(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
 
     while (count != 0) {
         execute_rep_iteration_with_decoded(ctx, opcode, &inst);
+        if (cpu_has_exception(ctx)) {
+            return;
+        }
 
         count--;
         set_rep_count(ctx, inst.address_size, count);
@@ -232,6 +236,9 @@ inline void execute_rep_fast(CPU_CONTEXT* ctx, const DecodedInst* dec) {
 
     while (count != 0) {
         execute_rep_iteration_with_decoded(ctx, opcode, &inst);
+        if (cpu_has_exception(ctx)) {
+            return;
+        }
 
         count--;
         set_rep_count(ctx, inst.address_size, count);

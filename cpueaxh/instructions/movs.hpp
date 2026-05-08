@@ -129,6 +129,7 @@ DecodedInstruction decode_movs_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -161,9 +162,15 @@ inline void execute_movs_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
         return;
     }
     uint64_t value = read_movs_value(ctx, source_addr, inst.operand_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     uint64_t step = (uint64_t)(inst.operand_size / 8);
 
     write_movs_value(ctx, dest_addr, inst.operand_size, value);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     if (ctx->rflags & RFLAGS_DF) {
         set_movs_index(ctx, REG_RSI, inst.address_size, source_index - step);
@@ -177,6 +184,9 @@ inline void execute_movs_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
 
 void execute_movs(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_movs_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_movs_with_decoded(ctx, &inst);
 }
 

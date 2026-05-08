@@ -51,29 +51,83 @@ uint64_t enter_get_frame_pointer_address(CPU_CONTEXT* ctx, int stack_addr_size) 
     return (uint16_t)(ctx->regs[REG_RBP] & 0xFFFFULL);
 }
 
+uint64_t enter_get_frame_pointer_address_from_value(uint64_t rbp_value, int stack_addr_size) {
+    if (stack_addr_size == 64) {
+        return rbp_value;
+    }
+    if (stack_addr_size == 32) {
+        return (uint32_t)(rbp_value & 0xFFFFFFFFULL);
+    }
+    return (uint16_t)(rbp_value & 0xFFFFULL);
+}
+
+uint64_t enter_sub_stack_pointer_value(int stack_addr_size, uint64_t value, size_t delta) {
+    if (stack_addr_size == 64) {
+        return value - delta;
+    }
+    if (stack_addr_size == 32) {
+        return (uint32_t)((uint32_t)value - (uint32_t)delta);
+    }
+    return (uint16_t)((uint16_t)value - (uint16_t)delta);
+}
+
+uint64_t enter_sub_frame_pointer_value(uint64_t rbp_value, int operand_size) {
+    if (operand_size == 16) {
+        const uint16_t bp = (uint16_t)((uint16_t)(rbp_value & 0xFFFFULL) - 2);
+        return (rbp_value & ~0xFFFFULL) | bp;
+    }
+    if (operand_size == 32) {
+        const uint32_t ebp = (uint32_t)((uint32_t)(rbp_value & 0xFFFFFFFFULL) - 4);
+        return (rbp_value & ~0xFFFFFFFFULL) | ebp;
+    }
+    return rbp_value - 8;
+}
+
+uint64_t enter_read_frame_value(CPU_CONTEXT* ctx, int operand_size, int stack_addr_size, uint64_t rbp_value) {
+    const uint64_t address = enter_get_frame_pointer_address_from_value(rbp_value, stack_addr_size);
+    if (operand_size == 16) {
+        return read_memory_word(ctx, address);
+    }
+    if (operand_size == 32) {
+        return read_memory_dword(ctx, address);
+    }
+    if (stack_addr_size == 16) {
+        raise_gp_ctx(ctx, 0);
+        return 0;
+    }
+    return read_memory_qword(ctx, address);
+}
+
 void enter_push16(CPU_CONTEXT* ctx, int stack_addr_size, uint16_t value) {
     uint64_t sp = enter_get_stack_pointer_value(ctx, stack_addr_size);
-    sp -= 2;
-    enter_set_stack_pointer_value(ctx, stack_addr_size, sp);
-    write_memory_word(ctx, enter_get_stack_pointer_value(ctx, stack_addr_size), value);
+    sp = enter_sub_stack_pointer_value(stack_addr_size, sp, 2);
+    write_memory_word(ctx, sp, value);
+    if (!cpu_has_exception(ctx)) {
+        enter_set_stack_pointer_value(ctx, stack_addr_size, sp);
+    }
 }
 
 void enter_push32(CPU_CONTEXT* ctx, int stack_addr_size, uint32_t value) {
     uint64_t sp = enter_get_stack_pointer_value(ctx, stack_addr_size);
-    sp -= 4;
-    enter_set_stack_pointer_value(ctx, stack_addr_size, sp);
-    write_memory_dword(ctx, enter_get_stack_pointer_value(ctx, stack_addr_size), value);
+    sp = enter_sub_stack_pointer_value(stack_addr_size, sp, 4);
+    write_memory_dword(ctx, sp, value);
+    if (!cpu_has_exception(ctx)) {
+        enter_set_stack_pointer_value(ctx, stack_addr_size, sp);
+    }
 }
 
 void enter_push64(CPU_CONTEXT* ctx, int stack_addr_size, uint64_t value) {
     if (stack_addr_size == 16) {
         raise_gp_ctx(ctx, 0);
+        return;
     }
 
     uint64_t sp = enter_get_stack_pointer_value(ctx, stack_addr_size);
-    sp -= 8;
-    enter_set_stack_pointer_value(ctx, stack_addr_size, sp);
-    write_memory_qword(ctx, enter_get_stack_pointer_value(ctx, stack_addr_size), value);
+    sp = enter_sub_stack_pointer_value(stack_addr_size, sp, 8);
+    write_memory_qword(ctx, sp, value);
+    if (!cpu_has_exception(ctx)) {
+        enter_set_stack_pointer_value(ctx, stack_addr_size, sp);
+    }
 }
 
 uint16_t enter_read_frame16(CPU_CONTEXT* ctx, int stack_addr_size) {
@@ -127,6 +181,7 @@ DecodedInstruction decode_enter_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -140,6 +195,7 @@ DecodedInstruction decode_enter_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset + 3 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     uint16_t alloc_size = (uint16_t)code[offset] | ((uint16_t)code[offset + 1] << 8);
@@ -160,48 +216,60 @@ inline void execute_enter_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructio
     const DecodedInstruction& inst = *inst_ptr;
     uint16_t alloc_size = (uint16_t)(inst.immediate & 0xFFFFULL);
     uint8_t nesting_level = (uint8_t)((inst.immediate >> 16) & 0x1FULL);
+    const size_t value_size = (inst.operand_size == 16) ? 2 : (inst.operand_size == 32 ? 4 : 8);
+    if (inst.address_size == 16 && value_size == 8) {
+        raise_gp_ctx(ctx, 0);
+        return;
+    }
+
+    uint64_t push_values[32] = {};
+    uint64_t push_addresses[32] = {};
+    uint8_t push_bytes[32][8] = {};
+    uint8_t* push_ptrs[32][8] = {};
+    size_t push_count = 0;
+
+    uint64_t current_sp = enter_get_stack_pointer_value(ctx, inst.address_size);
+    uint64_t working_rbp = ctx->regs[REG_RBP];
 
     if (inst.operand_size == 16) {
-        enter_push16(ctx, inst.address_size, get_reg16(ctx, REG_RBP));
+        push_values[push_count] = get_reg16(ctx, REG_RBP);
     }
     else if (inst.operand_size == 32) {
-        enter_push32(ctx, inst.address_size, get_reg32(ctx, REG_RBP));
+        push_values[push_count] = get_reg32(ctx, REG_RBP);
     }
     else {
-        enter_push64(ctx, inst.address_size, get_reg64(ctx, REG_RBP));
+        push_values[push_count] = get_reg64(ctx, REG_RBP);
     }
+    current_sp = enter_sub_stack_pointer_value(inst.address_size, current_sp, value_size);
+    push_addresses[push_count++] = current_sp;
 
-    uint64_t frame_temp = enter_get_stack_pointer_value(ctx, inst.address_size);
+    const uint64_t frame_temp = current_sp;
 
     if (nesting_level > 0) {
-        for (uint8_t level = 1; level < nesting_level; level++) {
-            if (inst.operand_size == 16) {
-                uint16_t frame = get_reg16(ctx, REG_RBP);
-                frame = (uint16_t)(frame - 2);
-                set_reg16(ctx, REG_RBP, frame);
-                enter_push16(ctx, inst.address_size, enter_read_frame16(ctx, inst.address_size));
+        for (uint8_t level = 1; level < nesting_level; ++level) {
+            working_rbp = enter_sub_frame_pointer_value(working_rbp, inst.operand_size);
+            push_values[push_count] = enter_read_frame_value(ctx, inst.operand_size, inst.address_size, working_rbp);
+            if (cpu_has_exception(ctx)) {
+                return;
             }
-            else if (inst.operand_size == 32) {
-                uint32_t frame = get_reg32(ctx, REG_RBP);
-                frame -= 4;
-                set_reg32(ctx, REG_RBP, frame);
-                enter_push32(ctx, inst.address_size, enter_read_frame32(ctx, inst.address_size));
-            }
-            else {
-                set_reg64(ctx, REG_RBP, get_reg64(ctx, REG_RBP) - 8);
-                enter_push64(ctx, inst.address_size, enter_read_frame64(ctx, inst.address_size));
-            }
+            current_sp = enter_sub_stack_pointer_value(inst.address_size, current_sp, value_size);
+            push_addresses[push_count++] = current_sp;
         }
 
-        if (inst.operand_size == 16) {
-            enter_push16(ctx, inst.address_size, (uint16_t)frame_temp);
+        push_values[push_count] = frame_temp;
+        current_sp = enter_sub_stack_pointer_value(inst.address_size, current_sp, value_size);
+        push_addresses[push_count++] = current_sp;
+    }
+
+    for (size_t index = 0; index < push_count; ++index) {
+        cpu_store_stack_value_le(push_bytes[index], value_size, push_values[index]);
+        if (!cpu_resolve_stack_slot_write(ctx, push_addresses[index], value_size, push_values[index], push_ptrs[index])) {
+            return;
         }
-        else if (inst.operand_size == 32) {
-            enter_push32(ctx, inst.address_size, (uint32_t)frame_temp);
-        }
-        else {
-            enter_push64(ctx, inst.address_size, frame_temp);
-        }
+    }
+
+    for (size_t index = 0; index < push_count; ++index) {
+        cpu_commit_stack_slot_write(push_addresses[index], push_bytes[index], value_size, push_values[index], push_ptrs[index], ctx);
     }
 
     if (inst.operand_size == 16) {
@@ -214,12 +282,15 @@ inline void execute_enter_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructio
         set_reg64(ctx, REG_RBP, frame_temp);
     }
 
-    uint64_t stack_ptr = enter_get_stack_pointer_value(ctx, inst.address_size);
-    enter_set_stack_pointer_value(ctx, inst.address_size, stack_ptr - alloc_size);
+    current_sp = enter_sub_stack_pointer_value(inst.address_size, current_sp, alloc_size);
+    enter_set_stack_pointer_value(ctx, inst.address_size, current_sp);
 }
 
 void execute_enter(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_enter_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_enter_with_decoded(ctx, &inst);
 }
 

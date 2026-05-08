@@ -77,6 +77,9 @@ void imul_rm8(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
 
     int8_t lhs = (int8_t)get_reg8(ctx, REG_RAX);
     int8_t rhs = (int8_t)read_imul_rm_operand(ctx, modrm, mem_addr, 8);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int16_t result = (int16_t)lhs * (int16_t)rhs;
 
     set_reg16(ctx, REG_RAX, (uint16_t)result);
@@ -90,6 +93,9 @@ void imul_rm16(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint6
 
     int16_t lhs = (int16_t)get_reg16(ctx, REG_RAX);
     int16_t rhs = (int16_t)read_imul_rm_operand(ctx, modrm, mem_addr, 16);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int32_t result = (int32_t)lhs * (int32_t)rhs;
 
     set_reg16(ctx, REG_RAX, (uint16_t)result);
@@ -104,6 +110,9 @@ void imul_rm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint6
 
     int32_t lhs = (int32_t)get_reg32(ctx, REG_RAX);
     int32_t rhs = (int32_t)read_imul_rm_operand(ctx, modrm, mem_addr, 32);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int64_t result = (int64_t)lhs * (int64_t)rhs;
 
     set_reg32(ctx, REG_RAX, (uint32_t)result);
@@ -118,6 +127,9 @@ void imul_rm64(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint6
 
     int64_t lhs = (int64_t)get_reg64(ctx, REG_RAX);
     int64_t rhs = (int64_t)read_imul_rm_operand(ctx, modrm, mem_addr, 64);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int64_t high = 0;
     int64_t low = _mul128(lhs, rhs, &high);
 
@@ -133,6 +145,9 @@ void imul_r16_rm16(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, u
 
     int16_t lhs = (int16_t)read_imul_reg_operand(ctx, modrm, 16);
     int16_t rhs = (int16_t)read_imul_rm_operand(ctx, modrm, mem_addr, 16);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int32_t result = (int32_t)lhs * (int32_t)rhs;
 
     write_imul_reg_operand(ctx, modrm, 16, (uint16_t)result);
@@ -146,6 +161,9 @@ void imul_r32_rm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, u
 
     int32_t lhs = (int32_t)read_imul_reg_operand(ctx, modrm, 32);
     int32_t rhs = (int32_t)read_imul_rm_operand(ctx, modrm, mem_addr, 32);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int64_t result = (int64_t)lhs * (int64_t)rhs;
 
     write_imul_reg_operand(ctx, modrm, 32, (uint32_t)result);
@@ -159,6 +177,9 @@ void imul_r64_rm64(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, u
 
     int64_t lhs = (int64_t)read_imul_reg_operand(ctx, modrm, 64);
     int64_t rhs = (int64_t)read_imul_rm_operand(ctx, modrm, mem_addr, 64);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int64_t high = 0;
     int64_t low = _mul128(lhs, rhs, &high);
 
@@ -172,6 +193,9 @@ void imul_r16_rm16_imm8(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t di
     (void)disp;
 
     int16_t src = (int16_t)read_imul_rm_operand(ctx, modrm, mem_addr, 16);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int16_t factor = (int16_t)imm;
     int32_t result = (int32_t)src * (int32_t)factor;
 
@@ -185,6 +209,9 @@ void imul_r32_rm32_imm8(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t di
     (void)disp;
 
     int32_t src = (int32_t)read_imul_rm_operand(ctx, modrm, mem_addr, 32);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int32_t factor = (int32_t)imm;
     int64_t result = (int64_t)src * (int64_t)factor;
 
@@ -198,6 +225,9 @@ void imul_r64_rm64_imm8(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t di
     (void)disp;
 
     int64_t src = (int64_t)read_imul_rm_operand(ctx, modrm, mem_addr, 64);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int64_t factor = (int64_t)imm;
     int64_t high = 0;
     int64_t low = _mul128(src, factor, &high);
@@ -212,6 +242,9 @@ void imul_r16_rm16_imm16(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t d
     (void)disp;
 
     int16_t src = (int16_t)read_imul_rm_operand(ctx, modrm, mem_addr, 16);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int16_t factor = (int16_t)imm;
     int32_t result = (int32_t)src * (int32_t)factor;
 
@@ -225,6 +258,9 @@ void imul_r32_rm32_imm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t d
     (void)disp;
 
     int32_t src = (int32_t)read_imul_rm_operand(ctx, modrm, mem_addr, 32);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int32_t factor = (int32_t)imm;
     int64_t result = (int64_t)src * (int64_t)factor;
 
@@ -238,6 +274,9 @@ void imul_r64_rm64_imm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t d
     (void)disp;
 
     int64_t src = (int64_t)read_imul_rm_operand(ctx, modrm, mem_addr, 64);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int64_t factor = (int64_t)imm;
     int64_t high = 0;
     int64_t low = _mul128(src, factor, &high);
@@ -251,6 +290,7 @@ void imul_r64_rm64_imm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t d
 void decode_modrm_imul(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -262,6 +302,7 @@ void decode_modrm_imul(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -283,6 +324,7 @@ void decode_modrm_imul(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -356,6 +398,7 @@ DecodedInstruction decode_imul_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -377,6 +420,7 @@ DecodedInstruction decode_imul_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
     if (inst.opcode == 0x0F) {
         if (offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.opcode = code[offset++];
         if (inst.opcode != 0xAF) {
@@ -409,6 +453,7 @@ DecodedInstruction decode_imul_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
             inst.imm_size = 1;
             if (offset + inst.imm_size > code_size) {
                 raise_gp_ctx(ctx, 0);
+return inst;
             }
             inst.immediate = code[offset++];
             break;
@@ -427,6 +472,7 @@ DecodedInstruction decode_imul_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
             }
             if (offset + inst.imm_size > code_size) {
                 raise_gp_ctx(ctx, 0);
+return inst;
             }
             inst.immediate = 0;
             for (int i = 0; i < inst.imm_size; i++) {
@@ -506,6 +552,9 @@ inline void execute_imul_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
 
 void execute_imul(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_imul_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_imul_with_decoded(ctx, &inst);
 }
 

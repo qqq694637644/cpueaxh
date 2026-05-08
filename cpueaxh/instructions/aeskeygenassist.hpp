@@ -19,6 +19,7 @@ static int decode_aeskeygenassist_xmm_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) 
 static void decode_modrm_aeskeygenassist(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -30,6 +31,7 @@ static void decode_modrm_aeskeygenassist(CPU_CONTEXT* ctx, DecodedInstruction* i
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -51,6 +53,7 @@ static void decode_modrm_aeskeygenassist(CPU_CONTEXT* ctx, DecodedInstruction* i
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -201,7 +204,7 @@ inline DecodedInstruction decode_aeskeygenassist_instruction(CPU_CONTEXT* ctx, u
         }
     }
 
-    if (has_lock_prefix || has_unsupported_simd_prefix || mandatory_prefix != 0x66) {
+    if (has_lock_prefix || has_unsupported_simd_prefix || mandatory_prefix != 0x66 || !cpu_has_aes_feature()) {
         raise_ud_ctx(ctx);
         return inst;
     }

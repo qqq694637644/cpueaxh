@@ -50,6 +50,7 @@ DecodedInstruction decode_xgetbv_instruction(CPU_CONTEXT* ctx, uint8_t* code, si
 
     if (offset + 3 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {
@@ -71,6 +72,10 @@ inline void execute_xgetbv_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructi
     int cpuid_leaf1[4] = {};
     cpu_query_cpuid(cpuid_leaf1, 1, 0);
     if ((cpuid_leaf1[2] & (1 << 26)) == 0) {
+        raise_ud_ctx(ctx);
+        return;
+    }
+    if ((ctx->control_regs[4] & (1ULL << 18)) == 0) {
         raise_ud_ctx(ctx);
         return;
     }
@@ -97,6 +102,9 @@ inline void execute_xgetbv_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructi
 
 void execute_xgetbv(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_xgetbv_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_xgetbv_with_decoded(ctx, &inst);
 }
 

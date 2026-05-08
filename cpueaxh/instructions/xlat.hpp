@@ -95,6 +95,7 @@ DecodedInstruction decode_xlat_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -125,6 +126,9 @@ inline void execute_xlat_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
 
 void execute_xlat(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_xlat_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_xlat_with_decoded(ctx, &inst);
 }
 

@@ -35,6 +35,10 @@ static bool mov_decode_control_register_operands(CPU_CONTEXT* ctx, uint8_t modrm
         raise_ud_ctx(ctx);
         return false;
     }
+    if (decoded_control_register == REG_CR8 && !cpu_is_64bit_code(ctx)) {
+        raise_ud_ctx(ctx);
+        return false;
+    }
 
     if (ctx->cpl != 0) {
         raise_gp_ctx(ctx, 0);
@@ -53,14 +57,15 @@ static bool mov_validate_control_register_write(CPU_CONTEXT* ctx, uint8_t contro
 
     switch (control_register) {
     case REG_CR0:
-        if ((value & (1ull << 31)) == 0 || ((value & (1ull << 0)) == 0 && (value & (1ull << 31)) != 0) ||
+        if ((cpu_long_mode_active(ctx) && (value & (1ull << 31)) == 0) ||
+            ((value & (1ull << 0)) == 0 && (value & (1ull << 31)) != 0) ||
             ((value & (1ull << 29)) != 0 && (value & (1ull << 30)) == 0)) {
             raise_gp_ctx(ctx, 0);
             return false;
         }
         break;
     case REG_CR4:
-        if ((value & (1ull << 5)) == 0) {
+        if (cpu_long_mode_active(ctx) && (value & (1ull << 5)) == 0) {
             raise_gp_ctx(ctx, 0);
             return false;
         }
@@ -530,6 +535,7 @@ void mov_rm64_imm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, 
 void decode_modrm_mov(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
     inst->has_modrm = true;
     inst->modrm = code[(*offset)++];
@@ -541,6 +547,7 @@ void decode_modrm_mov(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -563,6 +570,7 @@ void decode_modrm_mov(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->displacement = 0;
         for (int i = 0; i < inst->disp_size; i++) {
@@ -640,12 +648,14 @@ DecodedInstruction decode_mov_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
     if (inst.opcode == 0x0F) {
         if (offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
             ctx->last_inst_size = (int)offset;
             return inst;
         }
@@ -719,6 +729,7 @@ DecodedInstruction decode_mov_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         inst.imm_size = inst.address_size / 8;
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = 0;
         for (int i = 0; i < inst.imm_size; i++) {
@@ -732,6 +743,7 @@ DecodedInstruction decode_mov_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         inst.imm_size = inst.address_size / 8;
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = 0;
         for (int i = 0; i < inst.imm_size; i++) {
@@ -746,6 +758,7 @@ DecodedInstruction decode_mov_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         inst.imm_size = inst.address_size / 8;
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = 0;
         for (int i = 0; i < inst.imm_size; i++) {
@@ -759,6 +772,7 @@ DecodedInstruction decode_mov_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         inst.imm_size = inst.address_size / 8;
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = 0;
         for (int i = 0; i < inst.imm_size; i++) {
@@ -774,6 +788,7 @@ DecodedInstruction decode_mov_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         inst.imm_size = 1;
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = code[offset++];
         break;
@@ -792,6 +807,7 @@ DecodedInstruction decode_mov_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         }
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = 0;
         for (int i = 0; i < inst.imm_size; i++) {
@@ -810,6 +826,7 @@ DecodedInstruction decode_mov_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         inst.imm_size = 1;
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = code[offset++];
         break;
@@ -832,6 +849,7 @@ DecodedInstruction decode_mov_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         }
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = 0;
         for (int i = 0; i < inst.imm_size; i++) {
@@ -1023,6 +1041,9 @@ inline void execute_mov_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
 // for non-cached paths and unit tests.
 void execute_mov(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_mov_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_mov_with_decoded(ctx, &inst);
 }
 

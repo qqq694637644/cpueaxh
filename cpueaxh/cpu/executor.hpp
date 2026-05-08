@@ -118,13 +118,25 @@ static inline void cpu_executor_notify_fetched_bytes(CPU_CONTEXT* ctx, uint64_t 
 static inline void cpu_executor_inline_ret_no_imm(CPU_CONTEXT* ctx, const DecodedInst* dec) {
     ctx->last_inst_size = (int)dec->near_ret_prefix_len + 1;
     if (dec->near_ret_op_size == 16) {
-        ctx->rip = cpu_mask_code_offset(pop_value16(ctx), 16);
+        uint16_t target = pop_value16(ctx);
+        if (cpu_has_exception(ctx)) {
+            return;
+        }
+        cpu_assign_rip_checked(ctx, target, 16);
     }
     else if (dec->near_ret_op_size == 32) {
-        ctx->rip = cpu_mask_code_offset(pop_value32(ctx), 32);
+        uint32_t target = pop_value32(ctx);
+        if (cpu_has_exception(ctx)) {
+            return;
+        }
+        cpu_assign_rip_checked(ctx, target, 32);
     }
     else {
-        ctx->rip = pop_value64(ctx);
+        uint64_t target = pop_value64(ctx);
+        if (cpu_has_exception(ctx)) {
+            return;
+        }
+        cpu_assign_rip_checked(ctx, target, 64);
     }
 }
 
@@ -136,13 +148,27 @@ static inline void cpu_executor_inline_ret_imm16(CPU_CONTEXT* ctx, const Decoded
 
     ctx->last_inst_size = near_ret_prefix_len + 3;
     if (operand_size == 16) {
-        ctx->rip = cpu_mask_code_offset(pop_value16(ctx), 16);
+        uint16_t target = pop_value16(ctx);
+        if (cpu_has_exception(ctx)) {
+            return;
+        }
+        cpu_assign_rip_checked(ctx, target, 16);
     }
     else if (operand_size == 32) {
-        ctx->rip = cpu_mask_code_offset(pop_value32(ctx), 32);
+        uint32_t target = pop_value32(ctx);
+        if (cpu_has_exception(ctx)) {
+            return;
+        }
+        cpu_assign_rip_checked(ctx, target, 32);
     }
     else {
-        ctx->rip = pop_value64(ctx);
+        uint64_t target = pop_value64(ctx);
+        if (cpu_has_exception(ctx)) {
+            return;
+        }
+        if (!cpu_assign_rip_checked(ctx, target, 64)) {
+            return;
+        }
     }
 
     if (get_stack_addr_size(ctx) == 64) {
@@ -194,9 +220,9 @@ static inline bool cpu_executor_eval_jcc_condition(uint64_t flags, uint8_t cond)
 static inline void cpu_executor_inline_jcc_short_longmode(CPU_CONTEXT* ctx, const DecodedInst* dec) {
     const uint64_t next_rip = ctx->rip + 2u;
     if (cpu_executor_eval_jcc_condition(ctx->rflags, dec->inline_jcc_cond)) {
-        ctx->rip = next_rip + (uint64_t)(int64_t)dec->inline_jcc_disp;
+        cpu_assign_rip_checked(ctx, next_rip + (uint64_t)(int64_t)dec->inline_jcc_disp, 64);
     } else {
-        ctx->rip = next_rip;
+        cpu_assign_rip_checked(ctx, next_rip, 64);
     }
     ctx->last_inst_size = 2;
 }
@@ -205,9 +231,9 @@ static inline void cpu_executor_inline_jcc_short_longmode(CPU_CONTEXT* ctx, cons
 static inline void cpu_executor_inline_jcc_near_longmode(CPU_CONTEXT* ctx, const DecodedInst* dec) {
     const uint64_t next_rip = ctx->rip + 6u;
     if (cpu_executor_eval_jcc_condition(ctx->rflags, dec->inline_jcc_cond)) {
-        ctx->rip = next_rip + (uint64_t)(int64_t)dec->inline_jcc_disp32;
+        cpu_assign_rip_checked(ctx, next_rip + (uint64_t)(int64_t)dec->inline_jcc_disp32, 64);
     } else {
-        ctx->rip = next_rip;
+        cpu_assign_rip_checked(ctx, next_rip, 64);
     }
     ctx->last_inst_size = 6;
 }
@@ -311,6 +337,10 @@ static inline int cpu_step_dispatch_decoded(CPU_CONTEXT* ctx, DecodedInst* decod
         // advanced past the instruction using last_inst_size.
     }
 
+    if (cpu_has_exception(ctx)) {
+        goto cpu_step_finish;
+    }
+
     if (!(decoded->flags & DECODED_FLAG_BRANCH)) {
         ctx->rip = rip_pre + (uint64_t)ctx->last_inst_size;
     }
@@ -320,9 +350,14 @@ cpu_step_finish:
         CPU_EXCEPTION_STATE exception_state = ctx->exception;
         uint64_t saved_cr2 = ctx->control_regs[REG_CR2];
         if (scalar_snapshot_valid) {
-            cpu_restore_scalar_snapshot(ctx, &saved_scalar);
-            if (vector_snapshot_valid) {
-                cpu_restore_vector_snapshot(ctx, &saved_vector);
+            if (decoded->flags & DECODED_FLAG_PARTIAL_PROGRESS) {
+                cpu_restore_decode_transient_snapshot(ctx, &saved_scalar);
+            }
+            else {
+                cpu_restore_scalar_snapshot(ctx, &saved_scalar);
+                if (vector_snapshot_valid) {
+                    cpu_restore_vector_snapshot(ctx, &saved_vector);
+                }
             }
         }
         ctx->exception = exception_state;

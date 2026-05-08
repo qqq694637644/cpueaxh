@@ -131,8 +131,10 @@ static AVXRegister256 read_ymm_memory(CPU_CONTEXT* ctx, uint64_t address) {
 }
 
 static void write_ymm_memory(CPU_CONTEXT* ctx, uint64_t address, AVXRegister256 value) {
-    write_xmm_memory(ctx, address, value.low);
-    write_xmm_memory(ctx, address + 16, value.high);
+    ZMMUpperRegister packed = {};
+    packed.lower = value.low;
+    packed.upper = value.high;
+    write_zmm_upper_memory(ctx, address, packed);
 }
 
 static uint32_t get_ymm_lane_bits(const AVXRegister256& value, int lane) {
@@ -2130,44 +2132,99 @@ static AVXRegister256 apply_avx_maskmov_load_pd256(AVXRegister256 mask, AVXRegis
     return result;
 }
 
-static void execute_avx_maskmov_store_ps128(CPU_CONTEXT* ctx, uint64_t address, XMMRegister mask, XMMRegister source) {
-    for (int lane = 0; lane < 4; lane++) {
-        if ((get_xmm_lane_bits(mask, lane) & 0x80000000U) != 0) {
-            write_memory_dword(ctx, address + (uint64_t)(lane * 4), get_xmm_lane_bits(source, lane));
+static void avx_store_u32_le(uint8_t* bytes, size_t offset, uint32_t value) {
+    bytes[offset] = (uint8_t)(value & 0xFFU);
+    bytes[offset + 1] = (uint8_t)((value >> 8) & 0xFFU);
+    bytes[offset + 2] = (uint8_t)((value >> 16) & 0xFFU);
+    bytes[offset + 3] = (uint8_t)((value >> 24) & 0xFFU);
+}
+
+static void avx_write_masked_dwords(CPU_CONTEXT* ctx, uint64_t address, const uint32_t* values, const bool* element_mask, int lanes) {
+    uint8_t bytes[32] = {};
+    uint64_t element_values[8] = {};
+    uint8_t* byte_ptrs[32] = {};
+
+    for (int lane = 0; lane < lanes; ++lane) {
+        element_values[lane] = values[lane];
+        avx_store_u32_le(bytes, (size_t)(lane * 4), values[lane]);
+    }
+
+    if (!cpu_resolve_masked_write_element_ptrs(ctx, address, element_mask, element_values, (size_t)lanes, 4, byte_ptrs)) {
+        return;
+    }
+
+    if (cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_WRITE)) {
+        for (int lane = 0; lane < lanes; ++lane) {
+            if (element_mask[lane]) {
+                cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + (uint64_t)(lane * 4), 4, values[lane]);
+            }
         }
     }
+
+    cpu_commit_masked_write_elements(bytes, element_mask, (size_t)lanes, 4, byte_ptrs);
+}
+
+static void avx_write_masked_qwords(CPU_CONTEXT* ctx, uint64_t address, const uint64_t* values, const bool* element_mask, int lanes) {
+    uint8_t bytes[32] = {};
+    uint8_t* byte_ptrs[32] = {};
+
+    for (int lane = 0; lane < lanes; ++lane) {
+        cpu_store_u64_le(bytes + (lane * 8), values[lane]);
+    }
+
+    if (!cpu_resolve_masked_write_element_ptrs(ctx, address, element_mask, values, (size_t)lanes, 8, byte_ptrs)) {
+        return;
+    }
+
+    if (cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_WRITE)) {
+        for (int lane = 0; lane < lanes; ++lane) {
+            if (element_mask[lane]) {
+                cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + (uint64_t)(lane * 8), 8, values[lane]);
+            }
+        }
+    }
+
+    cpu_commit_masked_write_elements(bytes, element_mask, (size_t)lanes, 8, byte_ptrs);
+}
+
+static void execute_avx_maskmov_store_ps128(CPU_CONTEXT* ctx, uint64_t address, XMMRegister mask, XMMRegister source) {
+    uint32_t values[4] = {};
+    bool element_mask[4] = {};
+    for (int lane = 0; lane < 4; lane++) {
+        values[lane] = get_xmm_lane_bits(source, lane);
+        element_mask[lane] = (get_xmm_lane_bits(mask, lane) & 0x80000000U) != 0;
+    }
+    avx_write_masked_dwords(ctx, address, values, element_mask, 4);
 }
 
 static void execute_avx_maskmov_store_ps256(CPU_CONTEXT* ctx, uint64_t address, AVXRegister256 mask, AVXRegister256 source) {
+    uint32_t values[8] = {};
+    bool element_mask[8] = {};
     for (int lane = 0; lane < 8; lane++) {
-        if ((get_ymm_lane_bits(mask, lane) & 0x80000000U) != 0) {
-            write_memory_dword(ctx, address + (uint64_t)(lane * 4), get_ymm_lane_bits(source, lane));
-        }
+        values[lane] = get_ymm_lane_bits(source, lane);
+        element_mask[lane] = (get_ymm_lane_bits(mask, lane) & 0x80000000U) != 0;
     }
+    avx_write_masked_dwords(ctx, address, values, element_mask, 8);
 }
 
 static void execute_avx_maskmov_store_pd128(CPU_CONTEXT* ctx, uint64_t address, XMMRegister mask, XMMRegister source) {
-    if ((mask.low & 0x8000000000000000ULL) != 0) {
-        write_memory_qword(ctx, address, source.low);
-    }
-    if ((mask.high & 0x8000000000000000ULL) != 0) {
-        write_memory_qword(ctx, address + 8, source.high);
-    }
+    uint64_t values[2] = { source.low, source.high };
+    bool element_mask[2] = {
+        (mask.low & 0x8000000000000000ULL) != 0,
+        (mask.high & 0x8000000000000000ULL) != 0
+    };
+    avx_write_masked_qwords(ctx, address, values, element_mask, 2);
 }
 
 static void execute_avx_maskmov_store_pd256(CPU_CONTEXT* ctx, uint64_t address, AVXRegister256 mask, AVXRegister256 source) {
-    if ((mask.low.low & 0x8000000000000000ULL) != 0) {
-        write_memory_qword(ctx, address, source.low.low);
-    }
-    if ((mask.low.high & 0x8000000000000000ULL) != 0) {
-        write_memory_qword(ctx, address + 8, source.low.high);
-    }
-    if ((mask.high.low & 0x8000000000000000ULL) != 0) {
-        write_memory_qword(ctx, address + 16, source.high.low);
-    }
-    if ((mask.high.high & 0x8000000000000000ULL) != 0) {
-        write_memory_qword(ctx, address + 24, source.high.high);
-    }
+    uint64_t values[4] = { source.low.low, source.low.high, source.high.low, source.high.high };
+    bool element_mask[4] = {
+        (mask.low.low & 0x8000000000000000ULL) != 0,
+        (mask.low.high & 0x8000000000000000ULL) != 0,
+        (mask.high.low & 0x8000000000000000ULL) != 0,
+        (mask.high.high & 0x8000000000000000ULL) != 0
+    };
+    avx_write_masked_qwords(ctx, address, values, element_mask, 4);
 }
 
 static XMMRegister apply_avx2_pmaskmov_load128(XMMRegister mask, XMMRegister source, bool is_qword) {
@@ -2207,37 +2264,43 @@ static AVXRegister256 apply_avx2_pmaskmov_load256(AVXRegister256 mask, AVXRegist
 
 static void execute_avx2_pmaskmov_store128(CPU_CONTEXT* ctx, uint64_t address, XMMRegister mask, XMMRegister source, bool is_qword) {
     if (is_qword) {
-        if ((mask.low & 0x8000000000000000ULL) != 0) {
-            write_memory_qword(ctx, address, source.low);
-        }
-        if ((mask.high & 0x8000000000000000ULL) != 0) {
-            write_memory_qword(ctx, address + 8, source.high);
-        }
+        uint64_t values[2] = { source.low, source.high };
+        bool element_mask[2] = {
+            (mask.low & 0x8000000000000000ULL) != 0,
+            (mask.high & 0x8000000000000000ULL) != 0
+        };
+        avx_write_masked_qwords(ctx, address, values, element_mask, 2);
         return;
     }
 
+    uint32_t values[4] = {};
+    bool element_mask[4] = {};
     for (int lane = 0; lane < 4; lane++) {
-        if ((get_xmm_lane_bits(mask, lane) & 0x80000000U) != 0) {
-            write_memory_dword(ctx, address + (uint64_t)(lane * 4), get_xmm_lane_bits(source, lane));
-        }
+        values[lane] = get_xmm_lane_bits(source, lane);
+        element_mask[lane] = (get_xmm_lane_bits(mask, lane) & 0x80000000U) != 0;
     }
+    avx_write_masked_dwords(ctx, address, values, element_mask, 4);
 }
 
 static void execute_avx2_pmaskmov_store256(CPU_CONTEXT* ctx, uint64_t address, AVXRegister256 mask, AVXRegister256 source, bool is_qword) {
     if (is_qword) {
+        uint64_t values[4] = {};
+        bool element_mask[4] = {};
         for (int lane = 0; lane < 4; lane++) {
-            if ((get_ymm_pd_lane_bits(mask, lane) & 0x8000000000000000ULL) != 0) {
-                write_memory_qword(ctx, address + (uint64_t)(lane * 8), get_ymm_pd_lane_bits(source, lane));
-            }
+            values[lane] = get_ymm_pd_lane_bits(source, lane);
+            element_mask[lane] = (get_ymm_pd_lane_bits(mask, lane) & 0x8000000000000000ULL) != 0;
         }
+        avx_write_masked_qwords(ctx, address, values, element_mask, 4);
         return;
     }
 
+    uint32_t values[8] = {};
+    bool element_mask[8] = {};
     for (int lane = 0; lane < 8; lane++) {
-        if ((get_ymm_lane_bits(mask, lane) & 0x80000000U) != 0) {
-            write_memory_dword(ctx, address + (uint64_t)(lane * 4), get_ymm_lane_bits(source, lane));
-        }
+        values[lane] = get_ymm_lane_bits(source, lane);
+        element_mask[lane] = (get_ymm_lane_bits(mask, lane) & 0x80000000U) != 0;
     }
+    avx_write_masked_dwords(ctx, address, values, element_mask, 8);
 }
 
 static void set_avx_test_flags(CPU_CONTEXT* ctx, bool zf, bool cf) {
@@ -5341,11 +5404,7 @@ void execute_avx_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
         uint64_t address = get_sse2_misc_maskmovdqu_address(ctx, &inst);
         sse2_misc_xmm_to_bytes(get_xmm128(ctx, src), src_bytes);
         sse2_misc_xmm_to_bytes(get_xmm128(ctx, mask), mask_bytes);
-        for (int index = 0; index < 16; index++) {
-            if (mask_bytes[index] & 0x80U) {
-                write_memory_byte(ctx, address + index, src_bytes[index]);
-            }
-        }
+        sse2_misc_write_maskmovdqu_bytes(ctx, address, src_bytes, mask_bytes);
         return;
     }
 
@@ -6077,5 +6136,3 @@ void execute_avx_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
 
     raise_ud_ctx(ctx);
 }
-
-

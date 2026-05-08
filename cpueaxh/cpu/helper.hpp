@@ -142,6 +142,7 @@ void load_segment_register(CPU_CONTEXT* ctx, int seg_index, uint16_t selector) {
     if (seg_index == SEG_SS) {
         if (is_null_selector(selector)) {
             raise_gp_ctx(ctx, 0);
+            return;
         }
 
         SegmentDescriptor desc = load_descriptor_from_table(ctx, selector);
@@ -151,18 +152,22 @@ void load_segment_register(CPU_CONTEXT* ctx, int seg_index, uint16_t selector) {
 
         if (rpl != ctx->cpl) {
             raise_gp_ctx(ctx, selector & 0xFFFC);
+            return;
         }
 
         if (!is_writable_data_segment(desc.type)) {
             raise_gp_ctx(ctx, selector & 0xFFFC);
+            return;
         }
 
         if (desc.dpl != ctx->cpl) {
             raise_gp_ctx(ctx, selector & 0xFFFC);
+            return;
         }
 
         if (!desc.present) {
             raise_ss_ctx(ctx, selector & 0xFFFC);
+            return;
         }
 
         ctx->ss.selector = selector;
@@ -184,16 +189,19 @@ void load_segment_register(CPU_CONTEXT* ctx, int seg_index, uint16_t selector) {
 
             if (!is_data_segment(desc.type) && !is_readable_code_segment(desc.type)) {
                 raise_gp_ctx(ctx, selector & 0xFFFC);
+                return;
             }
 
             if (is_data_segment(desc.type) || !is_conforming_code_segment(desc.type)) {
                 if (rpl > desc.dpl || ctx->cpl > desc.dpl) {
                     raise_gp_ctx(ctx, selector & 0xFFFC);
+                    return;
                 }
             }
 
             if (!desc.present) {
                 raise_np_ctx(ctx, selector & 0xFFFC);
+                return;
             }
 
             seg->selector = selector;
@@ -534,44 +542,307 @@ void set_mm64(CPU_CONTEXT* ctx, int reg, uint64_t value) {
     ctx->mm[reg & 0x07] = value;
 }
 
+inline uint64_t cpu_load_u64_le(const uint8_t* bytes) {
+    return (uint64_t)bytes[0] |
+        ((uint64_t)bytes[1] << 8) |
+        ((uint64_t)bytes[2] << 16) |
+        ((uint64_t)bytes[3] << 24) |
+        ((uint64_t)bytes[4] << 32) |
+        ((uint64_t)bytes[5] << 40) |
+        ((uint64_t)bytes[6] << 48) |
+        ((uint64_t)bytes[7] << 56);
+}
+
+inline void cpu_store_u64_le(uint8_t* bytes, uint64_t value) {
+    for (int index = 0; index < 8; ++index) {
+        bytes[index] = (uint8_t)((value >> (index * 8)) & 0xFFu);
+    }
+}
+
+inline uint16_t cpu_load_u16_le(const uint8_t* bytes) {
+    return (uint16_t)(bytes[0] | ((uint16_t)bytes[1] << 8));
+}
+
+inline uint32_t cpu_load_u32_le(const uint8_t* bytes) {
+    return (uint32_t)bytes[0] |
+        ((uint32_t)bytes[1] << 8) |
+        ((uint32_t)bytes[2] << 16) |
+        ((uint32_t)bytes[3] << 24);
+}
+
+inline void cpu_store_u16_le(uint8_t* bytes, uint16_t value) {
+    bytes[0] = (uint8_t)(value & 0xFFu);
+    bytes[1] = (uint8_t)((value >> 8) & 0xFFu);
+}
+
+inline void cpu_store_u32_le(uint8_t* bytes, uint32_t value) {
+    bytes[0] = (uint8_t)(value & 0xFFu);
+    bytes[1] = (uint8_t)((value >> 8) & 0xFFu);
+    bytes[2] = (uint8_t)((value >> 16) & 0xFFu);
+    bytes[3] = (uint8_t)((value >> 24) & 0xFFu);
+}
+
+inline bool cpu_read_linear_bytes(CPU_CONTEXT* ctx, uint64_t address, uint8_t* out, size_t size) {
+    if (!out || size == 0 || size > 64 || cpu_has_exception(ctx)) {
+        return false;
+    }
+
+    uint8_t* contiguous = cpu_try_get_contiguous_ptr(ctx, address, size, MM_PROT_READ);
+    if (contiguous) {
+        CPUEAXH_MEMCPY(out, contiguous, size);
+        return true;
+    }
+    if (cpu_has_exception(ctx)) {
+        return false;
+    }
+
+    uint8_t* byte_ptrs[64] = {};
+    for (size_t offset = 0; offset < size; ++offset) {
+        if (cpu_resolve_memory_access(ctx, address + offset, MM_PROT_READ, &byte_ptrs[offset], address, size, 0) != MM_ACCESS_OK) {
+            return false;
+        }
+    }
+    for (size_t offset = 0; offset < size; ++offset) {
+        out[offset] = *byte_ptrs[offset];
+    }
+    return true;
+}
+
+inline bool cpu_read_linear_bytes_large(CPU_CONTEXT* ctx, uint64_t address, uint8_t* out, size_t size) {
+    if (!out || size == 0 || size > 512 || cpu_has_exception(ctx)) {
+        return false;
+    }
+
+    uint8_t* contiguous = cpu_try_get_contiguous_ptr(ctx, address, size, MM_PROT_READ);
+    if (contiguous) {
+        CPUEAXH_MEMCPY(out, contiguous, size);
+        return true;
+    }
+    if (cpu_has_exception(ctx)) {
+        return false;
+    }
+
+    uint8_t* byte_ptrs[512] = {};
+    for (size_t offset = 0; offset < size; ++offset) {
+        if (cpu_resolve_memory_access(ctx, address + offset, MM_PROT_READ, &byte_ptrs[offset], address, size, 0) != MM_ACCESS_OK) {
+            return false;
+        }
+    }
+    for (size_t offset = 0; offset < size; ++offset) {
+        out[offset] = *byte_ptrs[offset];
+    }
+    return true;
+}
+
+inline bool cpu_write_linear_bytes(CPU_CONTEXT* ctx, uint64_t address, const uint8_t* bytes, size_t size, uint64_t reported_value = 0) {
+    if (!bytes || size == 0 || size > 64 || cpu_has_exception(ctx)) {
+        return false;
+    }
+
+    uint8_t* contiguous = cpu_try_get_contiguous_ptr(ctx, address, size, MM_PROT_WRITE, reported_value);
+    if (contiguous) {
+        CPUEAXH_MEMCPY(contiguous, bytes, size);
+        return true;
+    }
+    if (cpu_has_exception(ctx)) {
+        return false;
+    }
+
+    uint8_t* byte_ptrs[64] = {};
+    for (size_t offset = 0; offset < size; ++offset) {
+        if (cpu_resolve_memory_access(ctx, address + offset, MM_PROT_WRITE, &byte_ptrs[offset], address, size, reported_value) != MM_ACCESS_OK) {
+            return false;
+        }
+    }
+    for (size_t offset = 0; offset < size; ++offset) {
+        *byte_ptrs[offset] = bytes[offset];
+    }
+    return true;
+}
+
+inline bool cpu_resolve_linear_write_byte_ptrs(CPU_CONTEXT* ctx, uint64_t address, size_t size, uint8_t** byte_ptrs, uint64_t reported_value = 0) {
+    if (!byte_ptrs || size == 0 || size > 512 || cpu_has_exception(ctx)) {
+        return false;
+    }
+
+    for (size_t offset = 0; offset < size; ++offset) {
+        if (cpu_resolve_memory_access(ctx, address + offset, MM_PROT_WRITE, &byte_ptrs[offset], address, size, reported_value) != MM_ACCESS_OK) {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline void cpu_commit_linear_write_bytes(const uint8_t* bytes, size_t size, uint8_t** byte_ptrs) {
+    if (!bytes || !byte_ptrs) {
+        return;
+    }
+
+    for (size_t offset = 0; offset < size; ++offset) {
+        *byte_ptrs[offset] = bytes[offset];
+    }
+}
+
+inline bool cpu_resolve_masked_write_element_ptrs(CPU_CONTEXT* ctx, uint64_t address, const bool* element_mask,
+    const uint64_t* element_values, size_t element_count, size_t element_size, uint8_t** byte_ptrs) {
+    const size_t total_size = element_count * element_size;
+    if (!element_mask || !byte_ptrs || element_count == 0 || element_size == 0 ||
+        total_size > 64 || total_size / element_size != element_count || cpu_has_exception(ctx)) {
+        return false;
+    }
+
+    for (size_t element = 0; element < element_count; ++element) {
+        if (!element_mask[element]) {
+            continue;
+        }
+
+        const uint64_t element_address = address + (uint64_t)(element * element_size);
+        const uint64_t reported_value = element_values ? element_values[element] : 0;
+        for (size_t offset = 0; offset < element_size; ++offset) {
+            const size_t byte_index = element * element_size + offset;
+            if (cpu_resolve_memory_access(ctx, element_address + offset, MM_PROT_WRITE, &byte_ptrs[byte_index],
+                element_address, element_size, reported_value) != MM_ACCESS_OK) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+inline void cpu_commit_masked_write_elements(const uint8_t* bytes, const bool* element_mask,
+    size_t element_count, size_t element_size, uint8_t** byte_ptrs) {
+    if (!bytes || !element_mask || !byte_ptrs) {
+        return;
+    }
+
+    for (size_t element = 0; element < element_count; ++element) {
+        if (!element_mask[element]) {
+            continue;
+        }
+
+        for (size_t offset = 0; offset < element_size; ++offset) {
+            const size_t byte_index = element * element_size + offset;
+            *byte_ptrs[byte_index] = bytes[byte_index];
+        }
+    }
+}
+
+inline void cpu_notify_qword_memory_hooks(CPU_CONTEXT* ctx, uint32_t hook_type, uint64_t address, const uint8_t* bytes, size_t size) {
+    if (!cpu_has_hook_type(ctx, hook_type)) {
+        return;
+    }
+    for (size_t offset = 0; offset < size; offset += 8) {
+        cpu_notify_memory_hook(ctx, hook_type, address + offset, 8, cpu_load_u64_le(bytes + offset));
+    }
+}
+
 XMMRegister read_xmm_memory(CPU_CONTEXT* ctx, uint64_t address) {
     XMMRegister value = {};
-    value.low = read_memory_qword(ctx, address);
-    value.high = read_memory_qword(ctx, address + 8);
+    uint8_t bytes[16] = {};
+    if (!cpu_read_linear_bytes(ctx, address, bytes, sizeof(bytes))) {
+        return value;
+    }
+    value.low = cpu_load_u64_le(bytes);
+    value.high = cpu_load_u64_le(bytes + 8);
+    cpu_notify_qword_memory_hooks(ctx, CPUEAXH_HOOK_MEM_READ, address, bytes, sizeof(bytes));
     return value;
 }
 
 void write_xmm_memory(CPU_CONTEXT* ctx, uint64_t address, XMMRegister value) {
-    write_memory_qword(ctx, address, value.low);
-    write_memory_qword(ctx, address + 8, value.high);
+    uint8_t bytes[16] = {};
+    cpu_store_u64_le(bytes, value.low);
+    cpu_store_u64_le(bytes + 8, value.high);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
+    uint8_t* contiguous = cpu_try_get_contiguous_ptr(ctx, address, sizeof(bytes), MM_PROT_WRITE, value.low);
+    if (!contiguous && cpu_has_exception(ctx)) {
+        return;
+    }
+    cpu_notify_qword_memory_hooks(ctx, CPUEAXH_HOOK_MEM_WRITE, address, bytes, sizeof(bytes));
+    if (contiguous) {
+        CPUEAXH_MEMCPY(contiguous, bytes, sizeof(bytes));
+        return;
+    }
+    cpu_write_linear_bytes(ctx, address, bytes, sizeof(bytes), value.low);
 }
 
 ZMMUpperRegister read_zmm_upper_memory(CPU_CONTEXT* ctx, uint64_t address) {
     ZMMUpperRegister value = {};
-    value.lower = read_xmm_memory(ctx, address);
-    value.upper = read_xmm_memory(ctx, address + 16);
+    uint8_t bytes[32] = {};
+    if (!cpu_read_linear_bytes(ctx, address, bytes, sizeof(bytes))) {
+        return value;
+    }
+    value.lower.low = cpu_load_u64_le(bytes);
+    value.lower.high = cpu_load_u64_le(bytes + 8);
+    value.upper.low = cpu_load_u64_le(bytes + 16);
+    value.upper.high = cpu_load_u64_le(bytes + 24);
+    cpu_notify_qword_memory_hooks(ctx, CPUEAXH_HOOK_MEM_READ, address, bytes, sizeof(bytes));
     return value;
 }
 
 void write_zmm_upper_memory(CPU_CONTEXT* ctx, uint64_t address, ZMMUpperRegister value) {
-    write_xmm_memory(ctx, address, value.lower);
-    write_xmm_memory(ctx, address + 16, value.upper);
+    uint8_t bytes[32] = {};
+    cpu_store_u64_le(bytes, value.lower.low);
+    cpu_store_u64_le(bytes + 8, value.lower.high);
+    cpu_store_u64_le(bytes + 16, value.upper.low);
+    cpu_store_u64_le(bytes + 24, value.upper.high);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
+    uint8_t* contiguous = cpu_try_get_contiguous_ptr(ctx, address, sizeof(bytes), MM_PROT_WRITE, value.lower.low);
+    if (!contiguous && cpu_has_exception(ctx)) {
+        return;
+    }
+    cpu_notify_qword_memory_hooks(ctx, CPUEAXH_HOOK_MEM_WRITE, address, bytes, sizeof(bytes));
+    if (contiguous) {
+        CPUEAXH_MEMCPY(contiguous, bytes, sizeof(bytes));
+        return;
+    }
+    cpu_write_linear_bytes(ctx, address, bytes, sizeof(bytes), value.lower.low);
 }
 
 ZMMRegister read_zmm_memory(CPU_CONTEXT* ctx, uint64_t address) {
     ZMMRegister value = {};
-    value.xmm0 = read_xmm_memory(ctx, address);
-    value.xmm1 = read_xmm_memory(ctx, address + 16);
-    value.xmm2 = read_xmm_memory(ctx, address + 32);
-    value.xmm3 = read_xmm_memory(ctx, address + 48);
+    uint8_t bytes[64] = {};
+    if (!cpu_read_linear_bytes(ctx, address, bytes, sizeof(bytes))) {
+        return value;
+    }
+    value.xmm0.low = cpu_load_u64_le(bytes);
+    value.xmm0.high = cpu_load_u64_le(bytes + 8);
+    value.xmm1.low = cpu_load_u64_le(bytes + 16);
+    value.xmm1.high = cpu_load_u64_le(bytes + 24);
+    value.xmm2.low = cpu_load_u64_le(bytes + 32);
+    value.xmm2.high = cpu_load_u64_le(bytes + 40);
+    value.xmm3.low = cpu_load_u64_le(bytes + 48);
+    value.xmm3.high = cpu_load_u64_le(bytes + 56);
+    cpu_notify_qword_memory_hooks(ctx, CPUEAXH_HOOK_MEM_READ, address, bytes, sizeof(bytes));
     return value;
 }
 
 void write_zmm_memory(CPU_CONTEXT* ctx, uint64_t address, ZMMRegister value) {
-    write_xmm_memory(ctx, address, value.xmm0);
-    write_xmm_memory(ctx, address + 16, value.xmm1);
-    write_xmm_memory(ctx, address + 32, value.xmm2);
-    write_xmm_memory(ctx, address + 48, value.xmm3);
+    uint8_t bytes[64] = {};
+    cpu_store_u64_le(bytes, value.xmm0.low);
+    cpu_store_u64_le(bytes + 8, value.xmm0.high);
+    cpu_store_u64_le(bytes + 16, value.xmm1.low);
+    cpu_store_u64_le(bytes + 24, value.xmm1.high);
+    cpu_store_u64_le(bytes + 32, value.xmm2.low);
+    cpu_store_u64_le(bytes + 40, value.xmm2.high);
+    cpu_store_u64_le(bytes + 48, value.xmm3.low);
+    cpu_store_u64_le(bytes + 56, value.xmm3.high);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
+    uint8_t* contiguous = cpu_try_get_contiguous_ptr(ctx, address, sizeof(bytes), MM_PROT_WRITE, value.xmm0.low);
+    if (!contiguous && cpu_has_exception(ctx)) {
+        return;
+    }
+    cpu_notify_qword_memory_hooks(ctx, CPUEAXH_HOOK_MEM_WRITE, address, bytes, sizeof(bytes));
+    if (contiguous) {
+        CPUEAXH_MEMCPY(contiguous, bytes, sizeof(bytes));
+        return;
+    }
+    cpu_write_linear_bytes(ctx, address, bytes, sizeof(bytes), value.xmm0.low);
 }
 
 // --- Stack operation helpers ---
@@ -583,58 +854,86 @@ int get_stack_addr_size(CPU_CONTEXT* ctx) {
 
 // Push a 16-bit value onto the stack
 void push_value16(CPU_CONTEXT* ctx, uint16_t value) {
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int stack_addr_size = get_stack_addr_size(ctx);
     if (stack_addr_size == 64) {
-        ctx->regs[REG_RSP] -= 2;
-        write_memory_word(ctx, ctx->regs[REG_RSP], value);
+        uint64_t new_rsp = ctx->regs[REG_RSP] - 2;
+        write_memory_word(ctx, new_rsp, value);
+        if (!cpu_has_exception(ctx)) {
+            ctx->regs[REG_RSP] = new_rsp;
+        }
     }
     else if (stack_addr_size == 32) {
         uint32_t esp = (uint32_t)(ctx->regs[REG_RSP] & 0xFFFFFFFF);
         esp -= 2;
-        ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
         write_memory_word(ctx, esp, value);
+        if (!cpu_has_exception(ctx)) {
+            ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
+        }
     }
     else {
         uint16_t sp = (uint16_t)(ctx->regs[REG_RSP] & 0xFFFF);
         sp -= 2;
-        ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFULL) | sp;
         write_memory_word(ctx, sp, value);
+        if (!cpu_has_exception(ctx)) {
+            ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFULL) | sp;
+        }
     }
 }
 
 // Push a 32-bit value onto the stack
 void push_value32(CPU_CONTEXT* ctx, uint32_t value) {
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int stack_addr_size = get_stack_addr_size(ctx);
     if (stack_addr_size == 64) {
-        ctx->regs[REG_RSP] -= 4;
-        write_memory_dword(ctx, ctx->regs[REG_RSP], value);
+        uint64_t new_rsp = ctx->regs[REG_RSP] - 4;
+        write_memory_dword(ctx, new_rsp, value);
+        if (!cpu_has_exception(ctx)) {
+            ctx->regs[REG_RSP] = new_rsp;
+        }
     }
     else if (stack_addr_size == 32) {
         uint32_t esp = (uint32_t)(ctx->regs[REG_RSP] & 0xFFFFFFFF);
         esp -= 4;
-        ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
         write_memory_dword(ctx, esp, value);
+        if (!cpu_has_exception(ctx)) {
+            ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
+        }
     }
     else {
         uint16_t sp = (uint16_t)(ctx->regs[REG_RSP] & 0xFFFF);
         sp -= 4;
-        ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFULL) | sp;
         write_memory_dword(ctx, sp, value);
+        if (!cpu_has_exception(ctx)) {
+            ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFULL) | sp;
+        }
     }
 }
 
 // Push a 64-bit value onto the stack
 void push_value64(CPU_CONTEXT* ctx, uint64_t value) {
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     int stack_addr_size = get_stack_addr_size(ctx);
     if (stack_addr_size == 64) {
-        ctx->regs[REG_RSP] -= 8;
-        write_memory_qword(ctx, ctx->regs[REG_RSP], value);
+        uint64_t new_rsp = ctx->regs[REG_RSP] - 8;
+        write_memory_qword(ctx, new_rsp, value);
+        if (!cpu_has_exception(ctx)) {
+            ctx->regs[REG_RSP] = new_rsp;
+        }
     }
     else if (stack_addr_size == 32) {
         uint32_t esp = (uint32_t)(ctx->regs[REG_RSP] & 0xFFFFFFFF);
         esp -= 8;
-        ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
         write_memory_qword(ctx, esp, value);
+        if (!cpu_has_exception(ctx)) {
+            ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
+        }
     }
     else {
         // 16-bit stack address doesn't support 64-bit pushes
@@ -642,23 +941,192 @@ void push_value64(CPU_CONTEXT* ctx, uint64_t value) {
     }
 }
 
+inline void cpu_store_stack_value_le(uint8_t* bytes, size_t size, uint64_t value) {
+    switch (size) {
+    case 2:
+        cpu_store_u16_le(bytes, (uint16_t)value);
+        break;
+    case 4:
+        cpu_store_u32_le(bytes, (uint32_t)value);
+        break;
+    case 8:
+        cpu_store_u64_le(bytes, value);
+        break;
+    default:
+        break;
+    }
+}
+
+inline bool cpu_resolve_stack_slot_write(CPU_CONTEXT* ctx, uint64_t address, size_t size, uint64_t value, uint8_t** byte_ptrs) {
+    for (size_t offset = 0; offset < size; ++offset) {
+        if (cpu_resolve_memory_access(ctx, address + offset, MM_PROT_WRITE, &byte_ptrs[offset], address, size, value) != MM_ACCESS_OK) {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline void cpu_commit_stack_slot_write(uint64_t address, const uint8_t* bytes, size_t size, uint64_t value, uint8_t** byte_ptrs, CPU_CONTEXT* ctx) {
+    if (cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_WRITE)) {
+        cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address, size, value);
+    }
+    for (size_t offset = 0; offset < size; ++offset) {
+        *byte_ptrs[offset] = bytes[offset];
+    }
+}
+
+void push_two_stack_values(CPU_CONTEXT* ctx, uint64_t first_value, uint64_t second_value, size_t value_size) {
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
+    if (value_size != 2 && value_size != 4 && value_size != 8) {
+        raise_gp_ctx(ctx, 0);
+        return;
+    }
+
+    const int stack_addr_size = get_stack_addr_size(ctx);
+    if (stack_addr_size == 16 && value_size == 8) {
+        raise_gp_ctx(ctx, 0);
+        return;
+    }
+
+    uint64_t first_address = 0;
+    uint64_t second_address = 0;
+    if (stack_addr_size == 64) {
+        first_address = ctx->regs[REG_RSP] - value_size;
+        second_address = first_address - value_size;
+    }
+    else if (stack_addr_size == 32) {
+        const uint32_t esp = (uint32_t)(ctx->regs[REG_RSP] & 0xFFFFFFFFULL);
+        first_address = (uint32_t)(esp - (uint32_t)value_size);
+        second_address = (uint32_t)((uint32_t)first_address - (uint32_t)value_size);
+    }
+    else {
+        const uint16_t sp = (uint16_t)(ctx->regs[REG_RSP] & 0xFFFFULL);
+        first_address = (uint16_t)(sp - (uint16_t)value_size);
+        second_address = (uint16_t)((uint16_t)first_address - (uint16_t)value_size);
+    }
+
+    uint8_t first_bytes[8] = {};
+    uint8_t second_bytes[8] = {};
+    uint8_t* first_ptrs[8] = {};
+    uint8_t* second_ptrs[8] = {};
+    cpu_store_stack_value_le(first_bytes, value_size, first_value);
+    cpu_store_stack_value_le(second_bytes, value_size, second_value);
+
+    if (!cpu_resolve_stack_slot_write(ctx, first_address, value_size, first_value, first_ptrs) ||
+        !cpu_resolve_stack_slot_write(ctx, second_address, value_size, second_value, second_ptrs)) {
+        return;
+    }
+
+    cpu_commit_stack_slot_write(first_address, first_bytes, value_size, first_value, first_ptrs, ctx);
+    cpu_commit_stack_slot_write(second_address, second_bytes, value_size, second_value, second_ptrs, ctx);
+
+    if (stack_addr_size == 64) {
+        ctx->regs[REG_RSP] = second_address;
+    }
+    else if (stack_addr_size == 32) {
+        ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | (uint32_t)second_address;
+    }
+    else {
+        ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFULL) | (uint16_t)second_address;
+    }
+}
+
+inline uint64_t cpu_get_stack_pointer_value(CPU_CONTEXT* ctx, int stack_addr_size) {
+    if (stack_addr_size == 64) {
+        return ctx->regs[REG_RSP];
+    }
+    if (stack_addr_size == 32) {
+        return (uint32_t)(ctx->regs[REG_RSP] & 0xFFFFFFFFULL);
+    }
+    return (uint16_t)(ctx->regs[REG_RSP] & 0xFFFFULL);
+}
+
+inline uint64_t cpu_stack_pointer_add(int stack_addr_size, uint64_t value, size_t delta) {
+    if (stack_addr_size == 64) {
+        return value + delta;
+    }
+    if (stack_addr_size == 32) {
+        return (uint32_t)((uint32_t)value + (uint32_t)delta);
+    }
+    return (uint16_t)((uint16_t)value + (uint16_t)delta);
+}
+
+inline void cpu_set_stack_pointer_value(CPU_CONTEXT* ctx, int stack_addr_size, uint64_t value) {
+    if (stack_addr_size == 64) {
+        ctx->regs[REG_RSP] = value;
+    }
+    else if (stack_addr_size == 32) {
+        ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | (uint32_t)value;
+    }
+    else {
+        ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFULL) | (uint16_t)value;
+    }
+}
+
+bool peek_stack_values(CPU_CONTEXT* ctx, size_t value_size, size_t count, uint64_t* values, uint64_t* final_sp) {
+    if (cpu_has_exception(ctx)) {
+        return false;
+    }
+    if ((value_size != 2 && value_size != 4 && value_size != 8) || values == nullptr || final_sp == nullptr) {
+        raise_gp_ctx(ctx, 0);
+        return false;
+    }
+
+    const int stack_addr_size = get_stack_addr_size(ctx);
+    if (stack_addr_size == 16 && value_size == 8) {
+        raise_gp_ctx(ctx, 0);
+        return false;
+    }
+
+    const uint64_t base_sp = cpu_get_stack_pointer_value(ctx, stack_addr_size);
+    for (size_t index = 0; index < count; ++index) {
+        const uint64_t address = cpu_stack_pointer_add(stack_addr_size, base_sp, index * value_size);
+        if (value_size == 2) {
+            values[index] = read_memory_word(ctx, address);
+        }
+        else if (value_size == 4) {
+            values[index] = read_memory_dword(ctx, address);
+        }
+        else {
+            values[index] = read_memory_qword(ctx, address);
+        }
+        if (cpu_has_exception(ctx)) {
+            return false;
+        }
+    }
+
+    *final_sp = cpu_stack_pointer_add(stack_addr_size, base_sp, count * value_size);
+    return true;
+}
+
 // Pop a 16-bit value from the stack
 uint16_t pop_value16(CPU_CONTEXT* ctx) {
     int stack_addr_size = get_stack_addr_size(ctx);
-    uint16_t value;
+    uint16_t value = 0;
     if (stack_addr_size == 64) {
         value = read_memory_word(ctx, ctx->regs[REG_RSP]);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         ctx->regs[REG_RSP] += 2;
     }
     else if (stack_addr_size == 32) {
         uint32_t esp = (uint32_t)(ctx->regs[REG_RSP] & 0xFFFFFFFF);
         value = read_memory_word(ctx, esp);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         esp += 2;
         ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
     }
     else {
         uint16_t sp = (uint16_t)(ctx->regs[REG_RSP] & 0xFFFF);
         value = read_memory_word(ctx, sp);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         sp += 2;
         ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFULL) | sp;
     }
@@ -668,20 +1136,29 @@ uint16_t pop_value16(CPU_CONTEXT* ctx) {
 // Pop a 32-bit value from the stack
 uint32_t pop_value32(CPU_CONTEXT* ctx) {
     int stack_addr_size = get_stack_addr_size(ctx);
-    uint32_t value;
+    uint32_t value = 0;
     if (stack_addr_size == 64) {
         value = read_memory_dword(ctx, ctx->regs[REG_RSP]);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         ctx->regs[REG_RSP] += 4;
     }
     else if (stack_addr_size == 32) {
         uint32_t esp = (uint32_t)(ctx->regs[REG_RSP] & 0xFFFFFFFF);
         value = read_memory_dword(ctx, esp);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         esp += 4;
         ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
     }
     else {
         uint16_t sp = (uint16_t)(ctx->regs[REG_RSP] & 0xFFFF);
         value = read_memory_dword(ctx, sp);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         sp += 4;
         ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFULL) | sp;
     }
@@ -691,14 +1168,20 @@ uint32_t pop_value32(CPU_CONTEXT* ctx) {
 // Pop a 64-bit value from the stack
 uint64_t pop_value64(CPU_CONTEXT* ctx) {
     int stack_addr_size = get_stack_addr_size(ctx);
-    uint64_t value;
+    uint64_t value = 0;
     if (stack_addr_size == 64) {
         value = read_memory_qword(ctx, ctx->regs[REG_RSP]);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         ctx->regs[REG_RSP] += 8;
     }
     else if (stack_addr_size == 32) {
         uint32_t esp = (uint32_t)(ctx->regs[REG_RSP] & 0xFFFFFFFF);
         value = read_memory_qword(ctx, esp);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         esp += 8;
         ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
     }

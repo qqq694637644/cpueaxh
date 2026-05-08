@@ -47,6 +47,9 @@ void mul_rm8(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_
 
     uint8_t lhs = get_reg8(ctx, REG_RAX);
     uint8_t rhs = (uint8_t)read_mul_rm_operand(ctx, modrm, mem_addr, 8);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     uint16_t result = (uint16_t)lhs * (uint16_t)rhs;
 
     set_reg16(ctx, REG_RAX, result);
@@ -60,6 +63,9 @@ void mul_rm16(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
 
     uint16_t lhs = get_reg16(ctx, REG_RAX);
     uint16_t rhs = (uint16_t)read_mul_rm_operand(ctx, modrm, mem_addr, 16);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     uint32_t result = (uint32_t)lhs * (uint32_t)rhs;
 
     set_reg16(ctx, REG_RAX, (uint16_t)result);
@@ -74,6 +80,9 @@ void mul_rm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
 
     uint32_t lhs = get_reg32(ctx, REG_RAX);
     uint32_t rhs = (uint32_t)read_mul_rm_operand(ctx, modrm, mem_addr, 32);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     uint64_t result = (uint64_t)lhs * (uint64_t)rhs;
 
     set_reg32(ctx, REG_RAX, (uint32_t)result);
@@ -88,6 +97,9 @@ void mul_rm64(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
 
     uint64_t lhs = get_reg64(ctx, REG_RAX);
     uint64_t rhs = read_mul_rm_operand(ctx, modrm, mem_addr, 64);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     uint64_t high = 0;
     uint64_t low = _umul128(lhs, rhs, &high);
 
@@ -101,6 +113,7 @@ void mul_rm64(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
 void decode_modrm_mul(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -112,6 +125,7 @@ void decode_modrm_mul(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -133,6 +147,7 @@ void decode_modrm_mul(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -206,6 +221,7 @@ DecodedInstruction decode_mul_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -275,6 +291,9 @@ inline void execute_mul_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
 
 void execute_mul(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_mul_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_mul_with_decoded(ctx, &inst);
 }
 

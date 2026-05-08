@@ -72,6 +72,7 @@ DecodedInstruction decode_bswap_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -81,6 +82,7 @@ DecodedInstruction decode_bswap_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -115,6 +117,9 @@ inline void execute_bswap_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructio
 
 void execute_bswap(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_bswap_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_bswap_with_decoded(ctx, &inst);
 }
 

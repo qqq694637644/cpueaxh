@@ -130,7 +130,7 @@ typedef cpueaxh_err (*cpueaxh_cb_escape_t)(cpueaxh_engine* engine, cpueaxh_x86_c
 
 #define CPUEAXH_MEM_ATTR_USER 1u
 
-#define CPUEAXH_EMU_RETURN_MAGIC 0x4350554541584841ull
+#define CPUEAXH_EMU_RETURN_MAGIC 0x0000000041485841ull
 
 #define CPUEAXH_HOOK_CODE_PRE 1u
 #define CPUEAXH_HOOK_CODE_POST 2u

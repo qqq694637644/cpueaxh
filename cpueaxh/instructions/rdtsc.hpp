@@ -2,6 +2,15 @@
 
 #include <intrin.h>
 
+static inline bool rdtsc_tsd_forbidden(CPU_CONTEXT* ctx) {
+    if (!ctx) {
+        return false;
+    }
+    const bool protected_mode = (ctx->control_regs[0] & 0x1ULL) != 0;
+    const bool tsd = (ctx->control_regs[4] & (1ULL << 2)) != 0;
+    return protected_mode && tsd && ctx->cpl > 0;
+}
+
 DecodedInstruction decode_rdtsc_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = {};
     size_t offset = 0;
@@ -48,6 +57,7 @@ DecodedInstruction decode_rdtsc_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset + 2 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {
@@ -70,6 +80,11 @@ DecodedInstruction decode_rdtsc_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 }
 
 inline void execute_rdtsc_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction* /*inst_ptr*/) {
+    if (rdtsc_tsd_forbidden(ctx)) {
+        raise_gp_ctx(ctx, 0);
+        return;
+    }
+
     unsigned __int64 tsc = __rdtsc();
     set_reg32(ctx, REG_RAX, (uint32_t)(tsc & 0xFFFFFFFFULL));
     set_reg32(ctx, REG_RDX, (uint32_t)(tsc >> 32));
@@ -77,6 +92,9 @@ inline void execute_rdtsc_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructio
 
 void execute_rdtsc(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_rdtsc_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_rdtsc_with_decoded(ctx, &inst);
 }
 

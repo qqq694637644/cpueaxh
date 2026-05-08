@@ -282,6 +282,9 @@ void execute_bt_operation(CPU_CONTEXT* ctx, const DecodedInstruction* inst) {
 
         target_value = read_bt_memory_value(ctx, target_address, operand_bits) & operand_mask;
     }
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     bool carry = ((target_value >> bit_index) & 0x1ULL) != 0;
     set_flag(ctx, RFLAGS_CF, carry);
@@ -321,6 +324,7 @@ void execute_bt_operation(CPU_CONTEXT* ctx, const DecodedInstruction* inst) {
 void decode_modrm_bt(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -332,6 +336,7 @@ void decode_modrm_bt(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, 
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -353,6 +358,7 @@ void decode_modrm_bt(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, 
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -419,6 +425,7 @@ DecodedInstruction decode_bt_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -428,6 +435,7 @@ DecodedInstruction decode_bt_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -462,6 +470,7 @@ DecodedInstruction decode_bt_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t
         inst.imm_size = 1;
         if (offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = code[offset++];
     }
@@ -485,6 +494,9 @@ inline void execute_bt_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction* 
 
 void execute_bt(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_bt_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_bt_with_decoded(ctx, &inst);
 }
 

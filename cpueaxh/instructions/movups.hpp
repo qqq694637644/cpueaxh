@@ -19,6 +19,7 @@ int decode_movups_xmm_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {
 void decode_modrm_movups(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -30,6 +31,7 @@ void decode_modrm_movups(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* co
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -51,6 +53,7 @@ void decode_modrm_movups(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* co
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -123,6 +126,7 @@ DecodedInstruction decode_movups_instruction(CPU_CONTEXT* ctx, uint8_t* code, si
 
     if (offset + 2 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {
@@ -191,6 +195,9 @@ inline void execute_movups_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructi
 
 void execute_movups(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_movups_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_movups_with_decoded(ctx, &inst);
 }
 

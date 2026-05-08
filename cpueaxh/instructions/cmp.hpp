@@ -412,6 +412,7 @@ void cmp_r64_rm64(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, ui
 void decode_modrm_cmp(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
     inst->has_modrm = true;
     inst->modrm = code[(*offset)++];
@@ -423,6 +424,7 @@ void decode_modrm_cmp(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -445,6 +447,7 @@ void decode_modrm_cmp(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->displacement = 0;
         for (int i = 0; i < inst->disp_size; i++) {
@@ -499,6 +502,7 @@ DecodedInstruction decode_cmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         else if (prefix == 0xF0) {
             // LOCK prefix is #UD for CMP
             raise_ud_ctx(ctx);
+            offset++;
         }
         else if (prefix == 0x26 || prefix == 0x2E || prefix == 0x36 || prefix == 0x3E ||
             prefix == 0x64 || prefix == 0x65 || prefix == 0xF2 || prefix == 0xF3) {
@@ -511,6 +515,7 @@ DecodedInstruction decode_cmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -539,6 +544,7 @@ DecodedInstruction decode_cmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         inst.imm_size = 1;
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = code[offset++];
         break;
@@ -556,6 +562,7 @@ DecodedInstruction decode_cmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         }
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = 0;
         for (int i = 0; i < inst.imm_size; i++) {
@@ -573,6 +580,7 @@ DecodedInstruction decode_cmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         inst.imm_size = 1;
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = code[offset++];
         break;
@@ -594,6 +602,7 @@ DecodedInstruction decode_cmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         }
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = 0;
         for (int i = 0; i < inst.imm_size; i++) {
@@ -610,6 +619,7 @@ DecodedInstruction decode_cmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         inst.imm_size = 1;
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = code[offset++];
         break;
@@ -741,6 +751,9 @@ inline void execute_cmp_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
 
 void execute_cmp(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_cmp_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_cmp_with_decoded(ctx, &inst);
 }
 

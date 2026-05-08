@@ -4,48 +4,32 @@
 
 // EB cb - JMP rel8 (short jump, sign-extended to operand size)
 void jmp_rel8(CPU_CONTEXT* ctx, int8_t rel8, uint64_t next_rip, int operand_size) {
-    if (operand_size == 64) {
-        ctx->rip = next_rip + (int64_t)rel8;
-    }
-    else if (operand_size == 32) {
-        ctx->rip = (uint32_t)(next_rip + (int32_t)rel8);
-    }
-    else {
-        ctx->rip = (uint16_t)(next_rip + (int16_t)rel8);
-    }
+    cpu_assign_rip_checked(ctx, next_rip + (int64_t)rel8, operand_size);
 }
 
 // E9 cd - JMP rel32 (near relative, sign-extended to 64 bits in 64-bit mode)
 void jmp_rel32(CPU_CONTEXT* ctx, int32_t rel32, uint64_t next_rip, int operand_size) {
-    if (operand_size == 64) {
-        ctx->rip = next_rip + (int64_t)rel32;
-    }
-    else if (operand_size == 32) {
-        ctx->rip = (uint32_t)(next_rip + rel32);
-    }
-    else {
-        ctx->rip = (uint16_t)(next_rip + (int16_t)rel32);
-    }
+    cpu_assign_rip_checked(ctx, next_rip + (int64_t)rel32, operand_size);
 }
 
 // E9 cw - JMP rel16 (near relative, compat/legacy mode only)
 void jmp_rel16(CPU_CONTEXT* ctx, int16_t rel16, uint64_t next_rip) {
-    ctx->rip = (uint16_t)(next_rip + rel16);
+    cpu_assign_rip_checked(ctx, next_rip + (int64_t)rel16, 16);
 }
 
 // FF /4 - JMP r/m64 (near absolute indirect, 64-bit mode)
 void jmp_abs64(CPU_CONTEXT* ctx, uint64_t target) {
-    ctx->rip = target;
+    cpu_assign_rip_checked(ctx, target, 64);
 }
 
 // FF /4 - JMP r/m32 (near absolute indirect, compat mode)
 void jmp_abs32(CPU_CONTEXT* ctx, uint32_t target) {
-    ctx->rip = target;
+    cpu_assign_rip_checked(ctx, target, 32);
 }
 
 // FF /4 - JMP r/m16 (near absolute indirect, 16-bit)
 void jmp_abs16(CPU_CONTEXT* ctx, uint16_t target) {
-    ctx->rip = target;
+    cpu_assign_rip_checked(ctx, target, 16);
 }
 
 // FF /5 - JMP m16:16 / m16:32 / m16:64 (far absolute indirect via memory)
@@ -54,18 +38,24 @@ void jmp_far(CPU_CONTEXT* ctx, uint16_t new_selector, uint64_t new_offset, int o
     // NULL selector check
     if (is_null_selector(new_selector)) {
         raise_gp_ctx(ctx, 0);
+        return;
     }
 
     SegmentDescriptor new_desc = load_descriptor_from_table(ctx, new_selector);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     // Must be a code segment (call gates not implemented here)
     if (!is_code_segment(new_desc.type)) {
         raise_gp_ctx(ctx, new_selector & 0xFFFC);
+        return;
     }
 
     // L=1 and D=1 simultaneously is invalid in long mode
     if (cpu_long_mode_active(ctx) && new_desc.long_mode && new_desc.db) {
         raise_gp_ctx(ctx, new_selector & 0xFFFC);
+        return;
     }
 
     uint8_t rpl = new_selector & 0x03;
@@ -74,6 +64,7 @@ void jmp_far(CPU_CONTEXT* ctx, uint16_t new_selector, uint64_t new_offset, int o
         // Conforming: DPL must not be greater than CPL
         if (new_desc.dpl > ctx->cpl) {
             raise_gp_ctx(ctx, new_selector & 0xFFFC);
+            return;
         }
     }
     else {
@@ -81,14 +72,17 @@ void jmp_far(CPU_CONTEXT* ctx, uint16_t new_selector, uint64_t new_offset, int o
         // (Unlike CALL, JMP cannot change privilege level)
         if (new_desc.dpl != ctx->cpl) {
             raise_gp_ctx(ctx, new_selector & 0xFFFC);
+            return;
         }
         if (rpl > ctx->cpl) {
             raise_gp_ctx(ctx, new_selector & 0xFFFC);
+            return;
         }
     }
 
     if (!new_desc.present) {
         raise_np_ctx(ctx, new_selector & 0xFFFC);
+        return;
     }
 
     // Truncate offset based on target mode
@@ -98,6 +92,9 @@ void jmp_far(CPU_CONTEXT* ctx, uint16_t new_selector, uint64_t new_offset, int o
     }
     else {
         target_rip = cpu_mask_code_offset(target_rip, operand_size);
+    }
+    if (!cpu_validate_code_offset(ctx, target_rip, new_desc.long_mode ? 64 : operand_size)) {
+        return;
     }
 
     // Load new CS (no stack changes - this is JMP, not CALL)
@@ -117,6 +114,7 @@ void jmp_far(CPU_CONTEXT* ctx, uint16_t new_selector, uint64_t new_offset, int o
 void decode_modrm_jmp(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
     inst->has_modrm = true;
     inst->modrm = code[(*offset)++];
@@ -128,6 +126,7 @@ void decode_modrm_jmp(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -150,6 +149,7 @@ void decode_modrm_jmp(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->displacement = 0;
         for (int i = 0; i < inst->disp_size; i++) {
@@ -193,6 +193,7 @@ DecodedInstruction decode_jmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         else if (prefix == 0xF0) {
             // LOCK prefix is #UD for JMP
             raise_ud_ctx(ctx);
+            offset++;
         }
         else if (prefix == 0x26 || prefix == 0x2E || prefix == 0x36 || prefix == 0x3E ||
             prefix == 0x64 || prefix == 0x65 || prefix == 0xF2 || prefix == 0xF3) {
@@ -205,6 +206,7 @@ DecodedInstruction decode_jmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -240,6 +242,7 @@ DecodedInstruction decode_jmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         inst.imm_size = 1;
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = code[offset++];
         break;
@@ -258,6 +261,7 @@ DecodedInstruction decode_jmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         }
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = 0;
         for (int i = 0; i < inst.imm_size; i++) {
@@ -283,7 +287,7 @@ DecodedInstruction decode_jmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
             if (mod == 3) {
                 raise_ud_ctx(ctx);
             }
-            // Operand size for far pointer: REX.W �� m16:64, default �� m16:32, 0x66 �� m16:16
+            // Operand size for far pointer: REX.W ??? m16:64, default ??? m16:32, 0x66 ??? m16:16
             if (cpu_is_64bit_code(ctx)) {
                 if (ctx->rex_w) {
                     inst.operand_size = 64;
@@ -309,9 +313,10 @@ DecodedInstruction decode_jmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         }
         // Read far pointer: offset then selector
         if (inst.operand_size == 32) {
-            // ptr16:32 �� 4-byte offset + 2-byte selector
+            // ptr16:32 ??? 4-byte offset + 2-byte selector
             if (offset + 6 > code_size) {
                 raise_gp_ctx(ctx, 0);
+return inst;
             }
             inst.immediate = 0;
             for (int i = 0; i < 4; i++) {
@@ -324,9 +329,10 @@ DecodedInstruction decode_jmp_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
             inst.imm_size = 6;
         }
         else {
-            // ptr16:16 �� 2-byte offset + 2-byte selector
+            // ptr16:16 ??? 2-byte offset + 2-byte selector
             if (offset + 4 > code_size) {
                 raise_gp_ctx(ctx, 0);
+return inst;
             }
             inst.immediate = 0;
             for (int i = 0; i < 2; i++) {
@@ -387,23 +393,47 @@ inline void execute_jmp_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
         if (reg_field == 4) {
             // Near absolute indirect
             if (inst.operand_size == 64) {
-                uint64_t target = (mod == 3) ? get_reg64(ctx, rm)
-                                             : read_memory_qword(ctx, inst.mem_address);
+                uint64_t target = 0;
+                if (mod == 3) {
+                    target = get_reg64(ctx, rm);
+                }
+                else {
+                    target = read_memory_qword(ctx, inst.mem_address);
+                    if (cpu_has_exception(ctx)) {
+                        return;
+                    }
+                }
                 jmp_abs64(ctx, target);
             }
             else if (inst.operand_size == 32) {
-                uint32_t target = (mod == 3) ? get_reg32(ctx, rm)
-                                             : read_memory_dword(ctx, inst.mem_address);
+                uint32_t target = 0;
+                if (mod == 3) {
+                    target = get_reg32(ctx, rm);
+                }
+                else {
+                    target = read_memory_dword(ctx, inst.mem_address);
+                    if (cpu_has_exception(ctx)) {
+                        return;
+                    }
+                }
                 jmp_abs32(ctx, target);
             }
             else {
-                uint16_t target = (mod == 3) ? get_reg16(ctx, rm)
-                                             : read_memory_word(ctx, inst.mem_address);
+                uint16_t target = 0;
+                if (mod == 3) {
+                    target = get_reg16(ctx, rm);
+                }
+                else {
+                    target = read_memory_word(ctx, inst.mem_address);
+                    if (cpu_has_exception(ctx)) {
+                        return;
+                    }
+                }
                 jmp_abs16(ctx, target);
             }
         }
         else {
-            // FF /5 �� far absolute indirect via memory
+            // FF /5 ??? far absolute indirect via memory
             uint64_t new_offset;
             uint16_t new_selector;
 
@@ -418,6 +448,9 @@ inline void execute_jmp_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
             else {
                 new_offset   = read_memory_word(ctx,  inst.mem_address);
                 new_selector = read_memory_word(ctx,  inst.mem_address + 2);
+            }
+            if (cpu_has_exception(ctx)) {
+                return;
             }
 
             jmp_far(ctx, new_selector, new_offset, inst.operand_size);
@@ -437,6 +470,9 @@ inline void execute_jmp_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
 
 void execute_jmp(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_jmp_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_jmp_with_decoded(ctx, &inst);
 }
 

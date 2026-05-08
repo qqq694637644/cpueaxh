@@ -91,6 +91,7 @@ DecodedInstruction decode_cpuid_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset + 2 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {
@@ -124,6 +125,9 @@ inline void execute_cpuid_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructio
 
 void execute_cpuid(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_cpuid_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_cpuid_with_decoded(ctx, &inst);
 }
 

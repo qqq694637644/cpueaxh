@@ -142,6 +142,7 @@ DecodedInstruction decode_scas_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -167,6 +168,9 @@ inline void execute_scas_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
     uint64_t dest_addr = scas_segment_base(ctx) + dest_index;
     uint64_t accumulator = read_scas_accumulator(ctx, inst.operand_size);
     uint64_t memory_value = read_scas_value(ctx, dest_addr, inst.operand_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     uint64_t step = (uint64_t)(inst.operand_size / 8);
 
     update_scas_flags(ctx, inst.operand_size, accumulator, memory_value);
@@ -181,6 +185,9 @@ inline void execute_scas_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
 
 void execute_scas(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_scas_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_scas_with_decoded(ctx, &inst);
 }
 

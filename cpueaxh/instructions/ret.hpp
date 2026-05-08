@@ -27,33 +27,43 @@ void ret_far_adjust_stack(CPU_CONTEXT* ctx, uint16_t adjustment) {
 void validate_ret_far_selector(CPU_CONTEXT* ctx, uint16_t selector, SegmentDescriptor* desc_out) {
     if (is_null_selector(selector)) {
         raise_gp_ctx(ctx, 0);
+        return;
     }
 
     SegmentDescriptor desc = load_descriptor_from_table(ctx, selector);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     if (!is_code_segment(desc.type)) {
         raise_gp_ctx(ctx, selector & 0xFFFC);
+        return;
     }
 
     if (cpu_long_mode_active(ctx) && desc.long_mode && desc.db) {
         raise_gp_ctx(ctx, selector & 0xFFFC);
+        return;
     }
 
     uint8_t rpl = selector & 0x03;
     if (rpl != ctx->cpl) {
         raise_gp_ctx(ctx, selector & 0xFFFC);
+        return;
     }
 
     if (is_conforming_code_segment(desc.type)) {
         if (desc.dpl > ctx->cpl) {
             raise_gp_ctx(ctx, selector & 0xFFFC);
+            return;
         }
     }
     else if (desc.dpl != ctx->cpl) {
         raise_gp_ctx(ctx, selector & 0xFFFC);
+        return;
     }
 
     if (!desc.present) {
         raise_np_ctx(ctx, selector & 0xFFFC);
+        return;
     }
 
     *desc_out = desc;
@@ -95,6 +105,7 @@ DecodedInstruction decode_ret_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -112,6 +123,7 @@ DecodedInstruction decode_ret_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
     if (inst.opcode == 0xCA) {
         if (offset + 2 > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = (uint16_t)code[offset] | ((uint16_t)code[offset + 1] << 8);
         inst.imm_size = 2;
@@ -126,25 +138,46 @@ DecodedInstruction decode_ret_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
 void execute_ret(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_ret_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     uint64_t new_rip;
     uint16_t new_selector;
+    uint64_t stack_values[2] = {};
+    uint64_t stack_after_pops = 0;
     if (inst.operand_size == 64) {
-        new_rip = pop_value64(ctx);
-        new_selector = (uint16_t)pop_value64(ctx);
+        if (!peek_stack_values(ctx, 8, 2, stack_values, &stack_after_pops)) {
+            return;
+        }
+        new_rip = stack_values[0];
+        new_selector = (uint16_t)stack_values[1];
     }
     else if (inst.operand_size == 32) {
-        new_rip = pop_value32(ctx);
-        new_selector = (uint16_t)pop_value32(ctx);
+        if (!peek_stack_values(ctx, 4, 2, stack_values, &stack_after_pops)) {
+            return;
+        }
+        new_rip = stack_values[0];
+        new_selector = (uint16_t)stack_values[1];
     }
     else {
-        new_rip = pop_value16(ctx);
-        new_selector = pop_value16(ctx);
+        if (!peek_stack_values(ctx, 2, 2, stack_values, &stack_after_pops)) {
+            return;
+        }
+        new_rip = stack_values[0];
+        new_selector = (uint16_t)stack_values[1];
     }
 
     SegmentDescriptor new_desc = {};
     validate_ret_far_selector(ctx, new_selector, &new_desc);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
+    if (!cpu_validate_code_offset(ctx, new_rip, new_desc.long_mode ? 64 : inst.operand_size)) {
+        return;
+    }
 
+    cpu_set_stack_pointer_value(ctx, inst.address_size, stack_after_pops);
     ret_far_adjust_stack(ctx, (uint16_t)inst.immediate);
 
     ctx->cs.selector = (new_selector & 0xFFFC) | ctx->cpl;
@@ -199,6 +232,7 @@ DecodedInstruction decode_iret_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -218,46 +252,64 @@ DecodedInstruction decode_iret_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
 void execute_iret(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_iret_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     uint64_t new_rip = 0;
     uint16_t new_selector = 0;
     uint64_t new_rflags = 0;
     uint64_t new_rsp = 0;
     uint16_t new_ss = 0;
+    uint64_t stack_values[5] = {};
+    uint64_t stack_after_pops = 0;
     if (inst.operand_size == 64) {
-        new_rip = pop_value64(ctx);
-        new_selector = (uint16_t)pop_value64(ctx);
-        new_rflags = pop_value64(ctx);
-        new_rsp = pop_value64(ctx);
-        new_ss = (uint16_t)pop_value64(ctx);
+        if (!peek_stack_values(ctx, 8, 5, stack_values, &stack_after_pops)) {
+            return;
+        }
+        new_rip = stack_values[0];
+        new_selector = (uint16_t)stack_values[1];
+        new_rflags = stack_values[2];
+        new_rsp = stack_values[3];
+        new_ss = (uint16_t)stack_values[4];
     }
     else if (inst.operand_size == 32) {
-        new_rip = pop_value32(ctx);
-        new_selector = (uint16_t)pop_value32(ctx);
-        new_rflags = pop_value32(ctx);
+        if (!peek_stack_values(ctx, 4, 3, stack_values, &stack_after_pops)) {
+            return;
+        }
+        new_rip = stack_values[0];
+        new_selector = (uint16_t)stack_values[1];
+        new_rflags = stack_values[2];
     }
     else {
-        new_rip = pop_value16(ctx);
-        new_selector = pop_value16(ctx);
-        new_rflags = pop_value16(ctx);
+        if (!peek_stack_values(ctx, 2, 3, stack_values, &stack_after_pops)) {
+            return;
+        }
+        new_rip = stack_values[0];
+        new_selector = (uint16_t)stack_values[1];
+        new_rflags = stack_values[2];
     }
 
+    SegmentDescriptor new_desc = {};
+    validate_ret_far_selector(ctx, new_selector, &new_desc);
     if (cpu_has_exception(ctx)) {
         return;
     }
-
-    const uint8_t NewRpl = new_selector & 0x03;
-    if (NewRpl != ctx->cpl) {
-        raise_gp_ctx(ctx, new_selector & 0xFFFC);
+    const int target_operand_size = new_desc.long_mode ? 64 : inst.operand_size;
+    if (!cpu_validate_code_offset(ctx, new_rip, target_operand_size)) {
         return;
     }
 
-    ctx->cs.selector = new_selector;
+    ctx->cs.selector = (new_selector & 0xFFFC) | ctx->cpl;
+    ctx->cs.descriptor = new_desc;
     ctx->rflags = new_rflags;
-    if (inst.operand_size == 16) {
+    ctx->cached_mode_key_valid = 0;
+    if (target_operand_size == 16) {
+        cpu_set_stack_pointer_value(ctx, inst.address_size, stack_after_pops);
         ctx->rip = cpu_mask_code_offset(new_rip, 16);
     }
-    else if (inst.operand_size == 32) {
+    else if (target_operand_size == 32) {
+        cpu_set_stack_pointer_value(ctx, inst.address_size, stack_after_pops);
         ctx->rip = cpu_mask_code_offset(new_rip, 32);
     }
     else {

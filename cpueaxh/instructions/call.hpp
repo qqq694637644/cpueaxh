@@ -5,39 +5,75 @@
 // E8 cd - Near relative CALL (64-bit mode: rel32 sign-extended to 64 bits)
 void call_near_rel64(CPU_CONTEXT* ctx, int32_t rel32, uint64_t return_rip) {
     uint64_t target = return_rip + (int64_t)rel32;
+    if (!cpu_validate_code_offset(ctx, target, 64)) {
+        return;
+    }
     push_value64(ctx, return_rip);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     ctx->rip = target;
 }
 
 // E8 cd - Near relative CALL (32-bit mode: rel32)
 void call_near_rel32(CPU_CONTEXT* ctx, int32_t rel32, uint64_t return_rip) {
     uint32_t target = (uint32_t)((uint32_t)return_rip + (uint32_t)rel32);
+    if (!cpu_validate_code_offset(ctx, target, 32)) {
+        return;
+    }
     push_value32(ctx, (uint32_t)return_rip);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     ctx->rip = target;
 }
 
 // E8 cw - Near relative CALL (16-bit mode: rel16)
 void call_near_rel16(CPU_CONTEXT* ctx, int16_t rel16, uint64_t return_rip) {
     uint16_t target = (uint16_t)((uint16_t)return_rip + (uint16_t)rel16);
+    if (!cpu_validate_code_offset(ctx, target, 16)) {
+        return;
+    }
     push_value16(ctx, (uint16_t)return_rip);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     ctx->rip = target;
 }
 
 // FF /2 - Near absolute indirect CALL (64-bit operand)
 void call_near_abs64(CPU_CONTEXT* ctx, uint64_t target, uint64_t return_rip) {
+    if (!cpu_validate_code_offset(ctx, target, 64)) {
+        return;
+    }
     push_value64(ctx, return_rip);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     ctx->rip = target;
 }
 
 // FF /2 - Near absolute indirect CALL (32-bit operand)
 void call_near_abs32(CPU_CONTEXT* ctx, uint32_t target, uint64_t return_rip) {
+    if (!cpu_validate_code_offset(ctx, target, 32)) {
+        return;
+    }
     push_value32(ctx, (uint32_t)return_rip);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     ctx->rip = target;
 }
 
 // FF /2 - Near absolute indirect CALL (16-bit operand)
 void call_near_abs16(CPU_CONTEXT* ctx, uint16_t target, uint64_t return_rip) {
+    if (!cpu_validate_code_offset(ctx, target, 16)) {
+        return;
+    }
     push_value16(ctx, (uint16_t)return_rip);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     ctx->rip = target;
 }
 
@@ -62,25 +98,34 @@ void call_far_mem(CPU_CONTEXT* ctx, uint64_t mem_addr, int operand_size, uint64_
         new_offset = read_memory_word(ctx, mem_addr);
         new_selector = read_memory_word(ctx, mem_addr + 2);
     }
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     // Validate new selector
     if (is_null_selector(new_selector)) {
         raise_gp_ctx(ctx, 0);
+        return;
     }
 
     // Load the descriptor for the new code segment
     SegmentDescriptor new_desc = load_descriptor_from_table(ctx, new_selector);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     // In 64-bit mode (IA32_EFER.LMA=1): must be a code segment or 64-bit call gate
     // We handle code segment case here; call gates are not implemented
     if (!is_code_segment(new_desc.type)) {
         // Could be a call gate - but we only handle code segments
         raise_gp_ctx(ctx, new_selector & 0xFFFC);
+        return;
     }
 
     // L=1 and D=1 is invalid in long mode
     if (cpu_long_mode_active(ctx) && new_desc.long_mode && new_desc.db) {
         raise_gp_ctx(ctx, new_selector & 0xFFFC);
+        return;
     }
 
     uint8_t rpl = new_selector & 0x03;
@@ -89,20 +134,24 @@ void call_far_mem(CPU_CONTEXT* ctx, uint64_t mem_addr, int operand_size, uint64_
         // Conforming: DPL must not be greater than CPL
         if (new_desc.dpl > ctx->cpl) {
             raise_gp_ctx(ctx, new_selector & 0xFFFC);
+            return;
         }
     }
     else {
         // Non-conforming: DPL must equal CPL, RPL must not be greater than CPL
         if (new_desc.dpl != ctx->cpl) {
             raise_gp_ctx(ctx, new_selector & 0xFFFC);
+            return;
         }
         if (rpl > ctx->cpl) {
             raise_gp_ctx(ctx, new_selector & 0xFFFC);
+            return;
         }
     }
 
     if (!new_desc.present) {
         raise_np_ctx(ctx, new_selector & 0xFFFC);
+        return;
     }
 
     // Truncate offset based on target mode
@@ -119,20 +168,23 @@ void call_far_mem(CPU_CONTEXT* ctx, uint64_t mem_addr, int operand_size, uint64_
             new_offset &= 0xFFFFFFFF;
         }
     }
+    if (!cpu_validate_code_offset(ctx, new_offset, new_desc.long_mode ? 64 : operand_size)) {
+        return;
+    }
 
     // Push old CS and RIP (return address)
     // In 64-bit mode, CS is pushed as 64-bit (padded with 48 high-order bits of 0)
     if (cpu_is_64bit_code(ctx)) {
-        push_value64(ctx, (uint64_t)ctx->cs.selector);
-        push_value64(ctx, return_rip);
+        push_two_stack_values(ctx, (uint64_t)ctx->cs.selector, return_rip, 8);
     }
     else if (operand_size == 32) {
-        push_value32(ctx, (uint32_t)ctx->cs.selector);
-        push_value32(ctx, (uint32_t)return_rip);
+        push_two_stack_values(ctx, (uint32_t)ctx->cs.selector, (uint32_t)return_rip, 4);
     }
     else {
-        push_value16(ctx, ctx->cs.selector);
-        push_value16(ctx, (uint16_t)return_rip);
+        push_two_stack_values(ctx, ctx->cs.selector, (uint16_t)return_rip, 2);
+    }
+    if (cpu_has_exception(ctx)) {
+        return;
     }
 
     // Load new CS
@@ -151,12 +203,17 @@ void call_far_ptr(CPU_CONTEXT* ctx, uint16_t new_selector, uint32_t new_offset, 
     // Validate new selector
     if (is_null_selector(new_selector)) {
         raise_gp_ctx(ctx, 0);
+        return;
     }
 
     SegmentDescriptor new_desc = load_descriptor_from_table(ctx, new_selector);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     if (!is_code_segment(new_desc.type)) {
         raise_gp_ctx(ctx, new_selector & 0xFFFC);
+        return;
     }
 
     uint8_t rpl = new_selector & 0x03;
@@ -164,34 +221,42 @@ void call_far_ptr(CPU_CONTEXT* ctx, uint16_t new_selector, uint32_t new_offset, 
     if (is_conforming_code_segment(new_desc.type)) {
         if (new_desc.dpl > ctx->cpl) {
             raise_gp_ctx(ctx, new_selector & 0xFFFC);
+            return;
         }
     }
     else {
         if (new_desc.dpl != ctx->cpl) {
             raise_gp_ctx(ctx, new_selector & 0xFFFC);
+            return;
         }
         if (rpl > ctx->cpl) {
             raise_gp_ctx(ctx, new_selector & 0xFFFC);
+            return;
         }
     }
 
     if (!new_desc.present) {
         raise_np_ctx(ctx, new_selector & 0xFFFC);
+        return;
     }
 
     uint32_t target_eip = new_offset;
     if (operand_size == 16) {
         target_eip &= 0xFFFF;
     }
+    if (!cpu_validate_code_offset(ctx, target_eip, operand_size)) {
+        return;
+    }
 
     // Push old CS and EIP
     if (operand_size == 32) {
-        push_value32(ctx, (uint32_t)ctx->cs.selector);
-        push_value32(ctx, (uint32_t)return_rip);
+        push_two_stack_values(ctx, (uint32_t)ctx->cs.selector, (uint32_t)return_rip, 4);
     }
     else {
-        push_value16(ctx, ctx->cs.selector);
-        push_value16(ctx, (uint16_t)return_rip);
+        push_two_stack_values(ctx, ctx->cs.selector, (uint16_t)return_rip, 2);
+    }
+    if (cpu_has_exception(ctx)) {
+        return;
     }
 
     // Load new CS
@@ -209,6 +274,7 @@ void call_far_ptr(CPU_CONTEXT* ctx, uint16_t new_selector, uint32_t new_offset, 
 void decode_modrm_call(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
     inst->has_modrm = true;
     inst->modrm = code[(*offset)++];
@@ -220,6 +286,7 @@ void decode_modrm_call(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -242,6 +309,7 @@ void decode_modrm_call(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->displacement = 0;
         for (int i = 0; i < inst->disp_size; i++) {
@@ -285,6 +353,7 @@ DecodedInstruction decode_call_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
         else if (prefix == 0xF0) {
             // LOCK prefix is #UD for CALL
             raise_ud_ctx(ctx);
+            offset++;
         }
         else if (prefix == 0x26 || prefix == 0x2E || prefix == 0x36 || prefix == 0x3E ||
             prefix == 0x64 || prefix == 0x65 || prefix == 0xF2 || prefix == 0xF3) {
@@ -297,6 +366,7 @@ DecodedInstruction decode_call_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -357,6 +427,7 @@ DecodedInstruction decode_call_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
         }
         if (offset + inst.imm_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.immediate = 0;
         for (int i = 0; i < inst.imm_size; i++) {
@@ -415,6 +486,7 @@ DecodedInstruction decode_call_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
             // ptr16:32 - 6 bytes: 4-byte offset + 2-byte selector
             if (offset + 6 > code_size) {
                 raise_gp_ctx(ctx, 0);
+return inst;
             }
             inst.immediate = 0;
             for (int i = 0; i < 4; i++) {
@@ -430,6 +502,7 @@ DecodedInstruction decode_call_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
             // ptr16:16 - 4 bytes: 2-byte offset + 2-byte selector
             if (offset + 4 > code_size) {
                 raise_gp_ctx(ctx, 0);
+return inst;
             }
             inst.immediate = 0;
             for (int i = 0; i < 2; i++) {
@@ -497,6 +570,9 @@ inline void execute_call_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
                 }
                 else {
                     target = read_memory_qword(ctx, inst.mem_address);
+                    if (cpu_has_exception(ctx)) {
+                        return;
+                    }
                 }
                 call_near_abs64(ctx, target, return_rip);
             }
@@ -506,6 +582,9 @@ inline void execute_call_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
                 }
                 else {
                     target = read_memory_dword(ctx, inst.mem_address);
+                    if (cpu_has_exception(ctx)) {
+                        return;
+                    }
                 }
                 call_near_abs32(ctx, (uint32_t)target, return_rip);
             }
@@ -516,6 +595,9 @@ inline void execute_call_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
                 }
                 else {
                     target = read_memory_word(ctx, inst.mem_address);
+                    if (cpu_has_exception(ctx)) {
+                        return;
+                    }
                 }
                 call_near_abs16(ctx, (uint16_t)target, return_rip);
             }
@@ -540,6 +622,9 @@ inline void execute_call_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
 
 void execute_call(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_call_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_call_with_decoded(ctx, &inst);
 }
 

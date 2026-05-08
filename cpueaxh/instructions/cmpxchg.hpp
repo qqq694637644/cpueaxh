@@ -142,6 +142,9 @@ void cmpxchg_rm_reg(CPU_CONTEXT* ctx, uint8_t modrm, uint64_t mem_addr, int oper
     }
 
     uint64_t dst_value = read_cmpxchg_rm_operand(ctx, modrm, mem_addr, operand_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     cmpxchg_update_flags(ctx, operand_size, accumulator_value, dst_value);
 
@@ -156,6 +159,7 @@ void cmpxchg_rm_reg(CPU_CONTEXT* ctx, uint8_t modrm, uint64_t mem_addr, int oper
 void decode_modrm_cmpxchg(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -166,6 +170,7 @@ void decode_modrm_cmpxchg(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* c
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -187,6 +192,7 @@ void decode_modrm_cmpxchg(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* c
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->displacement = 0;
         for (int index = 0; index < inst->disp_size; index++) {
@@ -255,6 +261,7 @@ DecodedInstruction decode_cmpxchg_instruction(CPU_CONTEXT* ctx, uint8_t* code, s
 
     if (offset + 2 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {
@@ -303,11 +310,21 @@ inline void execute_cmpxchg_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruct
 
 void execute_cmpxchg(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_cmpxchg_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_cmpxchg_with_decoded(ctx, &inst);
 }
 
 inline void execute_cmpxchg_fast(CPU_CONTEXT* ctx, const DecodedInst* dec) {
     decoded_inst_apply_prefix(ctx, dec);
     ctx->last_inst_size = dec->length;
-    execute_cmpxchg_with_decoded(ctx, &dec->cached);
+    if (!decoded_inst_needs_mem_recompute(&dec->cached)) {
+        execute_cmpxchg_with_decoded(ctx, &dec->cached);
+        return;
+    }
+    DecodedInstruction live = dec->cached;
+    live.mem_address = get_effective_address(ctx, live.modrm, &live.sib, &live.displacement,
+                                             live.address_size, dec->length);
+    execute_cmpxchg_with_decoded(ctx, &live);
 }

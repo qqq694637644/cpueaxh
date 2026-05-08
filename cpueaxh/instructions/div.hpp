@@ -48,8 +48,12 @@ void div_rm8(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_
     (void)disp;
 
     uint8_t divisor = (uint8_t)read_div_rm_operand(ctx, modrm, mem_addr, 8);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     if (divisor == 0) {
         raise_de_ctx(ctx);
+        return;
     }
 
     uint16_t dividend = get_reg16(ctx, REG_RAX);
@@ -58,6 +62,7 @@ void div_rm8(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_
 
     if (div_quotient_overflows(quotient, 8)) {
         raise_de_ctx(ctx);
+        return;
     }
 
     set_reg16(ctx, REG_RAX, (uint16_t)(((uint16_t)remainder << 8) | (uint8_t)quotient));
@@ -69,8 +74,12 @@ void div_rm16(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
     (void)disp;
 
     uint16_t divisor = (uint16_t)read_div_rm_operand(ctx, modrm, mem_addr, 16);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     if (divisor == 0) {
         raise_de_ctx(ctx);
+        return;
     }
 
     uint32_t dividend = ((uint32_t)get_reg16(ctx, REG_RDX) << 16) | (uint32_t)get_reg16(ctx, REG_RAX);
@@ -79,6 +88,7 @@ void div_rm16(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
 
     if (div_quotient_overflows(quotient, 16)) {
         raise_de_ctx(ctx);
+        return;
     }
 
     set_reg16(ctx, REG_RAX, (uint16_t)quotient);
@@ -91,8 +101,12 @@ void div_rm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
     (void)disp;
 
     uint32_t divisor = (uint32_t)read_div_rm_operand(ctx, modrm, mem_addr, 32);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     if (divisor == 0) {
         raise_de_ctx(ctx);
+        return;
     }
 
     uint64_t dividend = ((uint64_t)get_reg32(ctx, REG_RDX) << 32) | (uint64_t)get_reg32(ctx, REG_RAX);
@@ -101,6 +115,7 @@ void div_rm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
 
     if (div_quotient_overflows(quotient, 32)) {
         raise_de_ctx(ctx);
+        return;
     }
 
     set_reg32(ctx, REG_RAX, (uint32_t)quotient);
@@ -113,14 +128,19 @@ void div_rm64(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
     (void)disp;
 
     uint64_t divisor = read_div_rm_operand(ctx, modrm, mem_addr, 64);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     if (divisor == 0) {
         raise_de_ctx(ctx);
+        return;
     }
 
     uint64_t dividend_low = get_reg64(ctx, REG_RAX);
     uint64_t dividend_high = get_reg64(ctx, REG_RDX);
     if (dividend_high >= divisor) {
         raise_de_ctx(ctx);
+        return;
     }
 
     uint64_t remainder = 0;
@@ -135,6 +155,7 @@ void div_rm64(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
 void decode_modrm_div(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -146,6 +167,7 @@ void decode_modrm_div(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -167,6 +189,7 @@ void decode_modrm_div(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -240,6 +263,7 @@ DecodedInstruction decode_div_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -309,6 +333,9 @@ inline void execute_div_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
 
 void execute_div(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_div_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_div_with_decoded(ctx, &inst);
 }
 

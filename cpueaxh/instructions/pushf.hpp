@@ -2,6 +2,12 @@
 
 static const uint64_t PUSHF_RF_BIT = (1ULL << 16);
 static const uint64_t PUSHF_VM_BIT = (1ULL << 17);
+static const uint64_t PUSHF_IF_BIT = (1ULL << 9);
+static const uint64_t PUSHF_IOPL_MASK = (3ULL << 12);
+static const uint64_t PUSHF_VIF_BIT = (1ULL << 19);
+static const uint64_t PUSHF_VIP_BIT = (1ULL << 20);
+static const uint64_t PUSHF_LOW16_WRITABLE_MASK = 0x7FD5ULL;
+static const uint64_t PUSHF_EXTENDED_WRITABLE_MASK = 0x247FD5ULL;
 
 int decode_pushf_operand_size(CPU_CONTEXT* ctx) {
     if (cpu_is_64bit_code(ctx)) {
@@ -46,19 +52,34 @@ uint64_t popf_value(CPU_CONTEXT* ctx, int operand_size) {
 }
 
 void write_popf_flags(CPU_CONTEXT* ctx, int operand_size, uint64_t value) {
+    uint64_t writable_mask = (operand_size == 16) ? PUSHF_LOW16_WRITABLE_MASK : PUSHF_EXTENDED_WRITABLE_MASK;
+    uint64_t protected_mode = ctx->control_regs[0] & 1ULL;
+    uint64_t iopl = (ctx->rflags >> 12) & 0x3ULL;
+
+    if (protected_mode && ctx->cpl != 0) {
+        writable_mask &= ~PUSHF_IOPL_MASK;
+        if ((uint64_t)ctx->cpl > iopl) {
+            writable_mask &= ~PUSHF_IF_BIT;
+        }
+    }
+
+    writable_mask &= ~(PUSHF_RF_BIT | PUSHF_VM_BIT | PUSHF_VIF_BIT | PUSHF_VIP_BIT);
+
     switch (operand_size) {
     case 16:
-        ctx->rflags = (ctx->rflags & ~0xFFFFULL) | (value & 0xFFFFULL);
+        ctx->rflags = (ctx->rflags & ~writable_mask) | (value & writable_mask);
         break;
     case 32:
-        ctx->rflags = (ctx->rflags & ~0xFFFFFFFFULL) | (value & 0xFFFFFFFFULL);
+        ctx->rflags = (ctx->rflags & ~writable_mask) | (value & writable_mask);
         break;
     case 64:
-        ctx->rflags = value;
+        ctx->rflags = (ctx->rflags & ~writable_mask) | (value & writable_mask);
         break;
     default:
         raise_ud_ctx(ctx);
     }
+
+    ctx->rflags &= ~PUSHF_RF_BIT;
 }
 
 DecodedInstruction decode_pushf_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
@@ -97,6 +118,7 @@ DecodedInstruction decode_pushf_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -124,11 +146,18 @@ inline void execute_pushf_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructio
         return;
     }
 
-    write_popf_flags(ctx, inst.operand_size, popf_value(ctx, inst.operand_size));
+    uint64_t value = popf_value(ctx, inst.operand_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
+    write_popf_flags(ctx, inst.operand_size, value);
 }
 
 void execute_pushf(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_pushf_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_pushf_with_decoded(ctx, &inst);
 }
 

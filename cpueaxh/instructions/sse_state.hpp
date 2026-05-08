@@ -3,6 +3,7 @@
 static void decode_sse_state_modrm(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -14,6 +15,7 @@ static void decode_sse_state_modrm(CPU_CONTEXT* ctx, DecodedInstruction* inst, u
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -35,6 +37,7 @@ static void decode_sse_state_modrm(CPU_CONTEXT* ctx, DecodedInstruction* inst, u
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -102,6 +105,7 @@ DecodedInstruction decode_sse_state_instruction(CPU_CONTEXT* ctx, uint8_t* code,
 
     if (offset + 2 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {
@@ -161,12 +165,89 @@ DecodedInstruction decode_sse_state_instruction(CPU_CONTEXT* ctx, uint8_t* code,
 static void sse_state_validate_mxcsr(CPU_CONTEXT* ctx, uint32_t value) {
     if ((value & 0xFFFF0000U) != 0) {
         raise_gp_ctx(ctx, 0);
+        return;
     }
 }
 
 static void sse_state_validate_fx_area(CPU_CONTEXT* ctx, uint64_t address) {
     if ((address & 0x0FULL) != 0) {
         raise_gp_ctx(ctx, 0);
+        return;
+    }
+}
+
+static constexpr size_t kSseStateFxImageSize = 0x1A0;
+
+static void sse_state_pack_fxsave(CPU_CONTEXT* ctx, uint8_t bytes[kSseStateFxImageSize]) {
+    cpu_store_u16_le(bytes + 0x00, 0x037FU);
+    cpu_store_u16_le(bytes + 0x02, 0x0000U);
+    bytes[0x04] = 0x00U;
+    bytes[0x05] = 0x00U;
+    cpu_store_u16_le(bytes + 0x06, 0x0000U);
+    cpu_store_u64_le(bytes + 0x08, 0);
+    cpu_store_u64_le(bytes + 0x10, 0);
+    cpu_store_u32_le(bytes + 0x18, ctx->mxcsr & 0x0000FFFFU);
+    cpu_store_u32_le(bytes + 0x1C, 0x0000FFFFU);
+
+    for (int index = 0; index < 8; ++index) {
+        const size_t register_offset = 0x20 + static_cast<size_t>(index) * 0x10;
+        cpu_store_u64_le(bytes + register_offset, ctx->mm[index]);
+        cpu_store_u64_le(bytes + register_offset + 0x08, 0);
+    }
+
+    for (int index = 0; index < 16; ++index) {
+        const XMMRegister value = get_xmm128(ctx, index);
+        const size_t register_offset = 0xA0 + static_cast<size_t>(index) * 0x10;
+        cpu_store_u64_le(bytes + register_offset, value.low);
+        cpu_store_u64_le(bytes + register_offset + 0x08, value.high);
+    }
+}
+
+static void sse_state_notify_fxsave_write_hooks(CPU_CONTEXT* ctx, uint64_t address, const uint8_t bytes[kSseStateFxImageSize]) {
+    if (!cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_WRITE)) {
+        return;
+    }
+
+    cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + 0x00, 2, cpu_load_u16_le(bytes + 0x00));
+    cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + 0x02, 2, cpu_load_u16_le(bytes + 0x02));
+    cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + 0x04, 1, bytes[0x04]);
+    cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + 0x05, 1, bytes[0x05]);
+    cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + 0x06, 2, cpu_load_u16_le(bytes + 0x06));
+    cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + 0x08, 8, cpu_load_u64_le(bytes + 0x08));
+    cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + 0x10, 8, cpu_load_u64_le(bytes + 0x10));
+    cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + 0x18, 4, cpu_load_u32_le(bytes + 0x18));
+    cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + 0x1C, 4, cpu_load_u32_le(bytes + 0x1C));
+
+    for (int index = 0; index < 8; ++index) {
+        const uint64_t register_address = address + 0x20 + static_cast<uint64_t>(index) * 0x10;
+        const size_t register_offset = 0x20 + static_cast<size_t>(index) * 0x10;
+        cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, register_address, 8, cpu_load_u64_le(bytes + register_offset));
+        cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, register_address + 0x08, 8, cpu_load_u64_le(bytes + register_offset + 0x08));
+    }
+
+    for (int index = 0; index < 16; ++index) {
+        const uint64_t register_address = address + 0xA0 + static_cast<uint64_t>(index) * 0x10;
+        const size_t register_offset = 0xA0 + static_cast<size_t>(index) * 0x10;
+        cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, register_address, 8, cpu_load_u64_le(bytes + register_offset));
+        cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, register_address + 0x08, 8, cpu_load_u64_le(bytes + register_offset + 0x08));
+    }
+}
+
+static void sse_state_notify_fxrstor_read_hooks(CPU_CONTEXT* ctx, uint64_t address, const uint8_t bytes[kSseStateFxImageSize]) {
+    if (!cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_READ)) {
+        return;
+    }
+
+    for (int index = 0; index < 8; ++index) {
+        const uint64_t register_address = address + 0x20 + static_cast<uint64_t>(index) * 0x10;
+        const size_t register_offset = 0x20 + static_cast<size_t>(index) * 0x10;
+        cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_READ, register_address, 8, cpu_load_u64_le(bytes + register_offset));
+    }
+    for (int index = 0; index < 16; ++index) {
+        const uint64_t register_address = address + 0xA0 + static_cast<uint64_t>(index) * 0x10;
+        const size_t register_offset = 0xA0 + static_cast<size_t>(index) * 0x10;
+        cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_READ, register_address, 8, cpu_load_u64_le(bytes + register_offset));
+        cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_READ, register_address + 0x08, 8, cpu_load_u64_le(bytes + register_offset + 0x08));
     }
 }
 
@@ -176,25 +257,14 @@ static void sse_state_write_fxsave(CPU_CONTEXT* ctx, uint64_t address) {
         return;
     }
 
-    write_memory_word(ctx, address + 0x00, 0x037FU);
-    write_memory_word(ctx, address + 0x02, 0x0000U);
-    write_memory_byte(ctx, address + 0x04, 0x00U);
-    write_memory_byte(ctx, address + 0x05, 0x00U);
-    write_memory_word(ctx, address + 0x06, 0x0000U);
-    write_memory_qword(ctx, address + 0x08, 0);
-    write_memory_qword(ctx, address + 0x10, 0);
-    write_memory_dword(ctx, address + 0x18, ctx->mxcsr & 0x0000FFFFU);
-    write_memory_dword(ctx, address + 0x1C, 0x0000FFFFU);
-
-    for (int Index = 0; Index < 8; ++Index) {
-        const uint64_t RegisterAddress = address + 0x20 + static_cast<uint64_t>(Index) * 0x10;
-        write_memory_qword(ctx, RegisterAddress, ctx->mm[Index]);
-        write_memory_qword(ctx, RegisterAddress + 0x08, 0);
+    uint8_t bytes[kSseStateFxImageSize] = {};
+    uint8_t* byte_ptrs[kSseStateFxImageSize] = {};
+    sse_state_pack_fxsave(ctx, bytes);
+    if (!cpu_resolve_linear_write_byte_ptrs(ctx, address, sizeof(bytes), byte_ptrs, cpu_load_u16_le(bytes))) {
+        return;
     }
-
-    for (int Index = 0; Index < 16; ++Index) {
-        write_xmm_memory(ctx, address + 0xA0 + static_cast<uint64_t>(Index) * 0x10, get_xmm128(ctx, Index));
-    }
+    sse_state_notify_fxsave_write_hooks(ctx, address, bytes);
+    cpu_commit_linear_write_bytes(bytes, sizeof(bytes), byte_ptrs);
 }
 
 static void sse_state_read_fxrstor(CPU_CONTEXT* ctx, uint64_t address) {
@@ -203,33 +273,40 @@ static void sse_state_read_fxrstor(CPU_CONTEXT* ctx, uint64_t address) {
         return;
     }
 
-    const uint32_t Mxcsr = read_memory_dword(ctx, address + 0x18);
-    if (cpu_has_exception(ctx)) {
+    uint8_t bytes[kSseStateFxImageSize] = {};
+    if (!cpu_read_linear_bytes_large(ctx, address, bytes, sizeof(bytes))) {
         return;
     }
+    if (cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_READ)) {
+        cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_READ, address + 0x18, 4, cpu_load_u32_le(bytes + 0x18));
+    }
+
+    const uint32_t Mxcsr = cpu_load_u32_le(bytes + 0x18);
     sse_state_validate_mxcsr(ctx, Mxcsr);
     if (cpu_has_exception(ctx)) {
         return;
     }
 
+    sse_state_notify_fxrstor_read_hooks(ctx, address, bytes);
     ctx->mxcsr = Mxcsr & 0x0000FFFFU;
-    for (int Index = 0; Index < 8; ++Index) {
-        ctx->mm[Index] = read_memory_qword(ctx, address + 0x20 + static_cast<uint64_t>(Index) * 0x10);
-        if (cpu_has_exception(ctx)) {
-            return;
-        }
+    for (int index = 0; index < 8; ++index) {
+        ctx->mm[index] = cpu_load_u64_le(bytes + 0x20 + static_cast<size_t>(index) * 0x10);
     }
 
-    for (int Index = 0; Index < 16; ++Index) {
-        set_xmm128(ctx, Index, read_xmm_memory(ctx, address + 0xA0 + static_cast<uint64_t>(Index) * 0x10));
-        if (cpu_has_exception(ctx)) {
-            return;
-        }
+    for (int index = 0; index < 16; ++index) {
+        XMMRegister value = {};
+        const size_t register_offset = 0xA0 + static_cast<size_t>(index) * 0x10;
+        value.low = cpu_load_u64_le(bytes + register_offset);
+        value.high = cpu_load_u64_le(bytes + register_offset + 0x08);
+        set_xmm128(ctx, index, value);
     }
 }
 
 void execute_sse_state(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_sse_state_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     uint8_t reg = (inst.modrm >> 3) & 0x07;
 
     if (reg == 0) {

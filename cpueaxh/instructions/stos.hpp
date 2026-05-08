@@ -116,6 +116,7 @@ DecodedInstruction decode_stos_instruction(CPU_CONTEXT* ctx, uint8_t* code, size
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -143,6 +144,9 @@ inline void execute_stos_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
     uint64_t step = (uint64_t)(inst.operand_size / 8);
 
     write_stos_value(ctx, dest_addr, inst.operand_size, value);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     if (ctx->rflags & RFLAGS_DF) {
         set_stos_index(ctx, inst.address_size, dest_index - step);
@@ -154,6 +158,9 @@ inline void execute_stos_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction
 
 void execute_stos(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_stos_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_stos_with_decoded(ctx, &inst);
 }
 

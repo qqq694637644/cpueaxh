@@ -2,8 +2,50 @@
 
 // --- POP execution helpers ---
 
+bool pop_peek_stack_value(CPU_CONTEXT* ctx, int operand_size, uint64_t* value, uint64_t* final_sp) {
+    const size_t value_size = (operand_size == 16) ? 2 : (operand_size == 32 ? 4 : 8);
+    uint64_t stack_value = 0;
+    if (!peek_stack_values(ctx, value_size, 1, &stack_value, final_sp)) {
+        return false;
+    }
+    *value = stack_value;
+    return true;
+}
+
+void pop_commit_stack_pointer(CPU_CONTEXT* ctx, uint64_t final_sp) {
+    cpu_set_stack_pointer_value(ctx, get_stack_addr_size(ctx), final_sp);
+}
+
+bool pop_write_memory_value(CPU_CONTEXT* ctx, uint64_t mem_addr, int operand_size, uint64_t value) {
+    const size_t value_size = (operand_size == 16) ? 2 : (operand_size == 32 ? 4 : 8);
+    uint8_t bytes[8] = {};
+    uint8_t* byte_ptrs[8] = {};
+    cpu_store_stack_value_le(bytes, value_size, value);
+    if (!cpu_resolve_stack_slot_write(ctx, mem_addr, value_size, value, byte_ptrs)) {
+        return false;
+    }
+    cpu_commit_stack_slot_write(mem_addr, bytes, value_size, value, byte_ptrs, ctx);
+    return true;
+}
+
+bool pop_compute_memory_destination_after_stack_advance(
+    CPU_CONTEXT* ctx,
+    uint8_t modrm,
+    uint8_t* sib,
+    int32_t* disp,
+    int address_size,
+    uint64_t final_sp,
+    uint64_t* mem_addr) {
+    const int stack_addr_size = get_stack_addr_size(ctx);
+    const uint64_t saved_rsp = ctx->regs[REG_RSP];
+    cpu_set_stack_pointer_value(ctx, stack_addr_size, final_sp);
+    *mem_addr = get_effective_address(ctx, modrm, sib, disp, address_size);
+    ctx->regs[REG_RSP] = saved_rsp;
+    return !cpu_has_exception(ctx);
+}
+
 // 8F /0 - POP r/m16
-void pop_rm16(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_t mem_addr) {
+void pop_rm16(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_t mem_addr, int address_size) {
     uint8_t mod = (modrm >> 6) & 0x03;
     uint8_t rm = modrm & 0x07;
 
@@ -11,22 +53,30 @@ void pop_rm16(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
         rm |= 0x08;
     }
 
-    // Read value from stack first, then increment RSP
-    // Note: if destination uses ESP/RSP for address calculation, the effective address
-    // was computed before the pop (already done during decode), but the POP ESP case
-    // means RSP is incremented before the write.
-    uint16_t value = pop_value16(ctx);
+    uint64_t raw_value = 0;
+    uint64_t final_sp = 0;
+    if (!pop_peek_stack_value(ctx, 16, &raw_value, &final_sp)) {
+        return;
+    }
+    uint16_t value = (uint16_t)raw_value;
 
     if (mod == 3) {
+        pop_commit_stack_pointer(ctx, final_sp);
         set_reg16(ctx, rm, value);
     }
     else {
-        write_memory_word(ctx, mem_addr, value);
+        if (!pop_compute_memory_destination_after_stack_advance(ctx, modrm, &sib, &disp, address_size, final_sp, &mem_addr)) {
+            return;
+        }
+        if (!pop_write_memory_value(ctx, mem_addr, 16, value)) {
+            return;
+        }
+        pop_commit_stack_pointer(ctx, final_sp);
     }
 }
 
 // 8F /0 - POP r/m32 (not encodable in 64-bit mode)
-void pop_rm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_t mem_addr) {
+void pop_rm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_t mem_addr, int address_size) {
     uint8_t mod = (modrm >> 6) & 0x03;
     uint8_t rm = modrm & 0x07;
 
@@ -34,18 +84,30 @@ void pop_rm32(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
         rm |= 0x08;
     }
 
-    uint32_t value = pop_value32(ctx);
+    uint64_t raw_value = 0;
+    uint64_t final_sp = 0;
+    if (!pop_peek_stack_value(ctx, 32, &raw_value, &final_sp)) {
+        return;
+    }
+    uint32_t value = (uint32_t)raw_value;
 
     if (mod == 3) {
+        pop_commit_stack_pointer(ctx, final_sp);
         set_reg32(ctx, rm, value);
     }
     else {
-        write_memory_dword(ctx, mem_addr, value);
+        if (!pop_compute_memory_destination_after_stack_advance(ctx, modrm, &sib, &disp, address_size, final_sp, &mem_addr)) {
+            return;
+        }
+        if (!pop_write_memory_value(ctx, mem_addr, 32, value)) {
+            return;
+        }
+        pop_commit_stack_pointer(ctx, final_sp);
     }
 }
 
 // 8F /0 - POP r/m64
-void pop_rm64(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_t mem_addr) {
+void pop_rm64(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_t mem_addr, int address_size) {
     uint8_t mod = (modrm >> 6) & 0x03;
     uint8_t rm = modrm & 0x07;
 
@@ -53,52 +115,99 @@ void pop_rm64(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64
         rm |= 0x08;
     }
 
-    uint64_t value = pop_value64(ctx);
+    uint64_t value = 0;
+    uint64_t final_sp = 0;
+    if (!pop_peek_stack_value(ctx, 64, &value, &final_sp)) {
+        return;
+    }
 
     if (mod == 3) {
+        pop_commit_stack_pointer(ctx, final_sp);
         set_reg64(ctx, rm, value);
     }
     else {
-        write_memory_qword(ctx, mem_addr, value);
+        if (!pop_compute_memory_destination_after_stack_advance(ctx, modrm, &sib, &disp, address_size, final_sp, &mem_addr)) {
+            return;
+        }
+        if (!pop_write_memory_value(ctx, mem_addr, 64, value)) {
+            return;
+        }
+        pop_commit_stack_pointer(ctx, final_sp);
     }
 }
 
 // 58+rd - POP r16
 void pop_r16(CPU_CONTEXT* ctx, int reg) {
-    uint16_t value = pop_value16(ctx);
-    set_reg16(ctx, reg, value);
+    uint64_t raw_value = 0;
+    uint64_t final_sp = 0;
+    if (!pop_peek_stack_value(ctx, 16, &raw_value, &final_sp)) {
+        return;
+    }
+    pop_commit_stack_pointer(ctx, final_sp);
+    set_reg16(ctx, reg, (uint16_t)raw_value);
 }
 
 // 58+rd - POP r32 (not encodable in 64-bit mode)
 void pop_r32(CPU_CONTEXT* ctx, int reg) {
-    uint32_t value = pop_value32(ctx);
-    set_reg32(ctx, reg, value);
+    uint64_t raw_value = 0;
+    uint64_t final_sp = 0;
+    if (!pop_peek_stack_value(ctx, 32, &raw_value, &final_sp)) {
+        return;
+    }
+    pop_commit_stack_pointer(ctx, final_sp);
+    set_reg32(ctx, reg, (uint32_t)raw_value);
 }
 
 // 58+rd - POP r64
 void pop_r64(CPU_CONTEXT* ctx, int reg) {
-    uint64_t value = pop_value64(ctx);
+    uint64_t value = 0;
+    uint64_t final_sp = 0;
+    if (!pop_peek_stack_value(ctx, 64, &value, &final_sp)) {
+        return;
+    }
+    pop_commit_stack_pointer(ctx, final_sp);
     set_reg64(ctx, reg, value);
 }
 
 // POP into segment register (16-bit selector popped, then loaded)
 void pop_sreg16(CPU_CONTEXT* ctx, int seg_index) {
-    uint16_t selector = pop_value16(ctx);
-    load_segment_register(ctx, seg_index, selector);
+    uint64_t raw_value = 0;
+    uint64_t final_sp = 0;
+    if (!pop_peek_stack_value(ctx, 16, &raw_value, &final_sp)) {
+        return;
+    }
+    load_segment_register(ctx, seg_index, (uint16_t)raw_value);
+    if (!cpu_has_exception(ctx)) {
+        pop_commit_stack_pointer(ctx, final_sp);
+    }
 }
 
 void pop_sreg32(CPU_CONTEXT* ctx, int seg_index) {
     // Pop 32 bits but only lower 16 bits used as selector
-    uint32_t value = pop_value32(ctx);
+    uint64_t value = 0;
+    uint64_t final_sp = 0;
+    if (!pop_peek_stack_value(ctx, 32, &value, &final_sp)) {
+        return;
+    }
     uint16_t selector = (uint16_t)(value & 0xFFFF);
     load_segment_register(ctx, seg_index, selector);
+    if (!cpu_has_exception(ctx)) {
+        pop_commit_stack_pointer(ctx, final_sp);
+    }
 }
 
 void pop_sreg64(CPU_CONTEXT* ctx, int seg_index) {
     // Pop 64 bits but only lower 16 bits used as selector
-    uint64_t value = pop_value64(ctx);
+    uint64_t value = 0;
+    uint64_t final_sp = 0;
+    if (!pop_peek_stack_value(ctx, 64, &value, &final_sp)) {
+        return;
+    }
     uint16_t selector = (uint16_t)(value & 0xFFFF);
     load_segment_register(ctx, seg_index, selector);
+    if (!cpu_has_exception(ctx)) {
+        pop_commit_stack_pointer(ctx, final_sp);
+    }
 }
 
 // --- Helper: decode ModR/M for POP ---
@@ -106,6 +215,7 @@ void pop_sreg64(CPU_CONTEXT* ctx, int seg_index) {
 void decode_modrm_pop(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
     inst->has_modrm = true;
     inst->modrm = code[(*offset)++];
@@ -117,6 +227,7 @@ void decode_modrm_pop(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -139,6 +250,7 @@ void decode_modrm_pop(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->displacement = 0;
         for (int i = 0; i < inst->disp_size; i++) {
@@ -152,9 +264,7 @@ void decode_modrm_pop(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
         }
     }
 
-    if (mod != 3) {
-        inst->mem_address = get_effective_address(ctx, inst->modrm, &inst->sib, &inst->displacement, inst->address_size);
-    }
+    (void)mod;
 }
 
 // --- POP instruction decoder ---
@@ -195,6 +305,7 @@ DecodedInstruction decode_pop_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -271,6 +382,7 @@ DecodedInstruction decode_pop_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
     case 0x0F:
         if (offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return inst;
         }
         inst.opcode = code[offset++];
         if (inst.opcode == 0xA1) {
@@ -335,13 +447,13 @@ inline void execute_pop_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
     // 8F /0 - POP r/m16 / POP r/m32 / POP r/m64
     case 0x8F:
         if (inst.operand_size == 64) {
-            pop_rm64(ctx, inst.modrm, inst.sib, inst.displacement, inst.mem_address);
+            pop_rm64(ctx, inst.modrm, inst.sib, inst.displacement, inst.mem_address, inst.address_size);
         }
         else if (inst.operand_size == 16) {
-            pop_rm16(ctx, inst.modrm, inst.sib, inst.displacement, inst.mem_address);
+            pop_rm16(ctx, inst.modrm, inst.sib, inst.displacement, inst.mem_address, inst.address_size);
         }
         else {
-            pop_rm32(ctx, inst.modrm, inst.sib, inst.displacement, inst.mem_address);
+            pop_rm32(ctx, inst.modrm, inst.sib, inst.displacement, inst.mem_address, inst.address_size);
         }
         break;
 
@@ -398,6 +510,9 @@ inline void execute_pop_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
 
 void execute_pop(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_pop_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_pop_with_decoded(ctx, &inst);
 }
 

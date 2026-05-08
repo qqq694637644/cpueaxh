@@ -120,6 +120,9 @@ void shl_rm(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_t
     uint64_t sign_mask = get_shl_sign_mask(ctx, operand_size);
     unsigned int count = raw_count & get_shl_count_mask(operand_size);
     uint64_t src = read_shl_rm_operand(ctx, modrm, mem_addr, operand_size) & mask;
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
     if (count == 0) {
         return;
@@ -139,6 +142,7 @@ void shl_rm(CPU_CONTEXT* ctx, uint8_t modrm, uint8_t sib, int32_t disp, uint64_t
 void decode_modrm_shl(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -150,6 +154,7 @@ void decode_modrm_shl(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -171,6 +176,7 @@ void decode_modrm_shl(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -242,6 +248,7 @@ DecodedInstruction decode_shl_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -272,6 +279,7 @@ DecodedInstruction decode_shl_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         if (inst.opcode == 0xC0) {
             if (offset >= code_size) {
                 raise_gp_ctx(ctx, 0);
+return inst;
             }
             inst.immediate = code[offset++];
             inst.imm_size = 1;
@@ -288,6 +296,7 @@ DecodedInstruction decode_shl_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
         if (inst.opcode == 0xC1) {
             if (offset >= code_size) {
                 raise_gp_ctx(ctx, 0);
+return inst;
             }
             inst.immediate = code[offset++];
             inst.imm_size = 1;
@@ -311,6 +320,9 @@ inline void execute_shl_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
 
 void execute_shl(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_shl_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_shl_with_decoded(ctx, &inst);
 }
 

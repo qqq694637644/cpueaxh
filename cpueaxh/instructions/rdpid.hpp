@@ -7,9 +7,6 @@ inline bool rdpid_has_required_prefix(const uint8_t* code, size_t code_size, int
 
     bool has_f3_prefix = false;
     for (int index = 0; index < prefix_len; index++) {
-        if (code[index] == 0x66) {
-            return false;
-        }
         if (code[index] == 0xF3) {
             has_f3_prefix = true;
         }
@@ -24,6 +21,16 @@ inline int decode_rdpid_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {
         rm |= 0x08;
     }
     return rm;
+}
+
+static inline bool cpu_has_rdpid_feature() {
+    int cpu_info[4] = {};
+    cpu_query_cpuid(cpu_info, 0, 0);
+    if (cpu_info[0] < 7) {
+        return false;
+    }
+    cpu_query_cpuid(cpu_info, 7, 0);
+    return (cpu_info[2] & (1 << 22)) != 0;
 }
 
 inline bool is_rdpid_instruction(const uint8_t* code, size_t code_size, int prefix_len) {
@@ -92,7 +99,7 @@ inline DecodedInstruction decode_rdpid_instruction(CPU_CONTEXT* ctx, uint8_t* co
         }
     }
 
-    if (has_lock_prefix || !has_f3_prefix || ctx->operand_size_override) {
+    if (has_lock_prefix || !has_f3_prefix || !cpu_has_rdpid_feature()) {
         raise_ud_ctx(ctx);
         return inst;
     }
@@ -120,7 +127,7 @@ inline DecodedInstruction decode_rdpid_instruction(CPU_CONTEXT* ctx, uint8_t* co
         return inst;
     }
 
-    inst.operand_size = ctx->rex_w ? 64 : 32;
+    inst.operand_size = ctx->cs.descriptor.long_mode ? 64 : 32;
     inst.inst_size = (int)offset;
     finalize_rip_relative_address(ctx, &inst, (int)offset);
     ctx->last_inst_size = (int)offset;

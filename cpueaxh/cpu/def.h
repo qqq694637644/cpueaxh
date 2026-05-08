@@ -366,6 +366,22 @@ inline void cpu_restore_scalar_snapshot(CPU_CONTEXT* ctx, const CPU_SCALAR_SNAPS
     ctx->cached_mode_key_valid = 0;
 }
 
+inline void cpu_restore_decode_transient_snapshot(CPU_CONTEXT* ctx, const CPU_SCALAR_SNAPSHOT* snapshot) {
+    if (!ctx || !snapshot) {
+        return;
+    }
+
+    ctx->rex_present = snapshot->rex_present;
+    ctx->rex_w = snapshot->rex_w;
+    ctx->rex_r = snapshot->rex_r;
+    ctx->rex_x = snapshot->rex_x;
+    ctx->rex_b = snapshot->rex_b;
+    ctx->operand_size_override = snapshot->operand_size_override;
+    ctx->address_size_override = snapshot->address_size_override;
+    ctx->segment_override = snapshot->segment_override;
+    ctx->last_inst_size = snapshot->last_inst_size;
+}
+
 inline void cpu_capture_vector_snapshot(CPU_VECTOR_SNAPSHOT* out, const CPU_CONTEXT* ctx) {
     if (!out || !ctx) {
         return;
@@ -547,6 +563,23 @@ inline bool cpu_is_canonical_address(uint64_t address) {
     const uint64_t sign_bit = (address >> 47) & 0x1ULL;
     const uint64_t upper_bits = address >> 48;
     return upper_bits == (sign_bit ? 0xFFFFULL : 0x0000ULL);
+}
+
+inline bool cpu_validate_code_offset(CPU_CONTEXT* ctx, uint64_t value, int operand_size) {
+    const uint64_t target = cpu_mask_code_offset(value, operand_size);
+    if (ctx && cpu_uses_canonical_addresses(ctx) && !cpu_is_canonical_address(target)) {
+        raise_gp_ctx(ctx, 0);
+        return false;
+    }
+    return true;
+}
+
+inline bool cpu_assign_rip_checked(CPU_CONTEXT* ctx, uint64_t value, int operand_size) {
+    if (!cpu_validate_code_offset(ctx, value, operand_size)) {
+        return false;
+    }
+    ctx->rip = cpu_mask_code_offset(value, operand_size);
+    return true;
 }
 
 inline uint64_t cpu_segment_base_for_addressing(const CPU_CONTEXT* ctx, int segment_index) {

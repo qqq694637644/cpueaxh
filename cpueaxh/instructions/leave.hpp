@@ -33,15 +33,31 @@ void leave_set_stack_pointer(CPU_CONTEXT* ctx, int stack_addr_size) {
     }
 }
 
+uint64_t leave_get_frame_pointer_value(CPU_CONTEXT* ctx, int stack_addr_size) {
+    if (stack_addr_size == 64) {
+        return ctx->regs[REG_RBP];
+    }
+    if (stack_addr_size == 32) {
+        return (uint32_t)(ctx->regs[REG_RBP] & 0xFFFFFFFFULL);
+    }
+    return (uint16_t)(ctx->regs[REG_RBP] & 0xFFFFULL);
+}
+
 uint16_t leave_pop16(CPU_CONTEXT* ctx, int stack_addr_size) {
     if (stack_addr_size == 64) {
         uint16_t value = read_memory_word(ctx, ctx->regs[REG_RSP]);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         ctx->regs[REG_RSP] += 2;
         return value;
     }
     if (stack_addr_size == 32) {
         uint32_t esp = (uint32_t)(ctx->regs[REG_RSP] & 0xFFFFFFFF);
         uint16_t value = read_memory_word(ctx, esp);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         esp += 2;
         ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
         return value;
@@ -49,6 +65,9 @@ uint16_t leave_pop16(CPU_CONTEXT* ctx, int stack_addr_size) {
 
     uint16_t sp = (uint16_t)(ctx->regs[REG_RSP] & 0xFFFF);
     uint16_t value = read_memory_word(ctx, sp);
+    if (cpu_has_exception(ctx)) {
+        return 0;
+    }
     sp += 2;
     ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFULL) | sp;
     return value;
@@ -57,12 +76,18 @@ uint16_t leave_pop16(CPU_CONTEXT* ctx, int stack_addr_size) {
 uint32_t leave_pop32(CPU_CONTEXT* ctx, int stack_addr_size) {
     if (stack_addr_size == 64) {
         uint32_t value = read_memory_dword(ctx, ctx->regs[REG_RSP]);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         ctx->regs[REG_RSP] += 4;
         return value;
     }
     if (stack_addr_size == 32) {
         uint32_t esp = (uint32_t)(ctx->regs[REG_RSP] & 0xFFFFFFFF);
         uint32_t value = read_memory_dword(ctx, esp);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         esp += 4;
         ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
         return value;
@@ -70,6 +95,9 @@ uint32_t leave_pop32(CPU_CONTEXT* ctx, int stack_addr_size) {
 
     uint16_t sp = (uint16_t)(ctx->regs[REG_RSP] & 0xFFFF);
     uint32_t value = read_memory_dword(ctx, sp);
+    if (cpu_has_exception(ctx)) {
+        return 0;
+    }
     sp += 4;
     ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFULL) | sp;
     return value;
@@ -78,12 +106,18 @@ uint32_t leave_pop32(CPU_CONTEXT* ctx, int stack_addr_size) {
 uint64_t leave_pop64(CPU_CONTEXT* ctx, int stack_addr_size) {
     if (stack_addr_size == 64) {
         uint64_t value = read_memory_qword(ctx, ctx->regs[REG_RSP]);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         ctx->regs[REG_RSP] += 8;
         return value;
     }
     if (stack_addr_size == 32) {
         uint32_t esp = (uint32_t)(ctx->regs[REG_RSP] & 0xFFFFFFFF);
         uint64_t value = read_memory_qword(ctx, esp);
+        if (cpu_has_exception(ctx)) {
+            return 0;
+        }
         esp += 8;
         ctx->regs[REG_RSP] = (ctx->regs[REG_RSP] & ~0xFFFFFFFFULL) | esp;
         return value;
@@ -129,6 +163,7 @@ DecodedInstruction decode_leave_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -151,21 +186,48 @@ DecodedInstruction decode_leave_instruction(CPU_CONTEXT* ctx, uint8_t* code, siz
 inline void execute_leave_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction* inst_ptr) {
     const DecodedInstruction& inst = *inst_ptr;
 
-    leave_set_stack_pointer(ctx, inst.address_size);
-
+    const uint64_t frame_sp = leave_get_frame_pointer_value(ctx, inst.address_size);
+    uint64_t value = 0;
+    size_t value_size = 0;
     if (inst.operand_size == 16) {
-        set_reg16(ctx, REG_RBP, leave_pop16(ctx, inst.address_size));
+        value_size = 2;
+        value = read_memory_word(ctx, frame_sp);
     }
     else if (inst.operand_size == 32) {
-        set_reg32(ctx, REG_RBP, leave_pop32(ctx, inst.address_size));
+        value_size = 4;
+        value = read_memory_dword(ctx, frame_sp);
     }
     else {
-        set_reg64(ctx, REG_RBP, leave_pop64(ctx, inst.address_size));
+        if (inst.address_size == 16) {
+            raise_gp_ctx(ctx, 0);
+            return;
+        }
+        value_size = 8;
+        value = read_memory_qword(ctx, frame_sp);
+    }
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
+
+    const uint64_t final_sp = cpu_stack_pointer_add(inst.address_size, frame_sp, value_size);
+    cpu_set_stack_pointer_value(ctx, inst.address_size, final_sp);
+
+    if (inst.operand_size == 16) {
+        set_reg16(ctx, REG_RBP, (uint16_t)value);
+    }
+    else if (inst.operand_size == 32) {
+        set_reg32(ctx, REG_RBP, (uint32_t)value);
+    }
+    else {
+        set_reg64(ctx, REG_RBP, value);
     }
 }
 
 void execute_leave(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_leave_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_leave_with_decoded(ctx, &inst);
 }
 

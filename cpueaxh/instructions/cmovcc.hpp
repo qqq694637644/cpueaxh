@@ -58,6 +58,7 @@ void write_cmovcc_reg_operand(CPU_CONTEXT* ctx, uint8_t modrm, int operand_size,
 void decode_modrm_cmovcc(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -69,6 +70,7 @@ void decode_modrm_cmovcc(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* co
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -90,6 +92,7 @@ void decode_modrm_cmovcc(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* co
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -161,6 +164,7 @@ DecodedInstruction decode_cmovcc_instruction(CPU_CONTEXT* ctx, uint8_t* code, si
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -170,6 +174,7 @@ DecodedInstruction decode_cmovcc_instruction(CPU_CONTEXT* ctx, uint8_t* code, si
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -203,6 +208,9 @@ DecodedInstruction decode_cmovcc_instruction(CPU_CONTEXT* ctx, uint8_t* code, si
 inline void execute_cmovcc_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction* inst_ptr) {
     const DecodedInstruction& inst = *inst_ptr;
     uint64_t source = read_cmovcc_rm_operand(ctx, inst.modrm, inst.mem_address, inst.operand_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     uint8_t cond = inst.opcode & 0x0F;
 
     if (eval_condition(ctx, cond)) {
@@ -212,6 +220,9 @@ inline void execute_cmovcc_with_decoded(CPU_CONTEXT* ctx, const DecodedInstructi
 
 void execute_cmovcc(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_cmovcc_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_cmovcc_with_decoded(ctx, &inst);
 }
 

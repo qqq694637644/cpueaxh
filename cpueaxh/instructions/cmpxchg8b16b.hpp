@@ -4,9 +4,16 @@ int decode_cmpxchg8b16b_group(uint8_t modrm) {
     return (modrm >> 3) & 0x07;
 }
 
+static inline bool cpu_has_cmpxchg16b_feature() {
+    int cpu_info[4] = {};
+    cpu_query_cpuid(cpu_info, 1, 0);
+    return (cpu_info[2] & (1 << 13)) != 0;
+}
+
 void decode_modrm_cmpxchg8b16b(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -26,6 +33,7 @@ void decode_modrm_cmpxchg8b16b(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8
     if (rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -47,6 +55,7 @@ void decode_modrm_cmpxchg8b16b(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -111,6 +120,7 @@ DecodedInstruction decode_cmpxchg8b16b_instruction(CPU_CONTEXT* ctx, uint8_t* co
 
     if (offset + 2 > code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     if (code[offset++] != 0x0F) {
@@ -134,6 +144,11 @@ DecodedInstruction decode_cmpxchg8b16b_instruction(CPU_CONTEXT* ctx, uint8_t* co
 
     if (inst.operand_size == 128 && (inst.mem_address & 0x0FULL) != 0) {
         raise_gp_ctx(ctx, 0);
+return inst;
+    }
+    if (inst.operand_size == 128 && !cpu_has_cmpxchg16b_feature()) {
+        raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     (void)has_lock_prefix;
@@ -181,6 +196,9 @@ void execute_cmpxchg16b_memory(CPU_CONTEXT* ctx, uint64_t mem_address) {
 
 void execute_cmpxchg8b16b(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_cmpxchg8b16b_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     if (inst.operand_size == 128) {
         execute_cmpxchg16b_memory(ctx, inst.mem_address);
     }

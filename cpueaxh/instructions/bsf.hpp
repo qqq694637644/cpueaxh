@@ -64,6 +64,26 @@ uint64_t get_bsf_operand_mask(CPU_CONTEXT* ctx, int operand_size) {
     }
 }
 
+static inline bool cpu_has_bmi1_feature() {
+    int cpu_info[4] = {};
+    cpu_query_cpuid(cpu_info, 0, 0);
+    if (cpu_info[0] < 7) {
+        return false;
+    }
+    cpu_query_cpuid(cpu_info, 7, 0);
+    return (cpu_info[1] & (1 << 3)) != 0;
+}
+
+static inline bool cpu_has_lzcnt_feature() {
+    int cpu_info[4] = {};
+    cpu_query_cpuid(cpu_info, 0x80000000u, 0);
+    if (static_cast<uint32_t>(cpu_info[0]) < 0x80000001u) {
+        return false;
+    }
+    cpu_query_cpuid(cpu_info, 0x80000001u, 0);
+    return (cpu_info[2] & (1 << 5)) != 0;
+}
+
 uint64_t scan_forward_bsf(uint64_t value, int operand_size) {
     for (int bit = 0; bit < operand_size; bit++) {
         if ((value >> bit) & 0x1ULL) {
@@ -107,6 +127,7 @@ uint64_t count_leading_zeros_bsf(uint64_t value, int operand_size) {
 void decode_modrm_bsf(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset, bool has_lock_prefix) {
     if (*offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return;
     }
 
     inst->has_modrm = true;
@@ -118,6 +139,7 @@ void decode_modrm_bsf(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (mod != 3 && rm == 4 && inst->address_size != 16) {
         if (*offset >= code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
         inst->has_sib = true;
         inst->sib = code[(*offset)++];
@@ -139,6 +161,7 @@ void decode_modrm_bsf(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code,
     if (inst->disp_size > 0) {
         if (*offset + inst->disp_size > code_size) {
             raise_gp_ctx(ctx, 0);
+return;
         }
 
         inst->displacement = 0;
@@ -214,6 +237,7 @@ DecodedInstruction decode_bsf_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -223,6 +247,7 @@ DecodedInstruction decode_bsf_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 
     if (offset >= code_size) {
         raise_gp_ctx(ctx, 0);
+return inst;
     }
 
     inst.opcode = code[offset++];
@@ -256,8 +281,15 @@ DecodedInstruction decode_bsf_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_
 inline void execute_bsf_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction* inst_ptr) {
     const DecodedInstruction& inst = *inst_ptr;
     uint64_t source = read_bsf_rm_operand(ctx, inst.modrm, inst.mem_address, inst.operand_size) & get_bsf_operand_mask(ctx, inst.operand_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
 
-    if (inst.mandatory_prefix == 0xF3) {
+    const bool f3_is_tzcnt_lzcnt = inst.mandatory_prefix == 0xF3 &&
+        ((inst.opcode == 0xBC && cpu_has_bmi1_feature()) ||
+         (inst.opcode == 0xBD && cpu_has_lzcnt_feature()));
+
+    if (f3_is_tzcnt_lzcnt) {
         uint64_t result = (inst.opcode == 0xBC)
             ? count_trailing_zeros_bsf(source, inst.operand_size)
             : count_leading_zeros_bsf(source, inst.operand_size);
@@ -283,6 +315,9 @@ inline void execute_bsf_with_decoded(CPU_CONTEXT* ctx, const DecodedInstruction*
 
 void execute_bsf(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     DecodedInstruction inst = decode_bsf_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
     execute_bsf_with_decoded(ctx, &inst);
 }
 

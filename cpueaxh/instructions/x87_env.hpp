@@ -1,51 +1,93 @@
 // instructions/x87_env.hpp - FLDENV/FNSTENV/FSTENV implementation
 
 static void x87_env_write16(CPU_CONTEXT* ctx, uint64_t address) {
-    write_memory_word(ctx, address + 0x00, ctx->x87_control_word);
-    write_memory_word(ctx, address + 0x02, ctx->x87_status_word);
-    write_memory_word(ctx, address + 0x04, ctx->x87_tag_word);
-    write_memory_word(ctx, address + 0x06, static_cast<uint16_t>(ctx->x87_instruction_pointer & 0xFFFFu));
-    write_memory_word(ctx, address + 0x08, ctx->x87_last_opcode);
-    write_memory_word(ctx, address + 0x0A, static_cast<uint16_t>(ctx->x87_data_pointer & 0xFFFFu));
-    write_memory_word(ctx, address + 0x0C, 0);
+    uint8_t bytes[14] = {};
+    uint8_t* byte_ptrs[14] = {};
+    const uint16_t values[7] = {
+        ctx->x87_control_word,
+        ctx->x87_status_word,
+        ctx->x87_tag_word,
+        static_cast<uint16_t>(ctx->x87_instruction_pointer & 0xFFFFu),
+        ctx->x87_last_opcode,
+        static_cast<uint16_t>(ctx->x87_data_pointer & 0xFFFFu),
+        0
+    };
+
+    for (int index = 0; index < 7; ++index) {
+        cpu_store_u16_le(bytes + index * 2, values[index]);
+    }
+    if (!cpu_resolve_linear_write_byte_ptrs(ctx, address, sizeof(bytes), byte_ptrs, values[0])) {
+        return;
+    }
+    if (cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_WRITE)) {
+        for (int index = 0; index < 7; ++index) {
+            cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + static_cast<uint64_t>(index * 2), 2, values[index]);
+        }
+    }
+    cpu_commit_linear_write_bytes(bytes, sizeof(bytes), byte_ptrs);
 }
 
 static void x87_env_write32(CPU_CONTEXT* ctx, uint64_t address) {
-    write_memory_dword(ctx, address + 0x00, ctx->x87_control_word);
-    write_memory_dword(ctx, address + 0x04, ctx->x87_status_word);
-    write_memory_dword(ctx, address + 0x08, ctx->x87_tag_word);
-    write_memory_dword(ctx, address + 0x0C, static_cast<uint32_t>(ctx->x87_instruction_pointer & 0xFFFFFFFFu));
-    write_memory_dword(ctx, address + 0x10, static_cast<uint32_t>(ctx->x87_last_opcode) << 16);
-    write_memory_dword(ctx, address + 0x14, static_cast<uint32_t>(ctx->x87_data_pointer & 0xFFFFFFFFu));
-    write_memory_dword(ctx, address + 0x18, 0);
+    uint8_t bytes[28] = {};
+    uint8_t* byte_ptrs[28] = {};
+    const uint32_t values[7] = {
+        ctx->x87_control_word,
+        ctx->x87_status_word,
+        ctx->x87_tag_word,
+        static_cast<uint32_t>(ctx->x87_instruction_pointer & 0xFFFFFFFFu),
+        static_cast<uint32_t>(ctx->x87_last_opcode) << 16,
+        static_cast<uint32_t>(ctx->x87_data_pointer & 0xFFFFFFFFu),
+        0
+    };
+
+    for (int index = 0; index < 7; ++index) {
+        cpu_store_u32_le(bytes + index * 4, values[index]);
+    }
+    if (!cpu_resolve_linear_write_byte_ptrs(ctx, address, sizeof(bytes), byte_ptrs, values[0])) {
+        return;
+    }
+    if (cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_WRITE)) {
+        for (int index = 0; index < 7; ++index) {
+            cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_WRITE, address + static_cast<uint64_t>(index * 4), 4, values[index]);
+        }
+    }
+    cpu_commit_linear_write_bytes(bytes, sizeof(bytes), byte_ptrs);
 }
 
 static void x87_env_read16(CPU_CONTEXT* ctx, uint64_t address) {
-    ctx->x87_control_word = read_memory_word(ctx, address + 0x00);
-    if (cpu_has_exception(ctx)) return;
-    ctx->x87_status_word = read_memory_word(ctx, address + 0x02);
-    if (cpu_has_exception(ctx)) return;
-    ctx->x87_tag_word = read_memory_word(ctx, address + 0x04);
-    if (cpu_has_exception(ctx)) return;
-    ctx->x87_instruction_pointer = read_memory_word(ctx, address + 0x06);
-    if (cpu_has_exception(ctx)) return;
-    ctx->x87_last_opcode = read_memory_word(ctx, address + 0x08);
-    if (cpu_has_exception(ctx)) return;
-    ctx->x87_data_pointer = read_memory_word(ctx, address + 0x0A);
+    uint8_t bytes[14] = {};
+    if (!cpu_read_linear_bytes(ctx, address, bytes, sizeof(bytes))) {
+        return;
+    }
+    if (cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_READ)) {
+        for (int index = 0; index < 7; ++index) {
+            cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_READ, address + static_cast<uint64_t>(index * 2), 2, cpu_load_u16_le(bytes + index * 2));
+        }
+    }
+    ctx->x87_control_word = cpu_load_u16_le(bytes + 0x00);
+    ctx->x87_status_word = cpu_load_u16_le(bytes + 0x02);
+    ctx->x87_tag_word = cpu_load_u16_le(bytes + 0x04);
+    ctx->x87_instruction_pointer = cpu_load_u16_le(bytes + 0x06);
+    ctx->x87_last_opcode = cpu_load_u16_le(bytes + 0x08);
+    ctx->x87_data_pointer = cpu_load_u16_le(bytes + 0x0A);
 }
 
 static void x87_env_read32(CPU_CONTEXT* ctx, uint64_t address) {
-    ctx->x87_control_word = static_cast<uint16_t>(read_memory_dword(ctx, address + 0x00) & 0xFFFFu);
-    if (cpu_has_exception(ctx)) return;
-    ctx->x87_status_word = static_cast<uint16_t>(read_memory_dword(ctx, address + 0x04) & 0xFFFFu);
-    if (cpu_has_exception(ctx)) return;
-    ctx->x87_tag_word = static_cast<uint16_t>(read_memory_dword(ctx, address + 0x08) & 0xFFFFu);
-    if (cpu_has_exception(ctx)) return;
-    ctx->x87_instruction_pointer = read_memory_dword(ctx, address + 0x0C);
-    if (cpu_has_exception(ctx)) return;
-    ctx->x87_last_opcode = static_cast<uint16_t>((read_memory_dword(ctx, address + 0x10) >> 16) & 0xFFFFu);
-    if (cpu_has_exception(ctx)) return;
-    ctx->x87_data_pointer = read_memory_dword(ctx, address + 0x14);
+    uint8_t bytes[28] = {};
+    if (!cpu_read_linear_bytes(ctx, address, bytes, sizeof(bytes))) {
+        return;
+    }
+    if (cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_READ)) {
+        for (int index = 0; index < 7; ++index) {
+            cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_READ, address + static_cast<uint64_t>(index * 4), 4, cpu_load_u32_le(bytes + index * 4));
+        }
+    }
+    ctx->x87_control_word = static_cast<uint16_t>(cpu_load_u32_le(bytes + 0x00) & 0xFFFFu);
+    ctx->x87_status_word = static_cast<uint16_t>(cpu_load_u32_le(bytes + 0x04) & 0xFFFFu);
+    ctx->x87_tag_word = static_cast<uint16_t>(cpu_load_u32_le(bytes + 0x08) & 0xFFFFu);
+    ctx->x87_instruction_pointer = cpu_load_u32_le(bytes + 0x0C);
+    ctx->x87_last_opcode = static_cast<uint16_t>((cpu_load_u32_le(bytes + 0x10) >> 16) & 0xFFFFu);
+    ctx->x87_data_pointer = cpu_load_u32_le(bytes + 0x14);
 }
 
 static DecodedInstruction decode_x87_env_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
