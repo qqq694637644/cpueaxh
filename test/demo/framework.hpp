@@ -308,6 +308,8 @@ enum class VectorProgram : std::uint8_t {
     Pshufb,
     Aesenc,
     Aesenclast,
+    Aesdec,
+    Aesdeclast,
     Aeskeygenassist,
     Roundsd,
     Roundss,
@@ -1607,6 +1609,24 @@ public:
         emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
     }
 
+    void aesdec(Reg dst, Reg src) {
+        emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x66);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xDE);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void aesdeclast(Reg dst, Reg src) {
+        emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x66);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xDF);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
     void aeskeygenassist(Reg dst, Reg src, std::uint8_t imm) {
         emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
         emit8(0x66);
@@ -1855,6 +1875,8 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     if (features.aes) {
         specs.push_back({ Family::VectorOps, static_cast<std::uint32_t>(VectorProgram::Aesenc), 0, 0, "aesenc" });
         specs.push_back({ Family::VectorOps, static_cast<std::uint32_t>(VectorProgram::Aesenclast), 0, 0, "aesenclast" });
+        specs.push_back({ Family::VectorOps, static_cast<std::uint32_t>(VectorProgram::Aesdec), 0, 0, "aesdec" });
+        specs.push_back({ Family::VectorOps, static_cast<std::uint32_t>(VectorProgram::Aesdeclast), 0, 0, "aesdeclast" });
         for (std::size_t index = 0; index < kAesKeygenAssistImmediates.size(); ++index) {
             specs.push_back({ Family::VectorOps, static_cast<std::uint32_t>(VectorProgram::Aeskeygenassist), static_cast<std::uint32_t>(index), 0, "aeskeygenassist_imm" + std::to_string(kAesKeygenAssistImmediates[index]) });
         }
@@ -2380,6 +2402,14 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             break;
         case VectorProgram::Aesenclast:
             code.aesenclast(Reg::RAX, Reg::RCX);
+            code.movdqu_store(buffer0, Reg::RAX);
+            break;
+        case VectorProgram::Aesdec:
+            code.aesdec(Reg::RAX, Reg::RCX);
+            code.movdqu_store(buffer0, Reg::RAX);
+            break;
+        case VectorProgram::Aesdeclast:
+            code.aesdeclast(Reg::RAX, Reg::RCX);
             code.movdqu_store(buffer0, Reg::RAX);
             break;
         case VectorProgram::Aeskeygenassist:
@@ -5842,6 +5872,18 @@ inline cpueaxh_x86_xmm apply_expected_aesimc_xmm(const cpueaxh_x86_xmm& input) {
     return cpueaxh_x86_xmm{ qwords[0], qwords[1] };
 }
 
+inline cpueaxh_x86_xmm apply_expected_aesdec_xmm(const cpueaxh_x86_xmm& state, const cpueaxh_x86_xmm& round_key, bool last_round) {
+    alignas(16) std::uint64_t state_qwords[2] = { state.low, state.high };
+    alignas(16) std::uint64_t key_qwords[2] = { round_key.low, round_key.high };
+    const __m128i state_value = _mm_loadu_si128(reinterpret_cast<const __m128i*>(state_qwords));
+    const __m128i key_value = _mm_loadu_si128(reinterpret_cast<const __m128i*>(key_qwords));
+    const __m128i transformed = last_round
+        ? _mm_aesdeclast_si128(state_value, key_value)
+        : _mm_aesdec_si128(state_value, key_value);
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(state_qwords), transformed);
+    return cpueaxh_x86_xmm{ state_qwords[0], state_qwords[1] };
+}
+
 inline std::uint64_t apply_expected_pinsrw_mmx(std::uint64_t input, std::uint16_t value, std::uint8_t imm8) {
     const std::uint64_t shift = static_cast<std::uint64_t>(imm8 & 0x03u) * 16u;
     return (input & ~(0xFFFFull << shift)) | (static_cast<std::uint64_t>(value) << shift);
@@ -6750,7 +6792,7 @@ inline bool run_public_aesimc_case(
         }
         if (!equal_xmm(actual.lower, expected_lower) || !equal_xmm(actual.upper, expected_upper)) {
             failure.case_name = name;
-            failure.detail = "aesimc result mismatch";
+            failure.detail = "aes result mismatch";
             break;
         }
 
@@ -6787,7 +6829,7 @@ inline bool run_iret_invalid_selector_exception_case(const std::string& name, st
 
 inline std::uint64_t manual_special_case_count(const HostFeatures& features) {
     const std::uint64_t per_seed_special = (features.avx ? 45ull : 44ull) + (features.popcnt ? 3ull : 0ull) + 12ull + (features.rdpid ? 3ull : 0ull)
-        + (features.aes ? 2ull : 0ull)
+        + (features.aes ? 6ull : 0ull)
         + ((features.aes && features.avx) ? 2ull : 0ull);
     const std::uint64_t exception_special = 80ull + ((features.aes && features.avx) ? 2ull : 0ull);
     return kSeedCount * per_seed_special + kExceptionSeedCount * exception_special + kHostStackSeedCount * 4ull + kContextApiSeedCount;
@@ -6857,6 +6899,10 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> invalid_evex_vpinsrd_k1 = { 0x62, 0xF3, 0x6D, 0x09, 0x22, 0xC8, 0x00 };
     const std::vector<std::uint8_t> aesimc_xmm1_xmm0 = { 0x66, 0x0F, 0x38, 0xDB, 0xC8 };
     const std::vector<std::uint8_t> aesimc_xmm1_mem = { 0x66, 0x0F, 0x38, 0xDB, 0x4C, 0x24, 0x40 };
+    const std::vector<std::uint8_t> aesdec_xmm1_xmm0 = { 0x66, 0x0F, 0x38, 0xDE, 0xC8 };
+    const std::vector<std::uint8_t> aesdec_xmm1_mem = { 0x66, 0x0F, 0x38, 0xDE, 0x4C, 0x24, 0x40 };
+    const std::vector<std::uint8_t> aesdeclast_xmm1_xmm0 = { 0x66, 0x0F, 0x38, 0xDF, 0xC8 };
+    const std::vector<std::uint8_t> aesdeclast_xmm1_mem = { 0x66, 0x0F, 0x38, 0xDF, 0x4C, 0x24, 0x40 };
     const std::vector<std::uint8_t> vaesimc_xmm1_xmm0 = { 0xC4, 0xE2, 0x79, 0xDB, 0xC8 };
     const std::vector<std::uint8_t> vaesimc_xmm1_mem = { 0xC4, 0xE2, 0x79, 0xDB, 0x4C, 0x24, 0x40 };
     const std::vector<std::uint8_t> invalid_vaesimc_vvvv = { 0xC4, 0xE2, 0x69, 0xDB, 0xC8 };
@@ -7353,6 +7399,74 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
                 kGuestStackBase + kInitialRspOffset + 0x40,
                 apply_expected_aesimc_xmm(aesimc_mem_source),
                 aesimc_mem_dest.upper,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_aesdec_reg = seeded(seed_index, 0xE05E);
+            const cpueaxh_x86_ymm aesdec_reg_dest = make_seeded_ymm(seed_aesdec_reg, 0xF8);
+            const cpueaxh_x86_xmm aesdec_reg_source = make_seeded_xmm(seed_aesdec_reg, 0xF9);
+            if (!tick(run_public_aesimc_case(
+                "aesdec_xmm1_xmm0:" + std::to_string(seed_aesdec_reg),
+                aesdec_xmm1_xmm0,
+                seed_aesdec_reg,
+                CPUEAXH_X86_REG_YMM1,
+                aesdec_reg_dest,
+                CPUEAXH_X86_REG_XMM0,
+                &aesdec_reg_source,
+                nullptr,
+                0,
+                apply_expected_aesdec_xmm(aesdec_reg_dest.lower, aesdec_reg_source, false),
+                aesdec_reg_dest.upper,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_aesdec_mem = seeded(seed_index, 0xE05F);
+            const cpueaxh_x86_ymm aesdec_mem_dest = make_seeded_ymm(seed_aesdec_mem, 0xFA);
+            const cpueaxh_x86_xmm aesdec_mem_source = make_seeded_xmm(seed_aesdec_mem, 0xFB);
+            if (!tick(run_public_aesimc_case(
+                "aesdec_xmm1_mem:" + std::to_string(seed_aesdec_mem),
+                aesdec_xmm1_mem,
+                seed_aesdec_mem,
+                CPUEAXH_X86_REG_YMM1,
+                aesdec_mem_dest,
+                -1,
+                nullptr,
+                &aesdec_mem_source,
+                kGuestStackBase + kInitialRspOffset + 0x40,
+                apply_expected_aesdec_xmm(aesdec_mem_dest.lower, aesdec_mem_source, false),
+                aesdec_mem_dest.upper,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_aesdeclast_reg = seeded(seed_index, 0xE060);
+            const cpueaxh_x86_ymm aesdeclast_reg_dest = make_seeded_ymm(seed_aesdeclast_reg, 0xFC);
+            const cpueaxh_x86_xmm aesdeclast_reg_source = make_seeded_xmm(seed_aesdeclast_reg, 0xFD);
+            if (!tick(run_public_aesimc_case(
+                "aesdeclast_xmm1_xmm0:" + std::to_string(seed_aesdeclast_reg),
+                aesdeclast_xmm1_xmm0,
+                seed_aesdeclast_reg,
+                CPUEAXH_X86_REG_YMM1,
+                aesdeclast_reg_dest,
+                CPUEAXH_X86_REG_XMM0,
+                &aesdeclast_reg_source,
+                nullptr,
+                0,
+                apply_expected_aesdec_xmm(aesdeclast_reg_dest.lower, aesdeclast_reg_source, true),
+                aesdeclast_reg_dest.upper,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_aesdeclast_mem = seeded(seed_index, 0xE061);
+            const cpueaxh_x86_ymm aesdeclast_mem_dest = make_seeded_ymm(seed_aesdeclast_mem, 0xFE);
+            const cpueaxh_x86_xmm aesdeclast_mem_source = make_seeded_xmm(seed_aesdeclast_mem, 0xFF);
+            if (!tick(run_public_aesimc_case(
+                "aesdeclast_xmm1_mem:" + std::to_string(seed_aesdeclast_mem),
+                aesdeclast_xmm1_mem,
+                seed_aesdeclast_mem,
+                CPUEAXH_X86_REG_YMM1,
+                aesdeclast_mem_dest,
+                -1,
+                nullptr,
+                &aesdeclast_mem_source,
+                kGuestStackBase + kInitialRspOffset + 0x40,
+                apply_expected_aesdec_xmm(aesdeclast_mem_dest.lower, aesdeclast_mem_source, true),
+                aesdeclast_mem_dest.upper,
                 failure), failure)) return false;
         }
 

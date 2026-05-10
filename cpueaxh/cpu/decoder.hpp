@@ -649,6 +649,12 @@ inline void cpu_decode_instruction(
     else if (opc == 0x0F38 && mandatory_prefix == 0x66 && is_aesenclast_instruction(buf, fetched, prefix_len)) {
         handler = execute_aesenclast;
     }
+    else if (opc == 0x0F38 && mandatory_prefix == 0x66 && is_aesdec_instruction(buf, fetched, prefix_len)) {
+        handler = execute_aesdec;
+    }
+    else if (opc == 0x0F38 && mandatory_prefix == 0x66 && is_aesdeclast_instruction(buf, fetched, prefix_len)) {
+        handler = execute_aesdeclast;
+    }
     else if ((opc == 0x0F71 || opc == 0x0F72 || opc == 0x0F73 ||
         opc == 0x0FD1 || opc == 0x0FD2 || opc == 0x0FD3 ||
         opc == 0x0FE1 || opc == 0x0FE2 ||

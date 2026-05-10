@@ -1,4 +1,4 @@
-// instrusments/aesenc.hpp - AESENC/AESENCLAST/VAESENC/VAESENCLAST implementation
+// instrusments/aesenc.hpp - AES round instruction implementation
 
 static inline bool cpu_has_aes_feature() {
     int cpu_info[4] = {};
@@ -101,12 +101,28 @@ static XMMRegister apply_aes_round128(XMMRegister state, XMMRegister round_key, 
         : _mm_aesenc_si128(state_value, round_key_value));
 }
 
+static XMMRegister apply_aesdec_round128(XMMRegister state, XMMRegister round_key, bool is_last_round) {
+    __m128i state_value = aesenc_xmm_to_m128i(state);
+    __m128i round_key_value = aesenc_xmm_to_m128i(round_key);
+    return aesenc_m128i_to_xmm(is_last_round
+        ? _mm_aesdeclast_si128(state_value, round_key_value)
+        : _mm_aesdec_si128(state_value, round_key_value));
+}
+
 static XMMRegister apply_aesenc128(XMMRegister state, XMMRegister round_key) {
     return apply_aes_round128(state, round_key, false);
 }
 
 static XMMRegister apply_aesenclast128(XMMRegister state, XMMRegister round_key) {
     return apply_aes_round128(state, round_key, true);
+}
+
+static XMMRegister apply_aesdec128(XMMRegister state, XMMRegister round_key) {
+    return apply_aesdec_round128(state, round_key, false);
+}
+
+static XMMRegister apply_aesdeclast128(XMMRegister state, XMMRegister round_key) {
+    return apply_aesdec_round128(state, round_key, true);
 }
 
 static XMMRegister read_aesenc_source_operand(CPU_CONTEXT* ctx, const DecodedInstruction* inst) {
@@ -128,6 +144,20 @@ inline bool is_aesenclast_instruction(const uint8_t* code, int len, int prefix_l
         return false;
     }
     return code[prefix_len] == 0x0F && code[prefix_len + 1] == 0x38 && code[prefix_len + 2] == 0xDD;
+}
+
+inline bool is_aesdec_instruction(const uint8_t* code, int len, int prefix_len) {
+    if (!code || prefix_len + 3 >= len) {
+        return false;
+    }
+    return code[prefix_len] == 0x0F && code[prefix_len + 1] == 0x38 && code[prefix_len + 2] == 0xDE;
+}
+
+inline bool is_aesdeclast_instruction(const uint8_t* code, int len, int prefix_len) {
+    if (!code || prefix_len + 3 >= len) {
+        return false;
+    }
+    return code[prefix_len] == 0x0F && code[prefix_len + 1] == 0x38 && code[prefix_len + 2] == 0xDF;
 }
 
 inline DecodedInstruction decode_aes_round_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size, uint8_t expected_opcode) {
@@ -253,4 +283,36 @@ inline void execute_aesenclast(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size
     XMMRegister state = get_xmm128(ctx, dest);
     XMMRegister round_key = read_aesenc_source_operand(ctx, &inst);
     set_xmm128(ctx, dest, apply_aesenclast128(state, round_key));
+}
+
+inline DecodedInstruction decode_aesdec_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
+    return decode_aes_round_instruction(ctx, code, code_size, 0xDE);
+}
+
+inline void execute_aesdec(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
+    DecodedInstruction inst = decode_aesdec_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
+
+    int dest = decode_aesenc_xmm_reg_index(ctx, inst.modrm);
+    XMMRegister state = get_xmm128(ctx, dest);
+    XMMRegister round_key = read_aesenc_source_operand(ctx, &inst);
+    set_xmm128(ctx, dest, apply_aesdec128(state, round_key));
+}
+
+inline DecodedInstruction decode_aesdeclast_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
+    return decode_aes_round_instruction(ctx, code, code_size, 0xDF);
+}
+
+inline void execute_aesdeclast(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
+    DecodedInstruction inst = decode_aesdeclast_instruction(ctx, code, code_size);
+    if (cpu_has_exception(ctx)) {
+        return;
+    }
+
+    int dest = decode_aesenc_xmm_reg_index(ctx, inst.modrm);
+    XMMRegister state = get_xmm128(ctx, dest);
+    XMMRegister round_key = read_aesenc_source_operand(ctx, &inst);
+    set_xmm128(ctx, dest, apply_aesdeclast128(state, round_key));
 }
