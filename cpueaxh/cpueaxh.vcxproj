@@ -191,6 +191,8 @@
     <ClInclude Include="instructions\rdssp.hpp" />
     <ClInclude Include="instructions\rep.hpp" />
     <ClInclude Include="instructions\ret.hpp" />
+    <ClInclude Include="instructions\rcl.hpp" />
+    <ClInclude Include="instructions\rcr.hpp" />
     <ClInclude Include="instructions\rol.hpp" />
     <ClInclude Include="instructions\ror.hpp" />
     <ClInclude Include="instructions\sar.hpp" />

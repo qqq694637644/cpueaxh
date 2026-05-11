@@ -204,6 +204,8 @@ enum class UnaryOp : std::uint8_t {
 enum class ShiftOp : std::uint8_t {
     Rol,
     Ror,
+    Rcl,
+    Rcr,
     Shl,
     Shr,
     Sar,
@@ -453,6 +455,8 @@ inline const char* shift_name(ShiftOp op) {
     switch (op) {
     case ShiftOp::Rol: return "rol";
     case ShiftOp::Ror: return "ror";
+    case ShiftOp::Rcl: return "rcl";
+    case ShiftOp::Rcr: return "rcr";
     case ShiftOp::Shl: return "shl";
     case ShiftOp::Shr: return "shr";
     default: return "sar";
@@ -487,6 +491,8 @@ inline std::uint64_t shift_flag_mask(ShiftOp op) {
     switch (op) {
     case ShiftOp::Rol:
     case ShiftOp::Ror:
+    case ShiftOp::Rcl:
+    case ShiftOp::Rcr:
         return kRotationMask;
     default:
         return kLogicMask;
@@ -932,6 +938,8 @@ public:
         switch (op) {
         case ShiftOp::Rol: reg_field = 0; break;
         case ShiftOp::Ror: reg_field = 1; break;
+        case ShiftOp::Rcl: reg_field = 2; break;
+        case ShiftOp::Rcr: reg_field = 3; break;
         case ShiftOp::Shl: reg_field = 4; break;
         case ShiftOp::Shr: reg_field = 5; break;
         case ShiftOp::Sar: reg_field = 7; break;
@@ -947,6 +955,8 @@ public:
         switch (op) {
         case ShiftOp::Rol: reg_field = 0; break;
         case ShiftOp::Ror: reg_field = 1; break;
+        case ShiftOp::Rcl: reg_field = 2; break;
+        case ShiftOp::Rcr: reg_field = 3; break;
         case ShiftOp::Shl: reg_field = 4; break;
         case ShiftOp::Shr: reg_field = 5; break;
         case ShiftOp::Sar: reg_field = 7; break;
@@ -1737,7 +1747,7 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
         BinaryOp::Xor, BinaryOp::Cmp, BinaryOp::Test
     };
     const UnaryOp unary_ops[] = { UnaryOp::Inc, UnaryOp::Dec, UnaryOp::Neg, UnaryOp::Not };
-    const ShiftOp shift_ops[] = { ShiftOp::Rol, ShiftOp::Ror, ShiftOp::Shl, ShiftOp::Shr, ShiftOp::Sar };
+    const ShiftOp shift_ops[] = { ShiftOp::Rol, ShiftOp::Ror, ShiftOp::Rcl, ShiftOp::Rcr, ShiftOp::Shl, ShiftOp::Shr, ShiftOp::Sar };
     for (const BinaryOp op : binary_ops) {
         for (std::size_t index = 0; index < kBinaryPairs.size(); ++index) {
             specs.push_back({ Family::BinaryRegReg, static_cast<std::uint32_t>(op), static_cast<std::uint32_t>(index), binary_flag_mask(op), std::string(binary_name(op)) + "_rr_" + kBinaryPairs[index].name });
@@ -3089,6 +3099,74 @@ inline bool run_manual_special_case(
     } while (false);
 
 cleanup:
+    cpueaxh_close(engine);
+    return ok;
+}
+
+inline bool run_manual_rotate_carry_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    int target_reg,
+    int count_reg,
+    std::uint64_t target_value,
+    std::uint64_t count_value,
+    std::uint64_t initial_flags,
+    std::uint64_t expected_target,
+    std::uint64_t expected_flags,
+    Failure& failure) {
+    cpueaxh_engine* engine = nullptr;
+    cpueaxh_err err = cpueaxh_open(CPUEAXH_ARCH_X86, CPUEAXH_MODE_64, &engine);
+    if (err != CPUEAXH_ERR_OK) {
+        failure.case_name = name;
+        failure.detail = "cpueaxh_open failed";
+        return false;
+    }
+
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        initial.regs[static_cast<std::size_t>(target_reg)] = target_value;
+        if (count_reg >= 0) {
+            initial.regs[static_cast<std::size_t>(count_reg)] = count_value;
+        }
+        initial.rflags = initial_flags;
+
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        if (!initialize_manual_engine(engine, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        err = cpueaxh_emu_start(engine, kGuestCodeBase, 0, 0, 1);
+        if (err != CPUEAXH_ERR_OK) {
+            failure.case_name = name;
+            failure.detail = std::string("guest execution failed: ") + std::to_string(err) + " exc=" + std::to_string(cpueaxh_code_exception(engine));
+            break;
+        }
+
+        std::uint64_t actual_target = 0;
+        std::uint64_t actual_flags = 0;
+        if (!read_engine_reg(engine, target_reg, actual_target) ||
+            !read_engine_reg(engine, CPUEAXH_X86_REG_EFLAGS, actual_flags)) {
+            failure.case_name = name;
+            failure.detail = "readback failed";
+            break;
+        }
+
+        if (actual_target != expected_target) {
+            failure.case_name = name;
+            failure.detail = "target result mismatch";
+            break;
+        }
+        if ((actual_flags & kStatusMask) != (expected_flags & kStatusMask)) {
+            failure.case_name = name;
+            failure.detail = "flags result mismatch";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
     cpueaxh_close(engine);
     return ok;
 }
@@ -6830,7 +6908,8 @@ inline bool run_iret_invalid_selector_exception_case(const std::string& name, st
 inline std::uint64_t manual_special_case_count(const HostFeatures& features) {
     const std::uint64_t per_seed_special = (features.avx ? 45ull : 44ull) + (features.popcnt ? 3ull : 0ull) + 12ull + (features.rdpid ? 3ull : 0ull)
         + (features.aes ? 6ull : 0ull)
-        + ((features.aes && features.avx) ? 2ull : 0ull);
+        + ((features.aes && features.avx) ? 2ull : 0ull)
+        + 2ull;
     const std::uint64_t exception_special = 80ull + ((features.aes && features.avx) ? 2ull : 0ull);
     return kSeedCount * per_seed_special + kExceptionSeedCount * exception_special + kHostStackSeedCount * 4ull + kContextApiSeedCount;
 }
@@ -6838,6 +6917,8 @@ inline std::uint64_t manual_special_case_count(const HostFeatures& features) {
 inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t& executed, std::uint64_t total) {
     const std::vector<std::uint8_t> endbr64 = { 0xF3, 0x0F, 0x1E, 0xFA, 0xC3 };
     const std::vector<std::uint8_t> endbr32 = { 0xF3, 0x0F, 0x1E, 0xFB, 0xC3 };
+    const std::vector<std::uint8_t> rcl_bx_cl = { 0x66, 0xD3, 0xD3 };
+    const std::vector<std::uint8_t> rcr_r13w_0 = { 0x66, 0x41, 0xC1, 0xDD, 0x00 };
     const std::vector<std::uint8_t> rdsspq = { 0xF3, 0x48, 0x0F, 0x1E, 0xC8, 0xC3 };
     const std::vector<std::uint8_t> rdsspd = { 0xF3, 0x0F, 0x1E, 0xC8, 0xC3 };
     const std::vector<std::uint8_t> rdpid64 = { 0xF3, 0x48, 0x0F, 0xC7, 0xF8, 0xC3 };
@@ -6996,6 +7077,38 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
 
         const std::uint64_t seed_endbr32 = seeded(seed_index, 0xE011);
         if (!tick(run_manual_special_case("endbr32:" + std::to_string(seed_endbr32), endbr32, seed_endbr32, 0, false, failure), failure)) return false;
+
+        const std::uint64_t seed_rcl_bx_cl = seeded(seed_index, 0xE070);
+        const std::uint64_t rcl_bx_initial = 0x123456789ABC8001ull;
+        const std::uint64_t rcl_flags = 0x202ull | kFlagCF | kFlagPF | kFlagAF | kFlagZF | kFlagSF;
+        if (!tick(run_manual_rotate_carry_case(
+            "rcl_bx_cl:" + std::to_string(seed_rcl_bx_cl),
+            rcl_bx_cl,
+            seed_rcl_bx_cl,
+            CPUEAXH_X86_REG_RBX,
+            CPUEAXH_X86_REG_RCX,
+            rcl_bx_initial,
+            1,
+            rcl_flags,
+            (rcl_bx_initial & ~0xFFFFull) | 0x0003ull,
+            (rcl_flags & ~(kFlagCF | kFlagOF)) | kFlagCF | kFlagOF,
+            failure), failure)) return false;
+
+        const std::uint64_t seed_rcr_r13w_0 = seeded(seed_index, 0xE071);
+        const std::uint64_t rcr_r13_initial = 0x1122334455668001ull;
+        const std::uint64_t rcr_flags = 0x202ull | kFlagCF | kFlagPF | kFlagAF | kFlagZF | kFlagSF | kFlagOF;
+        if (!tick(run_manual_rotate_carry_case(
+            "rcr_r13w_0:" + std::to_string(seed_rcr_r13w_0),
+            rcr_r13w_0,
+            seed_rcr_r13w_0,
+            CPUEAXH_X86_REG_R13,
+            -1,
+            rcr_r13_initial,
+            0,
+            rcr_flags,
+            rcr_r13_initial,
+            rcr_flags,
+            failure), failure)) return false;
 
         const std::uint64_t seed1 = seeded(seed_index, 0xE002);
         if (!tick(run_manual_special_case("rdsspq:" + std::to_string(seed1), rdsspq, seed1, 0, false, failure), failure)) return false;

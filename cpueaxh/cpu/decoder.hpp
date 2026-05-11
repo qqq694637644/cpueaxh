@@ -912,6 +912,14 @@ inline void cpu_decode_instruction(
             handler = execute_ror;
         }
         else if ((raw_opc == 0xD0 || raw_opc == 0xD1 || raw_opc == 0xD2 || raw_opc == 0xD3 ||
+            raw_opc == 0xC0 || raw_opc == 0xC1) && group2_reg == 2) {
+            handler = execute_rcl;
+        }
+        else if ((raw_opc == 0xD0 || raw_opc == 0xD1 || raw_opc == 0xD2 || raw_opc == 0xD3 ||
+            raw_opc == 0xC0 || raw_opc == 0xC1) && group2_reg == 3) {
+            handler = execute_rcr;
+        }
+        else if ((raw_opc == 0xD0 || raw_opc == 0xD1 || raw_opc == 0xD2 || raw_opc == 0xD3 ||
             raw_opc == 0xC0 || raw_opc == 0xC1) && group2_reg == 0) {
             handler = execute_rol;
         }
@@ -1122,6 +1130,8 @@ inline void cpu_decoder_try_attach_fast_handler(CPU_CONTEXT* ctx,
     if (dec->handler == execute_sar) { attach_one(decode_sar_instruction, execute_sar_fast); return; }
     if (dec->handler == execute_rol) { attach_one(decode_rol_instruction, execute_rol_fast); return; }
     if (dec->handler == execute_ror) { attach_one(decode_ror_instruction, execute_ror_fast); return; }
+    if (dec->handler == execute_rcl) { attach_one(decode_rcl_instruction, execute_rcl_fast); return; }
+    if (dec->handler == execute_rcr) { attach_one(decode_rcr_instruction, execute_rcr_fast); return; }
     if (dec->handler == execute_adc) { attach_one(decode_adc_instruction, execute_adc_fast); return; }
     if (dec->handler == execute_sbb) { attach_one(decode_sbb_instruction, execute_sbb_fast); return; }
     if (dec->handler == execute_neg) { attach_one(decode_neg_instruction, execute_neg_fast); return; }

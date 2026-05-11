@@ -75,6 +75,8 @@
 #include "instructions/sar.hpp"
 #include "instructions/rol.hpp"
 #include "instructions/ror.hpp"
+#include "instructions/rcl.hpp"
+#include "instructions/rcr.hpp"
 #include "instructions/xchg.hpp"
 #include "instructions/nop.hpp"
 #include "instructions/pause.hpp"

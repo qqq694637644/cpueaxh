@@ -219,6 +219,12 @@
     <ClInclude Include="instructions\ret.hpp">
       <Filter>instructions</Filter>
     </ClInclude>
+    <ClInclude Include="instructions\rcl.hpp">
+      <Filter>instructions</Filter>
+    </ClInclude>
+    <ClInclude Include="instructions\rcr.hpp">
+      <Filter>instructions</Filter>
+    </ClInclude>
     <ClInclude Include="instructions\rol.hpp">
       <Filter>instructions</Filter>
     </ClInclude>
