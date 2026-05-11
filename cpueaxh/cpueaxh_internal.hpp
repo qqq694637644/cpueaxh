@@ -72,6 +72,7 @@
 #include "instructions/movsxd.hpp"
 #include "instructions/shl.hpp"
 #include "instructions/shr.hpp"
+#include "instructions/shld.hpp"
 #include "instructions/sar.hpp"
 #include "instructions/rol.hpp"
 #include "instructions/ror.hpp"

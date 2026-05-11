@@ -246,6 +246,9 @@
     <ClInclude Include="instructions\shl.hpp">
       <Filter>instructions</Filter>
     </ClInclude>
+    <ClInclude Include="instructions\shld.hpp">
+      <Filter>instructions</Filter>
+    </ClInclude>
     <ClInclude Include="instructions\shr.hpp">
       <Filter>instructions</Filter>
     </ClInclude>

@@ -200,6 +200,7 @@
     <ClInclude Include="instructions\scas.hpp" />
     <ClInclude Include="instructions\setcc.hpp" />
     <ClInclude Include="instructions\shl.hpp" />
+    <ClInclude Include="instructions\shld.hpp" />
     <ClInclude Include="instructions\shr.hpp" />
     <ClInclude Include="instructions\sse2_arith_pd.hpp" />
     <ClInclude Include="instructions\sse2_cmp_pd.hpp" />

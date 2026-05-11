@@ -248,6 +248,8 @@ inline DecodedExecuteFn cpu_decoder_resolve_two_byte_misc(
         opc == 0x0FC3) return execute_sse2_store_misc;
     if (opc == 0x0FAE) return execute_sse_state;
     if (opc == 0x0FAF) return execute_imul;
+    if (opc == 0x0FA4 || opc == 0x0FA5) return execute_shld;
+    if (opc == 0x0FAC || opc == 0x0FAD) return execute_shrd;
     if (opc == 0x0FBE || opc == 0x0FBF) return execute_movsx;
     if (opc == 0x0FB6 || opc == 0x0FB7) return execute_movzx;
     if (opc == 0x0FA3 || opc == 0x0FAB || opc == 0x0FB3 || opc == 0x0FBB || opc == 0x0FBA) return execute_bt;
@@ -1127,6 +1129,8 @@ inline void cpu_decoder_try_attach_fast_handler(CPU_CONTEXT* ctx,
     if (dec->handler == execute_call){ attach_one(decode_call_instruction,execute_call_fast); return; }
     if (dec->handler == execute_shl) { attach_one(decode_shl_instruction, execute_shl_fast); return; }
     if (dec->handler == execute_shr) { attach_one(decode_shr_instruction, execute_shr_fast); return; }
+    if (dec->handler == execute_shld) { attach_one_recompute_addr(decode_shld_instruction, execute_shld_fast); return; }
+    if (dec->handler == execute_shrd) { attach_one_recompute_addr(decode_shrd_instruction, execute_shrd_fast); return; }
     if (dec->handler == execute_sar) { attach_one(decode_sar_instruction, execute_sar_fast); return; }
     if (dec->handler == execute_rol) { attach_one(decode_rol_instruction, execute_rol_fast); return; }
     if (dec->handler == execute_ror) { attach_one(decode_ror_instruction, execute_ror_fast); return; }

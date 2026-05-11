@@ -3171,6 +3171,84 @@ inline bool run_manual_rotate_carry_case(
     return ok;
 }
 
+inline bool run_manual_double_shift_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    int target_reg,
+    int source_reg,
+    int count_reg,
+    std::uint64_t target_value,
+    std::uint64_t source_value,
+    std::uint64_t count_value,
+    std::uint64_t initial_flags,
+    std::uint64_t expected_target,
+    std::uint64_t expected_flags,
+    Failure& failure) {
+    cpueaxh_engine* engine = nullptr;
+    cpueaxh_err err = cpueaxh_open(CPUEAXH_ARCH_X86, CPUEAXH_MODE_64, &engine);
+    if (err != CPUEAXH_ERR_OK) {
+        failure.case_name = name;
+        failure.detail = "cpueaxh_open failed";
+        return false;
+    }
+
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        initial.regs[static_cast<std::size_t>(target_reg)] = target_value;
+        initial.regs[static_cast<std::size_t>(source_reg)] = source_value;
+        if (count_reg >= 0) {
+            initial.regs[static_cast<std::size_t>(count_reg)] = count_value;
+        }
+        initial.rflags = initial_flags;
+
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        if (!initialize_manual_engine(engine, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        err = cpueaxh_emu_start(engine, kGuestCodeBase, 0, 0, 1);
+        if (err != CPUEAXH_ERR_OK) {
+            failure.case_name = name;
+            failure.detail = std::string("guest execution failed: ") + std::to_string(err) + " exc=" + std::to_string(cpueaxh_code_exception(engine));
+            break;
+        }
+
+        std::uint64_t actual_target = 0;
+        std::uint64_t actual_source = 0;
+        std::uint64_t actual_flags = 0;
+        if (!read_engine_reg(engine, target_reg, actual_target) ||
+            !read_engine_reg(engine, source_reg, actual_source) ||
+            !read_engine_reg(engine, CPUEAXH_X86_REG_EFLAGS, actual_flags)) {
+            failure.case_name = name;
+            failure.detail = "readback failed";
+            break;
+        }
+
+        if (actual_target != expected_target) {
+            failure.case_name = name;
+            failure.detail = "target result mismatch";
+            break;
+        }
+        if (actual_source != source_value) {
+            failure.case_name = name;
+            failure.detail = "source changed unexpectedly";
+            break;
+        }
+        if ((actual_flags & kStatusMask) != (expected_flags & kStatusMask)) {
+            failure.case_name = name;
+            failure.detail = "flags result mismatch";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    cpueaxh_close(engine);
+    return ok;
+}
+
 inline bool run_manual_store_case(
     const std::string& name,
     const std::vector<std::uint8_t>& code,
@@ -6051,6 +6129,100 @@ inline cpueaxh_x86_ymm apply_expected_palignr_ymm(const cpueaxh_x86_ymm& src1, c
     return result;
 }
 
+inline std::uint32_t public_xmm_dword(const cpueaxh_x86_xmm& value, int lane) {
+    std::uint8_t bytes[16] = {};
+    pack_public_xmm_bytes(value, bytes);
+    const int base = lane * 4;
+    return static_cast<std::uint32_t>(bytes[base])
+        | (static_cast<std::uint32_t>(bytes[base + 1]) << 8)
+        | (static_cast<std::uint32_t>(bytes[base + 2]) << 16)
+        | (static_cast<std::uint32_t>(bytes[base + 3]) << 24);
+}
+
+inline void set_public_xmm_dword(cpueaxh_x86_xmm* value, int lane, std::uint32_t dword) {
+    std::uint8_t bytes[16] = {};
+    pack_public_xmm_bytes(*value, bytes);
+    const int base = lane * 4;
+    bytes[base] = static_cast<std::uint8_t>(dword & 0xFFu);
+    bytes[base + 1] = static_cast<std::uint8_t>((dword >> 8) & 0xFFu);
+    bytes[base + 2] = static_cast<std::uint8_t>((dword >> 16) & 0xFFu);
+    bytes[base + 3] = static_cast<std::uint8_t>((dword >> 24) & 0xFFu);
+    *value = unpack_public_xmm_bytes(bytes);
+}
+
+inline cpueaxh_x86_xmm apply_expected_pcmpeqd_xmm(const cpueaxh_x86_xmm& src1, const cpueaxh_x86_xmm& src2) {
+    cpueaxh_x86_xmm result{};
+    for (int lane = 0; lane < 4; ++lane) {
+        set_public_xmm_dword(&result, lane, public_xmm_dword(src1, lane) == public_xmm_dword(src2, lane) ? 0xFFFFFFFFu : 0u);
+    }
+    return result;
+}
+
+inline cpueaxh_x86_xmm apply_expected_pcmpeqq_xmm(const cpueaxh_x86_xmm& src1, const cpueaxh_x86_xmm& src2) {
+    return cpueaxh_x86_xmm{
+        src1.low == src2.low ? 0xFFFFFFFFFFFFFFFFull : 0ull,
+        src1.high == src2.high ? 0xFFFFFFFFFFFFFFFFull : 0ull
+    };
+}
+
+inline cpueaxh_x86_xmm apply_expected_xor_xmm(const cpueaxh_x86_xmm& src1, const cpueaxh_x86_xmm& src2) {
+    return cpueaxh_x86_xmm{ src1.low ^ src2.low, src1.high ^ src2.high };
+}
+
+inline cpueaxh_x86_xmm apply_expected_or_xmm(const cpueaxh_x86_xmm& src1, const cpueaxh_x86_xmm& src2) {
+    return cpueaxh_x86_xmm{ src1.low | src2.low, src1.high | src2.high };
+}
+
+inline cpueaxh_x86_xmm apply_expected_psllq_xmm(const cpueaxh_x86_xmm& src, std::uint8_t imm8) {
+    if (imm8 > 63) {
+        return cpueaxh_x86_xmm{};
+    }
+    return cpueaxh_x86_xmm{ src.low << imm8, src.high << imm8 };
+}
+
+inline cpueaxh_x86_xmm apply_expected_psrlq_xmm(const cpueaxh_x86_xmm& src, std::uint8_t imm8) {
+    if (imm8 > 63) {
+        return cpueaxh_x86_xmm{};
+    }
+    return cpueaxh_x86_xmm{ src.low >> imm8, src.high >> imm8 };
+}
+
+inline cpueaxh_x86_xmm apply_expected_psrldq_xmm(const cpueaxh_x86_xmm& src, std::uint8_t imm8) {
+    std::uint8_t src_bytes[16] = {};
+    std::uint8_t result_bytes[16] = {};
+    pack_public_xmm_bytes(src, src_bytes);
+    for (int index = 0; index < 16; ++index) {
+        const int source_index = index + static_cast<int>(imm8);
+        result_bytes[index] = source_index < 16 ? src_bytes[source_index] : 0;
+    }
+    return unpack_public_xmm_bytes(result_bytes);
+}
+
+inline cpueaxh_x86_xmm apply_expected_punpcklqdq_xmm(const cpueaxh_x86_xmm& src1, const cpueaxh_x86_xmm& src2) {
+    return cpueaxh_x86_xmm{ src1.low, src2.low };
+}
+
+inline cpueaxh_x86_xmm apply_expected_punpckhqdq_xmm(const cpueaxh_x86_xmm& src1, const cpueaxh_x86_xmm& src2) {
+    return cpueaxh_x86_xmm{ src1.high, src2.high };
+}
+
+inline cpueaxh_x86_ymm make_expected_ymm128(const cpueaxh_x86_xmm& lower) {
+    cpueaxh_x86_ymm result{};
+    result.lower = lower;
+    return result;
+}
+
+inline std::uint64_t expected_vptest_flags(std::uint64_t initial_flags, const cpueaxh_x86_xmm& lhs, const cpueaxh_x86_xmm& rhs) {
+    std::uint64_t flags = initial_flags & ~kStatusMask;
+    if (((lhs.low & rhs.low) == 0) && ((lhs.high & rhs.high) == 0)) {
+        flags |= kFlagZF;
+    }
+    if ((((~lhs.low) & rhs.low) == 0) && (((~lhs.high) & rhs.high) == 0)) {
+        flags |= kFlagCF;
+    }
+    return flags;
+}
+
 inline cpueaxh_x86_xmm get_zmm_lane(const cpueaxh_x86_zmm& value, int lane) {
     switch (lane) {
     case 0: return value.lower.lower;
@@ -6402,6 +6574,90 @@ inline bool run_public_palignr_vec_case(
             failure.case_name = name;
             failure.detail = "palignr result mismatch";
             break;
+        }
+
+        ok = true;
+    } while (false);
+
+    cpueaxh_close(engine);
+    return ok;
+}
+
+inline bool run_public_vex128_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    int dest_reg,
+    const cpueaxh_x86_ymm& dest_initial,
+    int source1_reg,
+    const cpueaxh_x86_ymm* source1_initial,
+    int source2_reg,
+    const cpueaxh_x86_ymm* source2_initial,
+    const cpueaxh_x86_ymm& expected_dest,
+    bool check_flags,
+    std::uint64_t expected_flags,
+    Failure& failure) {
+    cpueaxh_engine* engine = nullptr;
+    cpueaxh_err err = cpueaxh_open(CPUEAXH_ARCH_X86, CPUEAXH_MODE_64, &engine);
+    if (err != CPUEAXH_ERR_OK) {
+        failure.case_name = name;
+        failure.detail = "cpueaxh_open failed";
+        return false;
+    }
+
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        if (!initialize_manual_engine(engine, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+        if (!write_engine_ymm(engine, dest_reg, dest_initial)) {
+            failure.case_name = name;
+            failure.detail = "destination initialization failed";
+            break;
+        }
+        if (source1_initial && !write_engine_ymm(engine, source1_reg, *source1_initial)) {
+            failure.case_name = name;
+            failure.detail = "source1 initialization failed";
+            break;
+        }
+        if (source2_initial && !write_engine_ymm(engine, source2_reg, *source2_initial)) {
+            failure.case_name = name;
+            failure.detail = "source2 initialization failed";
+            break;
+        }
+
+        err = cpueaxh_emu_start(engine, kGuestCodeBase, 0, 0, 1);
+        if (err != CPUEAXH_ERR_OK) {
+            failure.case_name = name;
+            failure.detail = std::string("guest execution failed: ") + std::to_string(err) + " exc=" + std::to_string(cpueaxh_code_exception(engine));
+            break;
+        }
+
+        cpueaxh_x86_ymm actual{};
+        if (!read_engine_ymm(engine, dest_reg, actual)) {
+            failure.case_name = name;
+            failure.detail = "ymm readback failed";
+            break;
+        }
+        if (!equal_ymm(actual, expected_dest)) {
+            failure.case_name = name;
+            failure.detail = "vex result mismatch";
+            break;
+        }
+        if (check_flags) {
+            std::uint64_t actual_flags = 0;
+            if (!read_engine_reg(engine, CPUEAXH_X86_REG_EFLAGS, actual_flags)) {
+                failure.case_name = name;
+                failure.detail = "flags readback failed";
+                break;
+            }
+            if ((actual_flags & kStatusMask) != (expected_flags & kStatusMask)) {
+                failure.case_name = name;
+                failure.detail = "vex flags mismatch";
+                break;
+            }
         }
 
         ok = true;
@@ -6906,10 +7162,10 @@ inline bool run_noncanonical_control_transfer_exception_case(const std::string& 
 inline bool run_iret_invalid_selector_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
 
 inline std::uint64_t manual_special_case_count(const HostFeatures& features) {
-    const std::uint64_t per_seed_special = (features.avx ? 45ull : 44ull) + (features.popcnt ? 3ull : 0ull) + 12ull + (features.rdpid ? 3ull : 0ull)
+    const std::uint64_t per_seed_special = (features.avx ? 57ull : 44ull) + (features.popcnt ? 3ull : 0ull) + 12ull + (features.rdpid ? 3ull : 0ull)
         + (features.aes ? 6ull : 0ull)
         + ((features.aes && features.avx) ? 2ull : 0ull)
-        + 2ull;
+        + 4ull;
     const std::uint64_t exception_special = 80ull + ((features.aes && features.avx) ? 2ull : 0ull);
     return kSeedCount * per_seed_special + kExceptionSeedCount * exception_special + kHostStackSeedCount * 4ull + kContextApiSeedCount;
 }
@@ -6919,6 +7175,8 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> endbr32 = { 0xF3, 0x0F, 0x1E, 0xFB, 0xC3 };
     const std::vector<std::uint8_t> rcl_bx_cl = { 0x66, 0xD3, 0xD3 };
     const std::vector<std::uint8_t> rcr_r13w_0 = { 0x66, 0x41, 0xC1, 0xDD, 0x00 };
+    const std::vector<std::uint8_t> shld_bx_cx_1 = { 0x66, 0x0F, 0xA4, 0xCB, 0x01 };
+    const std::vector<std::uint8_t> shrd_r13w_r11w_cl = { 0x66, 0x45, 0x0F, 0xAD, 0xDD };
     const std::vector<std::uint8_t> rdsspq = { 0xF3, 0x48, 0x0F, 0x1E, 0xC8, 0xC3 };
     const std::vector<std::uint8_t> rdsspd = { 0xF3, 0x0F, 0x1E, 0xC8, 0xC3 };
     const std::vector<std::uint8_t> rdpid64 = { 0xF3, 0x48, 0x0F, 0xC7, 0xF8, 0xC3 };
@@ -7026,6 +7284,18 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> fstsw_ax = { 0x9B, 0xDF, 0xE0 };
     const std::vector<std::uint8_t> stmxcsr_rsp = { 0x0F, 0xAE, 0x5C, 0x24, 0x40, 0xC3 };
     const std::vector<std::uint8_t> vstmxcsr_rsp = { 0xC5, 0xF8, 0xAE, 0x5C, 0x24, 0x40, 0xC3 };
+    const std::vector<std::uint8_t> vmovq_xmm8_xmm1 = { 0xC5, 0x7A, 0x7E, 0xC1 };
+    const std::vector<std::uint8_t> vmovaps_xmm8_xmm1 = { 0xC5, 0x78, 0x28, 0xC1 };
+    const std::vector<std::uint8_t> vpcmpeqd_xmm8_xmm11_xmm9 = { 0xC4, 0x41, 0x21, 0x76, 0xC1 };
+    const std::vector<std::uint8_t> vpcmpeqq_xmm8_xmm12_xmm9 = { 0xC4, 0x42, 0x19, 0x29, 0xC1 };
+    const std::vector<std::uint8_t> vpxor_xmm8_xmm14_xmm1 = { 0xC5, 0x09, 0xEF, 0xC1 };
+    const std::vector<std::uint8_t> vpor_xmm8_xmm12_xmm9 = { 0xC4, 0x41, 0x19, 0xEB, 0xC1 };
+    const std::vector<std::uint8_t> vpsllq_xmm9_xmm12_5 = { 0xC4, 0xC1, 0x19, 0x73, 0xF1, 0x05 };
+    const std::vector<std::uint8_t> vpsrlq_xmm9_xmm11_7 = { 0xC4, 0xC1, 0x21, 0x73, 0xD1, 0x07 };
+    const std::vector<std::uint8_t> vpsrldq_xmm11_xmm9_8 = { 0xC4, 0xC1, 0x21, 0x73, 0xD9, 0x08 };
+    const std::vector<std::uint8_t> vptest_xmm8_xmm9 = { 0xC4, 0x42, 0x79, 0x17, 0xC1 };
+    const std::vector<std::uint8_t> vpunpckhqdq_xmm8_xmm14_xmm9 = { 0xC4, 0x41, 0x09, 0x6D, 0xC1 };
+    const std::vector<std::uint8_t> vpunpcklqdq_xmm8_xmm14_xmm9 = { 0xC4, 0x41, 0x09, 0x6C, 0xC1 };
     const std::vector<std::uint8_t> invalid_popcnt_lock = { 0xF0, 0xF3, 0x48, 0x0F, 0xB8, 0xC2 };
     const std::vector<std::uint8_t> invalid_palignr_lock = { 0xF0, 0x66, 0x0F, 0x3A, 0x0F, 0xC8, 0x05 };
     const std::vector<std::uint8_t> invalid_palignr_misaligned = { 0x66, 0x0F, 0x3A, 0x0F, 0x44, 0x24, 0x41, 0x07 };
@@ -7108,6 +7378,44 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
             rcr_flags,
             rcr_r13_initial,
             rcr_flags,
+            failure), failure)) return false;
+
+        const std::uint64_t seed_shld_bx_cx = seeded(seed_index, 0xE072);
+        const std::uint64_t shld_bx_initial = 0x123456789ABC8001ull;
+        const std::uint64_t shld_cx_initial = 0x2233445566774003ull;
+        const std::uint64_t shld_flags = 0x202ull | kFlagPF | kFlagAF | kFlagZF | kFlagSF;
+        if (!tick(run_manual_double_shift_case(
+            "shld_bx_cx_1:" + std::to_string(seed_shld_bx_cx),
+            shld_bx_cx_1,
+            seed_shld_bx_cx,
+            CPUEAXH_X86_REG_RBX,
+            CPUEAXH_X86_REG_RCX,
+            -1,
+            shld_bx_initial,
+            shld_cx_initial,
+            0,
+            shld_flags,
+            (shld_bx_initial & ~0xFFFFull) | 0x0002ull,
+            (shld_flags & ~(kFlagCF | kFlagPF | kFlagZF | kFlagSF | kFlagOF)) | kFlagAF | kFlagCF | kFlagOF,
+            failure), failure)) return false;
+
+        const std::uint64_t seed_shrd_r13_r11 = seeded(seed_index, 0xE073);
+        const std::uint64_t shrd_r13_initial = 0x1122334455668001ull;
+        const std::uint64_t shrd_r11_initial = 0x8877665544334002ull;
+        const std::uint64_t shrd_flags = 0x202ull | kFlagAF | kFlagZF | kFlagSF | kFlagOF;
+        if (!tick(run_manual_double_shift_case(
+            "shrd_r13w_r11w_cl:" + std::to_string(seed_shrd_r13_r11),
+            shrd_r13w_r11w_cl,
+            seed_shrd_r13_r11,
+            CPUEAXH_X86_REG_R13,
+            CPUEAXH_X86_REG_R11,
+            CPUEAXH_X86_REG_RCX,
+            shrd_r13_initial,
+            shrd_r11_initial,
+            1,
+            shrd_flags,
+            (shrd_r13_initial & ~0xFFFFull) | 0x4000ull,
+            (shrd_flags & ~(kFlagCF | kFlagPF | kFlagZF | kFlagSF | kFlagOF)) | kFlagAF | kFlagCF | kFlagPF | kFlagOF,
             failure), failure)) return false;
 
         const std::uint64_t seed1 = seeded(seed_index, 0xE002);
@@ -8029,6 +8337,232 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
             const std::uint64_t seed_vstmxcsr = seeded(seed_index, 0xE017);
             const std::uint32_t vex_mxcsr_value = static_cast<std::uint32_t>(0x1F80u | (seeded(seed_vstmxcsr, 0x93) & 0x1F3Fu));
             if (!tick(run_manual_store_case("vstmxcsr:" + std::to_string(seed_vstmxcsr), vstmxcsr_rsp, seed_vstmxcsr, vex_mxcsr_value, 0x40, 4, vex_mxcsr_value, failure), failure)) return false;
+
+            const std::uint64_t seed_vex = seeded(seed_index, 0xE080);
+            const cpueaxh_x86_ymm vex_dest = make_seeded_ymm(seed_vex, 0x120);
+            const cpueaxh_x86_ymm vex_src1 = make_seeded_ymm(seed_vex, 0x124);
+            const cpueaxh_x86_ymm vex_src2 = make_seeded_ymm(seed_vex, 0x128);
+            cpueaxh_x86_ymm expected_vmovq{};
+            expected_vmovq.lower.low = vex_src2.lower.low;
+            if (!tick(run_public_vex128_case(
+                "vmovq_xmm8_xmm1:" + std::to_string(seed_vex),
+                vmovq_xmm8_xmm1,
+                seed_vex,
+                CPUEAXH_X86_REG_YMM8,
+                vex_dest,
+                -1,
+                nullptr,
+                CPUEAXH_X86_REG_YMM1,
+                &vex_src2,
+                expected_vmovq,
+                false,
+                0,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_vmovaps = seeded(seed_index, 0xE081);
+            const cpueaxh_x86_ymm vmovaps_dest = make_seeded_ymm(seed_vmovaps, 0x12C);
+            const cpueaxh_x86_ymm vmovaps_src = make_seeded_ymm(seed_vmovaps, 0x130);
+            if (!tick(run_public_vex128_case(
+                "vmovaps_xmm8_xmm1:" + std::to_string(seed_vmovaps),
+                vmovaps_xmm8_xmm1,
+                seed_vmovaps,
+                CPUEAXH_X86_REG_YMM8,
+                vmovaps_dest,
+                -1,
+                nullptr,
+                CPUEAXH_X86_REG_YMM1,
+                &vmovaps_src,
+                make_expected_ymm128(vmovaps_src.lower),
+                false,
+                0,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_vpcmpeqd = seeded(seed_index, 0xE082);
+            const cpueaxh_x86_ymm vpcmpeqd_dest = make_seeded_ymm(seed_vpcmpeqd, 0x134);
+            const cpueaxh_x86_ymm vpcmpeqd_src1 = make_seeded_ymm(seed_vpcmpeqd, 0x138);
+            const cpueaxh_x86_ymm vpcmpeqd_src2 = make_seeded_ymm(seed_vpcmpeqd, 0x13C);
+            if (!tick(run_public_vex128_case(
+                "vpcmpeqd_xmm8_xmm11_xmm9:" + std::to_string(seed_vpcmpeqd),
+                vpcmpeqd_xmm8_xmm11_xmm9,
+                seed_vpcmpeqd,
+                CPUEAXH_X86_REG_YMM8,
+                vpcmpeqd_dest,
+                CPUEAXH_X86_REG_YMM11,
+                &vpcmpeqd_src1,
+                CPUEAXH_X86_REG_YMM9,
+                &vpcmpeqd_src2,
+                make_expected_ymm128(apply_expected_pcmpeqd_xmm(vpcmpeqd_src1.lower, vpcmpeqd_src2.lower)),
+                false,
+                0,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_vpcmpeqq = seeded(seed_index, 0xE083);
+            const cpueaxh_x86_ymm vpcmpeqq_dest = make_seeded_ymm(seed_vpcmpeqq, 0x140);
+            const cpueaxh_x86_ymm vpcmpeqq_src1 = make_seeded_ymm(seed_vpcmpeqq, 0x144);
+            const cpueaxh_x86_ymm vpcmpeqq_src2 = make_seeded_ymm(seed_vpcmpeqq, 0x148);
+            if (!tick(run_public_vex128_case(
+                "vpcmpeqq_xmm8_xmm12_xmm9:" + std::to_string(seed_vpcmpeqq),
+                vpcmpeqq_xmm8_xmm12_xmm9,
+                seed_vpcmpeqq,
+                CPUEAXH_X86_REG_YMM8,
+                vpcmpeqq_dest,
+                CPUEAXH_X86_REG_YMM12,
+                &vpcmpeqq_src1,
+                CPUEAXH_X86_REG_YMM9,
+                &vpcmpeqq_src2,
+                make_expected_ymm128(apply_expected_pcmpeqq_xmm(vpcmpeqq_src1.lower, vpcmpeqq_src2.lower)),
+                false,
+                0,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_vpxor = seeded(seed_index, 0xE084);
+            const cpueaxh_x86_ymm vpxor_dest = make_seeded_ymm(seed_vpxor, 0x14C);
+            const cpueaxh_x86_ymm vpxor_src1 = make_seeded_ymm(seed_vpxor, 0x150);
+            const cpueaxh_x86_ymm vpxor_src2 = make_seeded_ymm(seed_vpxor, 0x154);
+            if (!tick(run_public_vex128_case(
+                "vpxor_xmm8_xmm14_xmm1:" + std::to_string(seed_vpxor),
+                vpxor_xmm8_xmm14_xmm1,
+                seed_vpxor,
+                CPUEAXH_X86_REG_YMM8,
+                vpxor_dest,
+                CPUEAXH_X86_REG_YMM14,
+                &vpxor_src1,
+                CPUEAXH_X86_REG_YMM1,
+                &vpxor_src2,
+                make_expected_ymm128(apply_expected_xor_xmm(vpxor_src1.lower, vpxor_src2.lower)),
+                false,
+                0,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_vpor = seeded(seed_index, 0xE085);
+            const cpueaxh_x86_ymm vpor_dest = make_seeded_ymm(seed_vpor, 0x158);
+            const cpueaxh_x86_ymm vpor_src1 = make_seeded_ymm(seed_vpor, 0x15C);
+            const cpueaxh_x86_ymm vpor_src2 = make_seeded_ymm(seed_vpor, 0x160);
+            if (!tick(run_public_vex128_case(
+                "vpor_xmm8_xmm12_xmm9:" + std::to_string(seed_vpor),
+                vpor_xmm8_xmm12_xmm9,
+                seed_vpor,
+                CPUEAXH_X86_REG_YMM8,
+                vpor_dest,
+                CPUEAXH_X86_REG_YMM12,
+                &vpor_src1,
+                CPUEAXH_X86_REG_YMM9,
+                &vpor_src2,
+                make_expected_ymm128(apply_expected_or_xmm(vpor_src1.lower, vpor_src2.lower)),
+                false,
+                0,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_vpsllq = seeded(seed_index, 0xE086);
+            const cpueaxh_x86_ymm vpsllq_dest = make_seeded_ymm(seed_vpsllq, 0x164);
+            const cpueaxh_x86_ymm vpsllq_src = make_seeded_ymm(seed_vpsllq, 0x168);
+            if (!tick(run_public_vex128_case(
+                "vpsllq_xmm9_xmm12_5:" + std::to_string(seed_vpsllq),
+                vpsllq_xmm9_xmm12_5,
+                seed_vpsllq,
+                CPUEAXH_X86_REG_YMM9,
+                vpsllq_dest,
+                CPUEAXH_X86_REG_YMM12,
+                &vpsllq_src,
+                -1,
+                nullptr,
+                make_expected_ymm128(apply_expected_psllq_xmm(vpsllq_src.lower, 5)),
+                false,
+                0,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_vpsrlq = seeded(seed_index, 0xE087);
+            const cpueaxh_x86_ymm vpsrlq_dest = make_seeded_ymm(seed_vpsrlq, 0x16C);
+            const cpueaxh_x86_ymm vpsrlq_src = make_seeded_ymm(seed_vpsrlq, 0x170);
+            if (!tick(run_public_vex128_case(
+                "vpsrlq_xmm9_xmm11_7:" + std::to_string(seed_vpsrlq),
+                vpsrlq_xmm9_xmm11_7,
+                seed_vpsrlq,
+                CPUEAXH_X86_REG_YMM9,
+                vpsrlq_dest,
+                CPUEAXH_X86_REG_YMM11,
+                &vpsrlq_src,
+                -1,
+                nullptr,
+                make_expected_ymm128(apply_expected_psrlq_xmm(vpsrlq_src.lower, 7)),
+                false,
+                0,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_vpsrldq = seeded(seed_index, 0xE088);
+            const cpueaxh_x86_ymm vpsrldq_dest = make_seeded_ymm(seed_vpsrldq, 0x174);
+            const cpueaxh_x86_ymm vpsrldq_src = make_seeded_ymm(seed_vpsrldq, 0x178);
+            if (!tick(run_public_vex128_case(
+                "vpsrldq_xmm11_xmm9_8:" + std::to_string(seed_vpsrldq),
+                vpsrldq_xmm11_xmm9_8,
+                seed_vpsrldq,
+                CPUEAXH_X86_REG_YMM11,
+                vpsrldq_dest,
+                -1,
+                nullptr,
+                CPUEAXH_X86_REG_YMM9,
+                &vpsrldq_src,
+                make_expected_ymm128(apply_expected_psrldq_xmm(vpsrldq_src.lower, 8)),
+                false,
+                0,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_vptest = seeded(seed_index, 0xE089);
+            const cpueaxh_x86_ymm vptest_src1 = make_seeded_ymm(seed_vptest, 0x17C);
+            const cpueaxh_x86_ymm vptest_src2 = make_seeded_ymm(seed_vptest, 0x180);
+            const std::uint64_t vptest_initial_flags = make_initial_context(seed_vptest).rflags;
+            if (!tick(run_public_vex128_case(
+                "vptest_xmm8_xmm9:" + std::to_string(seed_vptest),
+                vptest_xmm8_xmm9,
+                seed_vptest,
+                CPUEAXH_X86_REG_YMM8,
+                vptest_src1,
+                -1,
+                nullptr,
+                CPUEAXH_X86_REG_YMM9,
+                &vptest_src2,
+                vptest_src1,
+                true,
+                expected_vptest_flags(vptest_initial_flags, vptest_src1.lower, vptest_src2.lower),
+                failure), failure)) return false;
+
+            const std::uint64_t seed_vpunpck = seeded(seed_index, 0xE08A);
+            const cpueaxh_x86_ymm vpunpck_dest = make_seeded_ymm(seed_vpunpck, 0x184);
+            const cpueaxh_x86_ymm vpunpck_src1 = make_seeded_ymm(seed_vpunpck, 0x188);
+            const cpueaxh_x86_ymm vpunpck_src2 = make_seeded_ymm(seed_vpunpck, 0x18C);
+            if (!tick(run_public_vex128_case(
+                "vpunpckhqdq_xmm8_xmm14_xmm9:" + std::to_string(seed_vpunpck),
+                vpunpckhqdq_xmm8_xmm14_xmm9,
+                seed_vpunpck,
+                CPUEAXH_X86_REG_YMM8,
+                vpunpck_dest,
+                CPUEAXH_X86_REG_YMM14,
+                &vpunpck_src1,
+                CPUEAXH_X86_REG_YMM9,
+                &vpunpck_src2,
+                make_expected_ymm128(apply_expected_punpckhqdq_xmm(vpunpck_src1.lower, vpunpck_src2.lower)),
+                false,
+                0,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_vpunpckl = seeded(seed_index, 0xE08B);
+            const cpueaxh_x86_ymm vpunpckl_dest = make_seeded_ymm(seed_vpunpckl, 0x190);
+            const cpueaxh_x86_ymm vpunpckl_src1 = make_seeded_ymm(seed_vpunpckl, 0x194);
+            const cpueaxh_x86_ymm vpunpckl_src2 = make_seeded_ymm(seed_vpunpckl, 0x198);
+            if (!tick(run_public_vex128_case(
+                "vpunpcklqdq_xmm8_xmm14_xmm9:" + std::to_string(seed_vpunpckl),
+                vpunpcklqdq_xmm8_xmm14_xmm9,
+                seed_vpunpckl,
+                CPUEAXH_X86_REG_YMM8,
+                vpunpckl_dest,
+                CPUEAXH_X86_REG_YMM14,
+                &vpunpckl_src1,
+                CPUEAXH_X86_REG_YMM9,
+                &vpunpckl_src2,
+                make_expected_ymm128(apply_expected_punpcklqdq_xmm(vpunpckl_src1.lower, vpunpckl_src2.lower)),
+                false,
+                0,
+                failure), failure)) return false;
         }
     }
 

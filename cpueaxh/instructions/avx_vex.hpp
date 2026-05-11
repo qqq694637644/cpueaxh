@@ -5160,6 +5160,21 @@ void execute_avx_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
         raise_ud_ctx(ctx);
     }
 
+    if (opcode == 0x7E && map_select == 0x01 && mandatory_prefix == 2 && !is_256) {
+        if (avx_vex_requires_reserved_vvvv(&prefix)) {
+            raise_ud_ctx(ctx);
+        }
+
+        DecodedInstruction inst = decode_avx_vex_modrm(ctx, code, code_size, &prefix);
+        int dest = avx_vex_dest_index(ctx, inst.modrm);
+        XMMRegister result = {};
+        result.low = read_movdq_xmm_low_or_mem64(ctx, &inst);
+        result.high = 0;
+        set_xmm128(ctx, dest, result);
+        clear_ymm_upper128(ctx, dest);
+        return;
+    }
+
     if (opcode == 0x6E || opcode == 0x7E) {
         if (map_select != 0x01 || mandatory_prefix != 1 || is_256) {
             raise_ud_ctx(ctx);
