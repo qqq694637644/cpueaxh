@@ -3,8 +3,29 @@ name: msvc-test
 on:
   push:
     branches: [ main ]
+    paths:
+      - ".github/workflows/msvc-test.yml"
+      - "cpueaxh/**"
+      - "test/**"
+      - "docs/instruction-status.yml"
+      - "cpueaxh.sln"
+      - "**/*.vcxproj"
+      - "**/*.props"
+      - "**/*.targets"
   pull_request:
     branches: [ main ]
+    paths:
+      - ".github/workflows/msvc-test.yml"
+      - "cpueaxh/**"
+      - "test/**"
+      - "docs/instruction-status.yml"
+      - "cpueaxh.sln"
+      - "**/*.vcxproj"
+      - "**/*.props"
+      - "**/*.targets"
+
+permissions:
+  contents: read
 
 jobs:
   test-x64:

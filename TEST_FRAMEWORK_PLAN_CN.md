@@ -151,7 +151,7 @@ test/regression/
 
 ### 3.4 CI 必跑回归
 
-PR 必跑：
+涉及指令实现、测试框架、构建配置、workflow 或 `docs/instruction-status.yml` 的 PR 必跑。普通 README/说明文档改动不应自动触发完整回归，以避免无关提交消耗 runner：
 
 ```text
 Windows x64 Release build
@@ -159,6 +159,8 @@ Windows x64 Release build
 手写特殊回归测试
 失败记录 artifact 上传
 ```
+
+第一阶段 workflow 使用 `paths` 过滤触发范围：`.github/workflows/msvc-test.yml`、`cpueaxh/**`、`test/**`、`docs/instruction-status.yml`、`cpueaxh.sln`、`*.vcxproj`、`*.props`、`*.targets` 相关改动才触发。
 
 Nightly 或自托管真机可扩展：
 

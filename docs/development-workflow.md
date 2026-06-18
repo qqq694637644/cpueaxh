@@ -32,6 +32,8 @@ A PR that changes instruction behavior must satisfy all of these conditions:
 - New instruction behavior has true-CPU differential coverage when native execution is safe and hardware-supported, or an explicit reason why true-CPU execution is unsafe/unavailable.
 - Public helper changes in decoder, executor, flags, or memory code are reviewed carefully because they can affect many older instructions.
 
+The CI workflow is path-scoped to instruction, test, build, workflow, and `docs/instruction-status.yml` changes. General README or explanatory documentation changes should not trigger the full regression job by default.
+
 ## AI-assisted development rules
 
 AI-generated code is allowed only behind the same regression gate as human-written code.
