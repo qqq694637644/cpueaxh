@@ -52,6 +52,14 @@ jobs:
             Format-List |
             Out-File -FilePath cpu-info.txt -Encoding utf8
 
+      - name: Dump test feature matrix
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --dump-features cpu-features.json
+          $exitCode = $LASTEXITCODE
+          Get-Content cpu-features.json
+          if ($exitCode -ne 0) { exit $exitCode }
+
       - name: List manual coverage index
         shell: pwsh
         run: |
@@ -66,7 +74,7 @@ jobs:
           $seedCount = '${{ inputs.generated_seeds }}'
           if ([string]::IsNullOrWhiteSpace($seedCount)) { $seedCount = '512' }
           $filter = '${{ inputs.case_filter }}'
-          $args = @('--generated-seeds', $seedCount, '--record-failure', 'failure.json')
+          $args = @('--generated-seeds', $seedCount, '--record-bundle', 'failure-bundle')
           if (-not [string]::IsNullOrWhiteSpace($filter)) {
             $args += @('--filter', $filter)
           }
@@ -82,7 +90,8 @@ jobs:
           name: cpueaxh-extended-regression-diagnostics
           if-no-files-found: ignore
           path: |
-            failure.json
+            failure-bundle/**
             extended-test-run.log
             manual-index.log
+            cpu-features.json
             cpu-info.txt

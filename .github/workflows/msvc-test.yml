@@ -74,6 +74,14 @@ jobs:
             Format-List |
             Out-File -FilePath cpu-info.txt -Encoding utf8
 
+      - name: Dump test feature matrix
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --dump-features cpu-features.json
+          $exitCode = $LASTEXITCODE
+          Get-Content cpu-features.json
+          if ($exitCode -ne 0) { exit $exitCode }
+
       - name: List generated differential specs
         shell: pwsh
         run: |
@@ -93,7 +101,7 @@ jobs:
       - name: Run full regression suite
         shell: pwsh
         run: |
-          & "$env:CPUEAXH_TEST_EXE" --record-failure failure.json *> test-run.log
+          & "$env:CPUEAXH_TEST_EXE" --record-bundle failure-bundle *> test-run.log
           $exitCode = $LASTEXITCODE
           Get-Content test-run.log
           if ($exitCode -ne 0) { exit $exitCode }
@@ -105,7 +113,8 @@ jobs:
           name: cpueaxh-failure-diagnostics
           if-no-files-found: ignore
           path: |
-            failure.json
+            failure-bundle/**
+            cpu-features.json
             test-specs.log
             manual-index.log
             test-run.log

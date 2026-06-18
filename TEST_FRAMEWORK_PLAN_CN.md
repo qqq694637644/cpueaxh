@@ -182,9 +182,10 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 .\x64\Release\test.exe --filter-exact add_rr_rax_rbx
 .\x64\Release\test.exe --filter add_rr_rax_rbx
 .\x64\Release\test.exe --filter add_rr_rax_rbx --seed-index 0
-.\x64\Release\test.exe --generated-seeds 512 --record-failure failure.json
+.\x64\Release\test.exe --generated-seeds 512 --record-bundle failure-bundle
 .\x64\Release\test.exe --replay test\regression\add_rr_rax_rbx_seed0.json
-.\x64\Release\test.exe --record-failure failure.json
+.\x64\Release\test.exe --dump-features cpu-features.json
+.\x64\Release\test.exe --record-bundle failure-bundle
 .\x64\Release\test.exe --no-manual
 .\x64\Release\test.exe --no-regression-corpus
 ```
@@ -201,13 +202,15 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 | `--seed-index <index>` | 只运行一个 deterministic seed，便于复现；默认完整回归使用 0..127，`--generated-seeds` 可扩大范围 |
 | `--generated-seeds <count>` | 控制每个生成式 spec 运行的 seed 数，供 long fuzz / nightly 使用 |
 | `--replay <path>` | 从 failure/regression JSON 中读取 `case_selector` 和 `seed_index` 并复现 |
+| `--dump-features <path>` | 输出测试程序自身识别到的 feature-gated 测试矩阵，schema 为 `cpueaxh.host-features.v1` |
 | `--record-failure <path>` | 将第一个失败写成 JSON |
+| `--record-bundle <dir>` | 将 `cpu-features.json` 和失败时的 `failure.json` 写入诊断目录 |
 | `--no-manual` | 跳过手写特殊用例，主要用于快速定向调试 |
 | `--no-regression-corpus` | 跳过 `test/regression/*.json` replay corpus |
 
 默认无参数时必须运行完整回归：生成式差分、manual special cases，以及 `test/regression/*.json` replay corpus，不应默认进入精简模式。
 
-list 模式不允许吞掉运行参数：`--list-manual` 必须单独使用；`--list` 只能和 `--case` / `--filter-exact` / `--filter` 组合用于筛选列表，不能和 `--seed-index`、`--generated-seeds`、`--record-failure`、`--replay` 或 skip 选项组合。
+list 模式不允许吞掉运行参数：`--list-manual` 必须单独使用；`--list` 只能和 `--case` / `--filter-exact` / `--filter` 组合用于筛选列表，不能和 `--seed-index`、`--generated-seeds`、`--record-failure`、`--record-bundle`、`--replay` 或 skip 选项组合。
 
 ## 5. 失败记录格式
 
@@ -227,7 +230,7 @@ list 模式不允许吞掉运行参数：`--list-manual` 必须单独使用；`-
 }
 ```
 
-第二阶段已经将生成式用例 replay 从 substring `--filter` 提升为精确 selector：`failure.json` 使用必填 `case_selector`，要求 `schema` 为 `cpueaxh.failure.v1`，要求 `seed_index` 为未加引号的 JSON number，`replay_hint` 使用 `--case <exact-name> --seed-index <n>`，并支持 `test.exe --replay <path>`。`--seed-index` 不再受默认 seed 总数限制，因此 long fuzz 中失败的单个 seed 可以直接用 replay hint 复现。默认完整回归会在 `test/regression/` 缺失、不可枚举或没有 replay JSON 时失败，避免 corpus 静默消失。当前 replay 范围仍限定在生成式差分用例；manual 或 unsafe-native 用例仍需要显式 C++ 测试覆盖。
+第二阶段已经将生成式用例 replay 从 substring `--filter` 提升为精确 selector：`failure.json` 使用必填 `case_selector`，要求 `schema` 为 `cpueaxh.failure.v1`，要求 `seed_index` 为未加引号的 JSON number，`replay_hint` 使用 `--case <exact-name> --seed-index <n>`，并支持 `test.exe --replay <path>`。`--seed-index` 不再受默认 seed 总数限制，因此 long fuzz 中失败的单个 seed 可以直接用 replay hint 复现。`--dump-features` 和 `--record-bundle` 提供最小结构化证据包，记录测试程序自身识别的 feature matrix 与失败 replay 记录。默认完整回归会在 `test/regression/` 缺失、不可枚举或没有 replay JSON 时失败，避免 corpus 静默消失。当前 replay 范围仍限定在生成式差分用例；manual 或 unsafe-native 用例仍需要显式 C++ 测试覆盖。
 
 后续可扩展字段：
 

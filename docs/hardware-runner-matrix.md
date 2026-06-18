@@ -22,8 +22,9 @@ Every runner should query CPUID at runtime and only execute tests whose features
 Recommended commands:
 
 ```powershell
-.\x64\Release\test.exe --record-failure failure.json
-.\x64\Release\test.exe --generated-seeds 512 --record-failure failure.json
+.\x64\Release\test.exe --dump-features cpu-features.json
+.\x64\Release\test.exe --record-bundle failure-bundle
+.\x64\Release\test.exe --generated-seeds 512 --record-bundle failure-bundle
 .\x64\Release\test.exe --list-manual
 ```
 
@@ -53,5 +54,6 @@ Self-hosted runs should preserve:
 - CPU vendor/model/features;
 - test command line;
 - failure JSON if any;
+- `cpu-features.json` from `test.exe --dump-features` or `--record-bundle`;
 - full test log;
 - minimized replay or manual case identifier.

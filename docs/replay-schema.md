@@ -48,6 +48,32 @@ Long generated fuzz failures are also directly reproducible by the emitted `repl
 
 The default full suite fails if `test/regression/` is missing, not a directory, cannot be enumerated, or contains no replay JSON files. This prevents the corpus from silently disappearing.
 
+## Host feature record
+
+`test.exe --dump-features <path>` writes the feature matrix that the test executable itself will use for feature-gated generated cases:
+
+```json
+{
+  "schema": "cpueaxh.host-features.v1",
+  "features": {
+    "avx": true,
+    "avx2": true,
+    "aes": true
+  }
+}
+```
+
+The record is intentionally derived from `query_host_features()` rather than only from OS inventory APIs, so it reflects both CPUID and OS-enabled state where required.
+
+## Failure bundle
+
+`test.exe --record-bundle <dir>` writes structured diagnostics into a directory. The current bundle contains:
+
+- `cpu-features.json`: written at test start with schema `cpueaxh.host-features.v1`.
+- `failure.json`: written only when the runner can identify a failing case.
+
+This option is useful for CI artifacts because it keeps failure data and feature-gate evidence together. `--record-bundle` can be used with normal full runs, generated long fuzz, and `--replay`.
+
 ## Manual / unsafe-native index records
 
 Manual and unsafe-native cases should be indexed by name and coverage category. They are not directly replayed by `--replay` yet.
@@ -70,7 +96,8 @@ Recommended future record shape:
 
 On CI failure, the workflow uploads a diagnostics bundle containing:
 
-- `failure.json` when the runner emitted one.
+- `failure-bundle/**`, including `failure.json` when emitted and `cpu-features.json`.
+- `cpu-features.json` dumped before the full run.
 - `test-specs.log` from `test.exe --list`.
 - `manual-index.log` from `test.exe --list-manual`.
 - `test-run.log` from the full regression run.

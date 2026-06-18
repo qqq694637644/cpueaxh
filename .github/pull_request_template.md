@@ -14,13 +14,13 @@
 - [ ] Targeted test run:
 
   ```powershell
-  .\x64\Release\test.exe --case <exact-name> --seed-index <n> --record-failure failure.json
+  .\x64\Release\test.exe --case <exact-name> --seed-index <n> --record-bundle failure-bundle
   ```
 
 - [ ] Full regression run:
 
   ```powershell
-  .\x64\Release\test.exe --record-failure failure.json
+  .\x64\Release\test.exe --record-bundle failure-bundle
   ```
 
 - [ ] Relevant `test/regression/*.json` replay records were added or updated for fixed bugs.

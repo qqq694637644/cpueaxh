@@ -26,7 +26,9 @@ void print_usage(const char* exe) {
         << "  --seed-index <index>           Run one deterministic seed index.\n"
         << "  --generated-seeds <count>      Run count generated seeds per selected spec.\n"
         << "  --replay <path>                Replay a generated failure/regression JSON.\n"
+        << "  --dump-features <path>         Write host feature JSON and exit.\n"
         << "  --record-failure <path>        Write the first failure as JSON.\n"
+        << "  --record-bundle <dir>          Write failure/features into a diagnostics dir.\n"
         << "  --no-manual                    Skip manual special/regression cases.\n"
         << "  --no-regression-corpus         Skip test/regression/*.json replay files.\n"
         << "\n"
@@ -56,6 +58,17 @@ bool parse_u64(const char* text, std::uint64_t& value) {
 
 bool has_value(const char* text) {
     return text && *text != '\0';
+}
+
+std::string join_path(const std::string& directory, const char* leaf) {
+    if (directory.empty()) {
+        return leaf;
+    }
+    const char last = directory[directory.size() - 1];
+    if (last == '\\' || last == '/') {
+        return directory + leaf;
+    }
+    return directory + "\\" + leaf;
 }
 
 enum class ParseResult {
@@ -127,12 +140,29 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
             options.replay_path = argv[index];
             continue;
         }
+        if (arg == "--dump-features") {
+            if (++index >= argc || !has_value(argv[index])) {
+                std::cerr << "missing value for --dump-features\n";
+                return ParseResult::Error;
+            }
+            options.feature_record_path = argv[index];
+            options.dump_features_only = true;
+            continue;
+        }
         if (arg == "--record-failure") {
             if (++index >= argc || !has_value(argv[index])) {
                 std::cerr << "missing value for --record-failure\n";
                 return ParseResult::Error;
             }
             options.failure_record_path = argv[index];
+            continue;
+        }
+        if (arg == "--record-bundle") {
+            if (++index >= argc || !has_value(argv[index])) {
+                std::cerr << "missing value for --record-bundle\n";
+                return ParseResult::Error;
+            }
+            options.record_bundle_dir = argv[index];
             continue;
         }
 
@@ -143,13 +173,29 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
         std::cerr << "--case/--filter-exact cannot be combined with --filter\n";
         return ParseResult::Error;
     }
+    if (options.dump_features_only) {
+        if (options.list_only || options.list_manual_only || !options.exact_case.empty() || !options.filter.empty() ||
+            options.has_seed_index || options.has_generated_seed_count || !options.failure_record_path.empty() ||
+            !options.record_bundle_dir.empty() || !options.replay_path.empty() || !options.run_manual || !options.run_regression_corpus) {
+            std::cerr << "--dump-features cannot be combined with other options\n";
+            return ParseResult::Error;
+        }
+    }
+    if (!options.record_bundle_dir.empty()) {
+        if (!options.failure_record_path.empty() || !options.feature_record_path.empty()) {
+            std::cerr << "--record-bundle cannot be combined with --record-failure or --dump-features\n";
+            return ParseResult::Error;
+        }
+        options.failure_record_path = join_path(options.record_bundle_dir, "failure.json");
+        options.feature_record_path = join_path(options.record_bundle_dir, "cpu-features.json");
+    }
     if (options.list_only && options.list_manual_only) {
         std::cerr << "--list cannot be combined with --list-manual\n";
         return ParseResult::Error;
     }
     if (options.list_manual_only) {
         if (options.list_only || !options.exact_case.empty() || !options.filter.empty() || options.has_seed_index ||
-            options.has_generated_seed_count || !options.failure_record_path.empty() || !options.replay_path.empty() ||
+            options.has_generated_seed_count || !options.failure_record_path.empty() || !options.record_bundle_dir.empty() || !options.replay_path.empty() ||
             !options.run_manual || !options.run_regression_corpus) {
             std::cerr << "--list-manual cannot be combined with other options\n";
             return ParseResult::Error;
@@ -157,14 +203,15 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
     }
     if (options.list_only) {
         if (options.has_seed_index || options.has_generated_seed_count || !options.failure_record_path.empty() ||
-            !options.replay_path.empty() || !options.run_manual || !options.run_regression_corpus) {
+            !options.record_bundle_dir.empty() || !options.replay_path.empty() || !options.run_manual || !options.run_regression_corpus) {
             std::cerr << "--list can only be combined with --case/--filter-exact or --filter\n";
             return ParseResult::Error;
         }
     }
     if (!options.replay_path.empty()) {
         if (options.list_only || options.list_manual_only || !options.exact_case.empty() || !options.filter.empty() ||
-            options.has_seed_index || options.has_generated_seed_count || !options.run_manual || !options.run_regression_corpus) {
+            options.has_seed_index || options.has_generated_seed_count || options.dump_features_only ||
+            !options.run_manual || !options.run_regression_corpus) {
             std::cerr << "--replay cannot be combined with list, selector, seed, generated-seeds, or skip options\n";
             return ParseResult::Error;
         }
@@ -191,6 +238,10 @@ int main(int argc, char** argv) {
             std::cerr << replay_error << "\n";
             return 2;
         }
+    }
+
+    if (options.dump_features_only) {
+        return cpueaxh_test::dump_host_feature_record(options.feature_record_path) ? 0 : 1;
     }
 
     return cpueaxh_test::run_all_tests(options) ? 0 : 1;

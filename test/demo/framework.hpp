@@ -429,7 +429,10 @@ struct TestOptions {
     std::string filter;
     std::string exact_case;
     std::string failure_record_path;
+    std::string feature_record_path;
+    std::string record_bundle_dir;
     std::string replay_path;
+    bool dump_features_only = false;
     bool run_regression_corpus = true;
 };
 
@@ -482,9 +485,28 @@ inline void attach_built_case_to_failure(Failure& failure, const BuiltCase& buil
     failure.has_seed_index = true;
 }
 
+inline bool ensure_parent_directory(const std::string& path) {
+    const std::filesystem::path file_path(path);
+    const std::filesystem::path parent = file_path.parent_path();
+    if (parent.empty()) {
+        return true;
+    }
+    std::error_code ec;
+    std::filesystem::create_directories(parent, ec);
+    if (ec) {
+        std::cerr << "failed to create directory: " << parent.string() << ": " << ec.message() << std::endl;
+        return false;
+    }
+    return true;
+}
+
 inline bool write_failure_record(const std::string& path, const Failure& failure) {
     if (path.empty()) {
         return true;
+    }
+
+    if (!ensure_parent_directory(path)) {
+        return false;
     }
 
     std::ofstream file(path, std::ios::out | std::ios::trunc);
@@ -869,6 +891,48 @@ inline HostFeatures query_host_features() {
         features.lzcnt = (cpu_info[2] & (1 << 5)) != 0;
     }
     return features;
+}
+
+inline const char* json_bool(bool value) {
+    return value ? "true" : "false";
+}
+
+inline bool write_host_feature_record(const std::string& path, const HostFeatures& features) {
+    if (path.empty()) {
+        return true;
+    }
+    if (!ensure_parent_directory(path)) {
+        return false;
+    }
+
+    std::ofstream file(path, std::ios::out | std::ios::trunc);
+    if (!file) {
+        std::cerr << "failed to open feature record: " << path << std::endl;
+        return false;
+    }
+
+    file << "{\n";
+    file << "  \"schema\": \"cpueaxh.host-features.v1\",\n";
+    file << "  \"features\": {\n";
+    file << "    \"avx\": " << json_bool(features.avx) << ",\n";
+    file << "    \"avx2\": " << json_bool(features.avx2) << ",\n";
+    file << "    \"fma\": " << json_bool(features.fma) << ",\n";
+    file << "    \"sha\": " << json_bool(features.sha) << ",\n";
+    file << "    \"popcnt\": " << json_bool(features.popcnt) << ",\n";
+    file << "    \"ssse3\": " << json_bool(features.ssse3) << ",\n";
+    file << "    \"sse41\": " << json_bool(features.sse41) << ",\n";
+    file << "    \"sse42\": " << json_bool(features.sse42) << ",\n";
+    file << "    \"aes\": " << json_bool(features.aes) << ",\n";
+    file << "    \"rdpid\": " << json_bool(features.rdpid) << ",\n";
+    file << "    \"bmi1\": " << json_bool(features.bmi1) << ",\n";
+    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << "\n";
+    file << "  }\n";
+    file << "}\n";
+    return true;
+}
+
+inline bool dump_host_feature_record(const std::string& path) {
+    return write_host_feature_record(path, query_host_features());
 }
 
 inline cpueaxh_x86_context make_initial_context(std::uint64_t seed) {
@@ -9723,6 +9787,10 @@ inline bool run_generated_case_by_name(
 
 inline bool run_all_tests(const TestOptions& options) {
     const HostFeatures features = query_host_features();
+    if (!write_host_feature_record(options.feature_record_path, features)) {
+        return false;
+    }
+
     const std::vector<ProgramSpec> specs = make_specs(features);
 
     if (options.list_manual_only) {
