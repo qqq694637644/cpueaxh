@@ -14,7 +14,7 @@ To replay one recorded generated case directly:
 .\x64\Release\test.exe --replay test\regression\add_rr_rax_rbx_seed0.json
 ```
 
-Replay JSON files currently require an exact generated spec selector and a seed index:
+Replay JSON files currently require the `cpueaxh.failure.v1` schema, an exact generated spec selector, and an unquoted numeric seed index:
 
 ```json
 {

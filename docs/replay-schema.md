@@ -44,7 +44,7 @@ Equivalent exact selector command:
 
 Long generated fuzz failures are also directly reproducible by the emitted `replay_hint`: `--seed-index <n>` runs a single deterministic seed and is not limited by the default full-suite seed count.
 
-The default full suite fails if `test/regression/` is missing, not a directory, or cannot be enumerated. This prevents the corpus from silently disappearing.
+The default full suite fails if `test/regression/` is missing, not a directory, cannot be enumerated, or contains no replay JSON files. This prevents the corpus from silently disappearing.
 
 ## Manual / unsafe-native index records
 

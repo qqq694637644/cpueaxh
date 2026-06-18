@@ -225,7 +225,7 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 }
 ```
 
-第二阶段已经将生成式用例 replay 从 substring `--filter` 提升为精确 selector：`failure.json` 使用必填 `case_selector`，`replay_hint` 使用 `--case <exact-name> --seed-index <n>`，并支持 `test.exe --replay <path>`。`--seed-index` 不再受默认 seed 总数限制，因此 long fuzz 中失败的单个 seed 可以直接用 replay hint 复现。当前 replay 范围仍限定在生成式差分用例；manual 或 unsafe-native 用例仍需要显式 C++ 测试覆盖。
+第二阶段已经将生成式用例 replay 从 substring `--filter` 提升为精确 selector：`failure.json` 使用必填 `case_selector`，要求 `schema` 为 `cpueaxh.failure.v1`，要求 `seed_index` 为未加引号的 JSON number，`replay_hint` 使用 `--case <exact-name> --seed-index <n>`，并支持 `test.exe --replay <path>`。`--seed-index` 不再受默认 seed 总数限制，因此 long fuzz 中失败的单个 seed 可以直接用 replay hint 复现。默认完整回归会在 `test/regression/` 缺失、不可枚举或没有 replay JSON 时失败，避免 corpus 静默消失。当前 replay 范围仍限定在生成式差分用例；manual 或 unsafe-native 用例仍需要显式 C++ 测试覆盖。
 
 后续可扩展字段：
 

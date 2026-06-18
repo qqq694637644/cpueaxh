@@ -621,6 +621,12 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
         return false;
     }
 
+    std::string schema;
+    if (!json_extract_string(json, "schema", schema) || schema != "cpueaxh.failure.v1") {
+        error = "replay file has unsupported schema: " + path;
+        return false;
+    }
+
     std::string exact_case;
     if (!json_extract_string(json, "case_selector", exact_case) || exact_case.empty()) {
         error = "replay file has no non-empty case_selector: " + path;
@@ -637,9 +643,6 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
     options.filter.clear();
     options.seed_index = seed_index;
     options.has_seed_index = true;
-    if (options.generated_seed_count <= seed_index) {
-        options.generated_seed_count = seed_index + 1;
-    }
     options.run_manual = false;
     options.run_regression_corpus = false;
     return true;
@@ -682,6 +685,10 @@ inline bool list_regression_replay_files(std::vector<std::string>& files, std::s
         }
     }
     std::sort(files.begin(), files.end());
+    if (files.empty()) {
+        error = "regression corpus has no replay json files: " + regression_dir.string();
+        return false;
+    }
     return true;
 }
 
@@ -9810,26 +9817,38 @@ inline bool run_all_tests(const TestOptions& options) {
     }
 
     std::uint64_t executed = 0;
+    auto run_generated_seed = [&](const ProgramSpec& spec, std::uint64_t seed_index) -> bool {
+        const std::uint64_t seed = seeded(seed_index, static_cast<std::uint64_t>(spec.op) + (static_cast<std::uint64_t>(spec.family) << 8) + (static_cast<std::uint64_t>(spec.variant) << 16));
+        BuiltCase built = build_case(spec, seed);
+        Failure failure;
+        if (!harness.run_case(built, failure)) {
+            attach_built_case_to_failure(failure, built, seed_index);
+            std::cerr << "FAIL " << failure.case_name << std::endl;
+            std::cerr << failure.detail << std::endl;
+            write_failure_record(options.failure_record_path, failure);
+            return false;
+        }
+        ++executed;
+        if ((executed % 1024) == 0 || executed == total) {
+            std::cout << "progress " << executed << "/" << total << std::endl;
+        }
+        return true;
+    };
+
     for (const ProgramSpec& spec : specs) {
         if (!selected_by_filter(spec, options)) {
             continue;
         }
-        const std::uint64_t first_seed_index = options.has_seed_index ? options.seed_index : 0ull;
-        const std::uint64_t last_seed_index = options.has_seed_index ? options.seed_index + 1ull : options.generated_seed_count;
-        for (std::uint64_t seed_index = first_seed_index; seed_index < last_seed_index; ++seed_index) {
-            const std::uint64_t seed = seeded(seed_index, static_cast<std::uint64_t>(spec.op) + (static_cast<std::uint64_t>(spec.family) << 8) + (static_cast<std::uint64_t>(spec.variant) << 16));
-            BuiltCase built = build_case(spec, seed);
-            Failure failure;
-            if (!harness.run_case(built, failure)) {
-                attach_built_case_to_failure(failure, built, seed_index);
-                std::cerr << "FAIL " << failure.case_name << std::endl;
-                std::cerr << failure.detail << std::endl;
-                write_failure_record(options.failure_record_path, failure);
+        if (options.has_seed_index) {
+            if (!run_generated_seed(spec, options.seed_index)) {
                 return false;
             }
-            ++executed;
-            if ((executed % 1024) == 0 || executed == total) {
-                std::cout << "progress " << executed << "/" << total << std::endl;
+        }
+        else {
+            for (std::uint64_t seed_index = 0; seed_index < options.generated_seed_count; ++seed_index) {
+                if (!run_generated_seed(spec, seed_index)) {
+                    return false;
+                }
             }
         }
     }
