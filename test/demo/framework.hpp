@@ -421,6 +421,7 @@ struct Failure {
 struct TestOptions {
     bool list_only = false;
     bool list_manual_only = false;
+    bool list_gates_only = false;
     bool run_manual = true;
     bool has_seed_index = false;
     std::uint64_t seed_index = 0;
@@ -442,6 +443,13 @@ struct ManualCaseIndexEntry {
     const char* coverage;
 };
 
+struct Stage3GateIndexEntry {
+    const char* name;
+    const char* category;
+    const char* coverage;
+    const char* command_hint;
+};
+
 inline constexpr std::array<ManualCaseIndexEntry, 10> kManualCaseIndex = {{
     { "compat32_control_transfer", "manual", "near/far ret and cross-mode control-transfer edge cases" },
     { "exception_priority", "manual", "memory, stack, canonical-address, and UD exception ordering" },
@@ -459,6 +467,24 @@ inline void print_manual_case_index() {
     std::cout << "cpueaxh manual/unsafe-native test index: " << kManualCaseIndex.size() << std::endl;
     for (const ManualCaseIndexEntry& entry : kManualCaseIndex) {
         std::cout << entry.name << " [" << entry.category << "] " << entry.coverage << std::endl;
+    }
+}
+
+inline constexpr std::array<Stage3GateIndexEntry, 7> kStage3GateIndex = {{
+    { "public_helper_full_regression", "required", "decoder/executor/dispatch/memory/flags helper changes must run the full regression suite", "test.exe --record-bundle failure-bundle" },
+    { "generated_long_fuzz", "extended", "broader generated differential fuzz for changed instruction families", "test.exe --generated-seeds 512 --record-bundle failure-bundle" },
+    { "undefined_flags", "targeted", "defined RFLAGS masks must remain explicit; undefined flags must not be compared", "test.exe --filter _rr_ --generated-seeds 256 --record-bundle failure-bundle" },
+    { "exception_priority", "manual", "manual exception ordering and split-access cases guard decoder/executor rollback behavior", "test.exe --list-manual" },
+    { "memory_access_order", "targeted", "memory/RMW/string cases guard guest memory ordering and writeback semantics", "test.exe --filter mem --generated-seeds 256 --record-bundle failure-bundle" },
+    { "simd_state_boundary", "feature-gated", "SIMD tests currently compare data-area effects and selected public register-state paths", "test.exe --filter xmm --generated-seeds 256 --record-bundle failure-bundle" },
+    { "hardware_feature_matrix", "extended", "feature evidence must be preserved with CPUID/OS-enabled matrix records", "test.exe --dump-features cpu-features.json" },
+}};
+
+inline void print_stage3_gate_index() {
+    std::cout << "cpueaxh stage3 regression gates: " << kStage3GateIndex.size() << std::endl;
+    for (const Stage3GateIndexEntry& entry : kStage3GateIndex) {
+        std::cout << entry.name << " [" << entry.category << "] " << entry.coverage
+                  << " | " << entry.command_hint << std::endl;
     }
 }
 
@@ -9795,6 +9821,10 @@ inline bool run_all_tests(const TestOptions& options) {
 
     if (options.list_manual_only) {
         print_manual_case_index();
+        return true;
+    }
+    if (options.list_gates_only) {
+        print_stage3_gate_index();
         return true;
     }
 

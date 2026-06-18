@@ -14,6 +14,9 @@ on:
       - "docs/replay-schema.md"
       - "docs/instruction-test-generator-template.md"
       - "docs/hardware-runner-matrix.md"
+      - "docs/stage3-regression-gates.yml"
+      - "docs/generator-templates.yml"
+      - "tools/**"
       - "cpueaxh.sln"
       - "**/*.vcxproj"
       - "**/*.props"
@@ -31,6 +34,9 @@ on:
       - "docs/replay-schema.md"
       - "docs/instruction-test-generator-template.md"
       - "docs/hardware-runner-matrix.md"
+      - "docs/stage3-regression-gates.yml"
+      - "docs/generator-templates.yml"
+      - "tools/**"
       - "cpueaxh.sln"
       - "**/*.vcxproj"
       - "**/*.props"
@@ -48,6 +54,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate regression contract
+        shell: pwsh
+        run: ./tools/validate-regression-contract.ps1
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -98,6 +108,14 @@ jobs:
           Get-Content manual-index.log
           if ($exitCode -ne 0) { exit $exitCode }
 
+      - name: List stage3 regression gates
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --list-gates *> stage3-gates.log
+          $exitCode = $LASTEXITCODE
+          Get-Content stage3-gates.log
+          if ($exitCode -ne 0) { exit $exitCode }
+
       - name: Run full regression suite
         shell: pwsh
         run: |
@@ -117,5 +135,6 @@ jobs:
             cpu-features.json
             test-specs.log
             manual-index.log
+            stage3-gates.log
             test-run.log
             cpu-info.txt

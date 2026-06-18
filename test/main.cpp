@@ -20,6 +20,7 @@ void print_usage(const char* exe) {
         << "  --help                         Show this help.\n"
         << "  --list                         List generated differential test specs.\n"
         << "  --list-manual                  List manual/unsafe-native coverage index.\n"
+        << "  --list-gates                   List stage3 regression gate index.\n"
         << "  --case <exact-name>            Run/list one exact generated spec name.\n"
         << "  --filter-exact <exact-name>    Alias for --case.\n"
         << "  --filter <substring>           Run/list specs whose names contain substring.\n"
@@ -90,6 +91,10 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
         }
         if (arg == "--list-manual") {
             options.list_manual_only = true;
+            continue;
+        }
+        if (arg == "--list-gates") {
+            options.list_gates_only = true;
             continue;
         }
         if (arg == "--no-manual") {
@@ -174,7 +179,7 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
         return ParseResult::Error;
     }
     if (options.dump_features_only) {
-        if (options.list_only || options.list_manual_only || !options.exact_case.empty() || !options.filter.empty() ||
+        if (options.list_only || options.list_manual_only || options.list_gates_only || !options.exact_case.empty() || !options.filter.empty() ||
             options.has_seed_index || options.has_generated_seed_count || !options.failure_record_path.empty() ||
             !options.record_bundle_dir.empty() || !options.replay_path.empty() || !options.run_manual || !options.run_regression_corpus) {
             std::cerr << "--dump-features cannot be combined with other options\n";
@@ -189,15 +194,24 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
         options.failure_record_path = join_path(options.record_bundle_dir, "failure.json");
         options.feature_record_path = join_path(options.record_bundle_dir, "cpu-features.json");
     }
-    if (options.list_only && options.list_manual_only) {
-        std::cerr << "--list cannot be combined with --list-manual\n";
+    if ((options.list_only && options.list_manual_only) || (options.list_only && options.list_gates_only) ||
+        (options.list_manual_only && options.list_gates_only)) {
+        std::cerr << "--list, --list-manual, and --list-gates are mutually exclusive\n";
         return ParseResult::Error;
     }
     if (options.list_manual_only) {
-        if (options.list_only || !options.exact_case.empty() || !options.filter.empty() || options.has_seed_index ||
+        if (options.list_only || options.list_gates_only || !options.exact_case.empty() || !options.filter.empty() || options.has_seed_index ||
             options.has_generated_seed_count || !options.failure_record_path.empty() || !options.record_bundle_dir.empty() || !options.replay_path.empty() ||
             !options.run_manual || !options.run_regression_corpus) {
             std::cerr << "--list-manual cannot be combined with other options\n";
+            return ParseResult::Error;
+        }
+    }
+    if (options.list_gates_only) {
+        if (options.list_only || options.list_manual_only || !options.exact_case.empty() || !options.filter.empty() || options.has_seed_index ||
+            options.has_generated_seed_count || !options.failure_record_path.empty() || !options.record_bundle_dir.empty() || !options.replay_path.empty() ||
+            !options.run_manual || !options.run_regression_corpus) {
+            std::cerr << "--list-gates cannot be combined with other options\n";
             return ParseResult::Error;
         }
     }
@@ -209,7 +223,7 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
         }
     }
     if (!options.replay_path.empty()) {
-        if (options.list_only || options.list_manual_only || !options.exact_case.empty() || !options.filter.empty() ||
+        if (options.list_only || options.list_manual_only || options.list_gates_only || !options.exact_case.empty() || !options.filter.empty() ||
             options.has_seed_index || options.has_generated_seed_count || options.dump_features_only ||
             !options.run_manual || !options.run_regression_corpus) {
             std::cerr << "--replay cannot be combined with list, selector, seed, generated-seeds, or skip options\n";

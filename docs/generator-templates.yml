@@ -1,0 +1,137 @@
+schema: cpueaxh.generator-templates.v1
+
+naming:
+  exact_selector_required: true
+  stable_names: true
+  avoid_substring_replay: true
+  recommended_pattern: "<mnemonic>_<operand-kind>_<variant>"
+
+shared_requirements:
+  deterministic_seed: true
+  safe_return_path: true
+  no_privileged_user_mode_native_execution: true
+  flag_mask_required: true
+  failure_record_requires:
+    - schema
+    - case_selector
+    - seed_index
+    - replay_hint
+
+families:
+  integer_alu:
+    examples:
+      - add_rr_rax_rbx
+      - add_mem
+      - cmp_rr_rax_rbx
+      - test_rr_rax_rbx
+    required_fields:
+      - mnemonic
+      - encoding
+      - operands
+      - operand_size
+      - mode
+      - feature_gate
+      - flag_mask
+    special_rules:
+      - Compare only architecturally defined flags.
+      - Preserve undefined flags by omitting them from flag_mask.
+      - Include both register and memory forms when implementation differs.
+
+  memory_rmw:
+    examples:
+      - xadd_mem
+      - cmpxchg_mem
+    required_fields:
+      - memory_alignment_policy
+      - read_write_order
+      - writeback_condition
+      - flag_mask
+    special_rules:
+      - RMW instructions must preserve native read/modify/write ordering.
+      - Split-access or exception-priority behavior belongs in manual cases until generated case support exists.
+
+  stack:
+    examples:
+      - push_pop_pair
+      - pushf_pop_lahf
+      - enter_leave
+      - push_chain
+    required_fields:
+      - rsp_delta
+      - memory_access_order
+      - flag_mask
+    special_rules:
+      - Stack pointer normalization must account for native/guest stack base differences.
+      - Stack fault ordering belongs in manual exception-priority coverage.
+
+  control_flow:
+    examples:
+      - jz
+      - jmp_skip
+      - call_add
+    required_fields:
+      - branch_condition
+      - target_form
+      - rip_normalization
+      - stack_effect
+    special_rules:
+      - Direct and indirect targets must normalize native code addresses to guest code addresses.
+      - Compatibility-mode and far-control-transfer behavior belongs in manual coverage.
+
+  string_ops:
+    examples:
+      - movsb
+      - rep_movsb
+      - cmpsb
+      - scasb
+    required_fields:
+      - direction_flag_policy
+      - count_register
+      - source_access_order
+      - destination_access_order
+    special_rules:
+      - REP tests must include zero, one, and multi-iteration counts.
+      - Source/destination split exceptions belong in manual exception-priority coverage.
+
+  vector_simd:
+    examples:
+      - paddq
+      - pxor
+      - vpblendw_xmm_reg
+      - aesenc
+    required_fields:
+      - feature_gate
+      - vector_width
+      - lane_semantics
+      - state_comparison_strategy
+    special_rules:
+      - If full register-file comparison is not available, store relevant results to the data area.
+      - Feature-gated tests must be selected from the same CPUID/OS-enabled matrix reported by --dump-features.
+      - Do not assume AVX2, AVX-512, AES, SHA, BMI, FMA, CET, or XSAVE availability on hosted runners.
+
+  x87:
+    examples:
+      - fnstcw
+      - fstcw
+      - fldenv
+      - fnstsw_ax
+    required_fields:
+      - control_word
+      - status_word
+      - pending_exception_policy
+      - memory_format
+    special_rules:
+      - x87 state is not universally covered by generated register-file comparison.
+      - Existing manual x87 cases must remain part of the full suite.
+
+  unsafe_native:
+    examples:
+      - privileged_system_index
+      - port_io_escape
+    required_fields:
+      - unsafe_native_reason
+      - model_or_escape_strategy
+      - controlled_runner_requirement
+    special_rules:
+      - Do not run privileged, port I/O, MSR, VMX/SVM, or kernel-state-dependent instructions directly in hosted user-mode CI.
+      - Mark these forms as unsafe_for_native in docs/instruction-status.yml.

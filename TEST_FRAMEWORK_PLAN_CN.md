@@ -178,6 +178,7 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 ```powershell
 .\x64\Release\test.exe --list
 .\x64\Release\test.exe --list-manual
+.\x64\Release\test.exe --list-gates
 .\x64\Release\test.exe --case add_rr_rax_rbx
 .\x64\Release\test.exe --filter-exact add_rr_rax_rbx
 .\x64\Release\test.exe --filter add_rr_rax_rbx
@@ -196,6 +197,7 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 | --- | --- |
 | `--list` | 列出当前生成式差分测试 spec，便于审查和定位 |
 | `--list-manual` | 列出 manual/unsafe-native 覆盖索引 |
+| `--list-gates` | 列出第三阶段 regression gate 索引 |
 | `--case <exact-name>` | 精确选择一个生成式差分测试 spec |
 | `--filter-exact <exact-name>` | `--case` 的别名 |
 | `--filter <substring>` | 只运行名称包含该 substring 的 spec，用于新指令定向开发；不是精确单 case selector |
@@ -210,7 +212,7 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 
 默认无参数时必须运行完整回归：生成式差分、manual special cases，以及 `test/regression/*.json` replay corpus，不应默认进入精简模式。
 
-list 模式不允许吞掉运行参数：`--list-manual` 必须单独使用；`--list` 只能和 `--case` / `--filter-exact` / `--filter` 组合用于筛选列表，不能和 `--seed-index`、`--generated-seeds`、`--record-failure`、`--record-bundle`、`--replay` 或 skip 选项组合。
+list 模式不允许吞掉运行参数：`--list-manual` 和 `--list-gates` 必须单独使用；`--list` 只能和 `--case` / `--filter-exact` / `--filter` 组合用于筛选列表，不能和 `--seed-index`、`--generated-seeds`、`--record-failure`、`--record-bundle`、`--replay` 或 skip 选项组合。
 
 ## 5. 失败记录格式
 
@@ -399,18 +401,21 @@ GitHub Actions Windows x64 Release CI 已通过
 3. 按真实硬件 runner 接入情况扩展自托管矩阵 workflow
 ```
 
-## 12. 第三阶段建议
+## 12. 第三阶段建议 / 当前实现
 
-第三阶段开始为后续全量 AMD64 指令补全服务：
+第三阶段开始为后续全量 AMD64 指令补全服务。当前已实现验证框架层面的第三阶段门禁，不等同于已经补完整 AMD64 指令集：
 
 ```text
-1. 完善 instruction-status.yml 到 mnemonic + form + encoding + operand-size + feature gate 粒度
-2. 为每个指令族建立生成器模板
-3. 引入 nightly / workflow_dispatch long fuzz
-4. 文档化自托管硬件矩阵和 unsafe-native 策略
-5. 对 decoder/executor 公共改动增加专项回归
-6. 对 undefined flags、异常优先级、内存访问顺序建立专项测试
+1. instruction-status.yml 已采用 mnemonic + form + encoding + operand-size + feature gate 粒度结构
+2. docs/generator-templates.yml 定义每个主要指令族的生成器模板和安全约束
+3. extended-regression.yml 提供 nightly / workflow_dispatch long fuzz 入口
+4. docs/hardware-runner-matrix.md 文档化自托管硬件矩阵和 unsafe-native 策略
+5. docs/stage3-regression-gates.yml 定义 decoder/executor/public helper 专项 gate
+6. --list-gates 和 CI stage3-gates.log 暴露 undefined flags、异常优先级、内存访问顺序等 gate
+7. tools/validate-regression-contract.ps1 在 CI 中校验状态表、replay corpus、stage3 gate 和生成器模板契约
 ```
+
+第三阶段仍未声称完成完整 AMD64 指令集覆盖。后续补具体指令时，必须继续按 instruction-status.yml form 粒度扩展状态表、测试生成器和 regression corpus。
 
 ## 13. 合并前审查清单
 

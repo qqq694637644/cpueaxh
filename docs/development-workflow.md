@@ -25,8 +25,21 @@ This project treats every implemented instruction as regression-sensitive. New i
    .\x64\Release\test.exe --generated-seeds 512 --record-bundle failure-bundle
    ```
 
-7. Preserve the failure JSON for any mismatch and add durable regression cases when a bug is fixed.
-8. Open a PR only after the full suite passes locally, or clearly state why local validation was not possible.
+7. Inspect the manual and stage 3 gate indexes when touching shared infrastructure:
+
+   ```powershell
+   .\x64\Release\test.exe --list-manual
+   .\x64\Release\test.exe --list-gates
+   ```
+
+8. Run the regression contract validator after changing workflow, status, replay, or generator template files:
+
+   ```powershell
+   .\tools\validate-regression-contract.ps1
+   ```
+
+9. Preserve the failure JSON for any mismatch and add durable regression cases when a bug is fixed.
+10. Open a PR only after the full suite passes locally, or clearly state why local validation was not possible.
 
 ## Merge gate
 
@@ -39,6 +52,8 @@ A PR that changes instruction behavior must satisfy all of these conditions:
 - Public helper changes in decoder, executor, flags, or memory code are reviewed carefully because they can affect many older instructions.
 
 The required PR CI workflow is path-scoped to instruction, test, build, workflow, PR template, and test-contract documentation changes, including `TEST_FRAMEWORK_PLAN_CN.md`, `docs/development-workflow.md`, `docs/instruction-status.yml`, `docs/replay-schema.md`, `docs/instruction-test-generator-template.md`, and `docs/hardware-runner-matrix.md`. General README or unrelated explanatory documentation changes should not trigger the full regression job by default. Extended long regression is available through `extended-regression.yml` on schedule or manual dispatch.
+
+Stage 3 regression gates are defined in `docs/stage3-regression-gates.yml` and exposed by `test.exe --list-gates`. The required CI runs `tools/validate-regression-contract.ps1` before the MSVC build so that gate, corpus, replay-schema, and generator-template drift fails early.
 
 ## AI-assisted development rules
 

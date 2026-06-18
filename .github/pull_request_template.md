@@ -24,6 +24,13 @@
   ```
 
 - [ ] Relevant `test/regression/*.json` replay records were added or updated for fixed bugs.
+- [ ] Stage 3 gates were reviewed for shared decoder/executor/memory/flags/helper changes:
+
+  ```powershell
+  .\x64\Release\test.exe --list-gates
+  .\tools\validate-regression-contract.ps1
+  ```
+
 - [ ] CI passed on the latest commit.
 
 ## Risk notes
