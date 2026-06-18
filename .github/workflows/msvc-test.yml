@@ -20,7 +20,7 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Build test project
-        run: msbuild test\test.vcxproj /m /p:Configuration=Release /p:Platform=x64
+        run: msbuild cpueaxh.sln /m /p:Configuration=Release /p:Platform=x64 /t:test
 
       - name: Locate test executable
         shell: pwsh

@@ -26,7 +26,7 @@ This project treats every implemented instruction as regression-sensitive. New i
 
 A PR that changes instruction behavior must satisfy all of these conditions:
 
-- The Windows x64 Release CI job builds `test/test.vcxproj` with its referenced `cpueaxh` library and runs `test.exe` successfully.
+- The Windows x64 Release CI job builds the `test` target from `cpueaxh.sln` and runs `test.exe` successfully.
 - Existing generated differential tests still pass.
 - Existing manual special/regression cases still pass.
 - New instruction behavior has true-CPU differential coverage or an explicit reason why true-CPU execution is unsafe/unavailable.
