@@ -7,7 +7,7 @@
 本计划的核心目标是：
 
 1. 任何新指令开发都不能降低旧指令可靠性。
-2. 每个指令改动都必须能被真机差分测试验证。
+2. 用户态可安全执行且当前硬件支持的指令改动，必须优先通过真机差分测试验证；不适合真机执行的指令必须有 manual/model/受控环境测试，并在状态表中标注原因。
 3. 每个失败都应尽量留下可复现记录。
 4. 每个历史 bug 都应转化为长期回归用例。
 5. GPT 或其他 AI 只能在验证门禁内开发，不能绕过测试、删除测试或扩大无审查改动范围。
@@ -109,6 +109,8 @@ RFLAGS 中该指令定义的 flag mask
 
 注意：RFLAGS 不能简单全量比较。部分指令存在 undefined flags，只应比较架构定义的 flag mask。
 
+第一阶段的生成式差分主要比较 GPR、masked RFLAGS 和数据区。当前很多 SIMD 结果是通过 store 到数据区后比较，并不等同于已经通用地直接比较完整 YMM/ZMM/K/x87 register file；完整扩展状态直接比较属于后续扩展项。
+
 ### 3.2 手写特殊回归测试
 
 生成式测试无法覆盖所有边界。例如：
@@ -184,7 +186,7 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 | 参数 | 用途 |
 | --- | --- |
 | `--list` | 列出当前生成式差分测试 spec，便于审查和定位 |
-| `--filter <substring>` | 只运行名称匹配的 spec，用于新指令定向开发 |
+| `--filter <substring>` | 只运行名称包含该 substring 的 spec，用于新指令定向开发；不是精确单 case selector |
 | `--seed-index <0..127>` | 只运行一个 deterministic seed，便于复现 |
 | `--record-failure <path>` | 将第一个失败写成 JSON |
 | `--no-manual` | 跳过手写特殊用例，主要用于快速定向调试 |
@@ -208,7 +210,7 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 }
 ```
 
-第一阶段先实现记录与人工复现；第二阶段再实现自动 replay parser。
+第一阶段先实现记录与人工复现；`replay_hint` 使用 `--filter`，因此属于 best-effort 复现提示，不是严格单 case replay。第二阶段必须增加 `--case <exact-name>` 或 `--filter-exact <name>` 这类精确 selector，并让 `failure.json` 的 `replay_hint` 使用精确 selector；之后再实现自动 replay parser。
 
 后续可扩展字段：
 
@@ -233,6 +235,8 @@ docs/instruction-status.yml
 
 记录指令实现状态、测试覆盖状态、feature gate、已知风险。
 
+状态表必须保守解释：`implemented` 只代表状态表中列明的 form/encoding 已实现并受回归保护；未列明的 operand-size、addressing form、prefix/VEX/EVEX encoding、feature-gated form 不能因为同 mnemonic 标为 `implemented` 就推断为已支持。
+
 建议状态包括：
 
 ```text
@@ -246,7 +250,7 @@ unsafe_for_native
 blocked
 ```
 
-后续 GPT 自动开发时，只能从状态表中选择明确的 `todo` 或 `implemented_partial` 小项，不能自行假设“某指令已完整支持”。
+后续 GPT 自动开发时，只能从状态表中选择明确的 `todo` 或 `implemented_partial` 小项，不能自行假设“某指令已完整支持”。状态表后续应扩展到 mnemonic + form + encoding + operand-size + feature gate 粒度。
 
 ## 7. AI / GPT 开发工作流
 
@@ -360,10 +364,12 @@ GitHub Actions Windows x64 Release CI 已通过
 
 ```text
 1. 定义 failure/replay JSON 完整 schema
-2. 增加 --replay <path>
-3. 将 test/regression/*.json 纳入默认全量回归
-4. 在 CI 失败时上传 failure.json artifact
-5. 在 PR 模板中要求填写新增/修改的指令状态项
+2. 增加 `--case <exact-name>` 或 `--filter-exact <name>` 精确 selector
+3. 让 failure.json replay_hint 使用精确 selector，而不是 substring filter
+4. 增加 --replay <path>
+5. 将 test/regression/*.json 纳入默认全量回归
+6. 扩展 CI failure artifact：上传 failure.json、测试日志、CPU feature 信息，必要时上传最小 replay bundle
+7. 在 PR 模板中要求填写新增/修改的指令状态项
 ```
 
 ## 12. 第三阶段建议
@@ -371,7 +377,7 @@ GitHub Actions Windows x64 Release CI 已通过
 第三阶段开始为后续全量 AMD64 指令补全服务：
 
 ```text
-1. 完善 instruction-status.yml 到 opcode/form 粒度
+1. 完善 instruction-status.yml 到 mnemonic + form + encoding + operand-size + feature gate 粒度
 2. 为每个指令族建立生成器模板
 3. 引入 nightly long fuzz
 4. 接入自托管硬件矩阵
@@ -387,9 +393,10 @@ GitHub Actions Windows x64 Release CI 已通过
 1. CI workflow 是否符合仓库策略
 2. 默认 test.exe 是否仍然跑完整回归
 3. --filter / --seed-index 是否只影响定向调试，不影响默认门禁
-4. failure.json 是否足够复现第一批生成式用例
-5. 手写 special tests 在 CPUEAXH_TEST_CONTINUE=1 下是否仍会最终失败
-6. 文档中对 AI 开发边界是否足够明确
+4. 文档是否明确第一阶段 --filter replay_hint 只是 best-effort，第二阶段需要 exact selector
+5. failure.json 是否足够作为第一批生成式用例的人工复现入口
+6. 手写 special tests 在 CPUEAXH_TEST_CONTINUE=1 下是否仍会最终失败
+7. 文档中对 AI 开发边界是否足够明确
 ```
 
 本计划的核心判断是：先建立“旧指令不可回退”的验证门禁，再逐步让 GPT 开发新指令。没有这套门禁之前，不应开始大规模自动化补全 AMD64 指令集。

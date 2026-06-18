@@ -2,7 +2,10 @@
 #
 # Keep this file conservative: mark an instruction as implemented only when the
 # emulator supports the listed forms and the full regression suite protects them.
-# Add new entries incrementally as instruction work lands.
+# A mnemonic-level entry is not a claim that every encoding/form/operand size is
+# implemented. Future entries should move toward mnemonic + form + encoding +
+# operand-size + feature-gate granularity. Add new entries incrementally as
+# instruction work lands.
 
 schema: cpueaxh.instruction-status.v1
 policy:
