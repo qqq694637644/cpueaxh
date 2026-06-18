@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <iostream>
+#include <limits>
 #include <string>
 
 #pragma comment(lib, "cpueaxh.lib")
@@ -38,9 +39,23 @@ bool parse_u64(const char* text, std::uint64_t& value) {
     if (!text || *text == '\0') {
         return false;
     }
-    char* end = nullptr;
-    value = std::strtoull(text, &end, 10);
-    return end && *end == '\0';
+    std::uint64_t result = 0;
+    for (const char* cursor = text; *cursor != '\0'; ++cursor) {
+        if (*cursor < '0' || *cursor > '9') {
+            return false;
+        }
+        const std::uint64_t digit = static_cast<std::uint64_t>(*cursor - '0');
+        if (result > (std::numeric_limits<std::uint64_t>::max() - digit) / 10u) {
+            return false;
+        }
+        result = result * 10u + digit;
+    }
+    value = result;
+    return true;
+}
+
+bool has_value(const char* text) {
+    return text && *text != '\0';
 }
 
 enum class ParseResult {
@@ -73,7 +88,7 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
             continue;
         }
         if (arg == "--case" || arg == "--filter-exact") {
-            if (++index >= argc) {
+            if (++index >= argc || !has_value(argv[index])) {
                 std::cerr << "missing value for " << arg << "\n";
                 return ParseResult::Error;
             }
@@ -81,7 +96,7 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
             continue;
         }
         if (arg == "--filter") {
-            if (++index >= argc) {
+            if (++index >= argc || !has_value(argv[index])) {
                 std::cerr << "missing value for --filter\n";
                 return ParseResult::Error;
             }
@@ -101,10 +116,11 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
                 std::cerr << "invalid value for --generated-seeds\n";
                 return ParseResult::Error;
             }
+            options.has_generated_seed_count = true;
             continue;
         }
         if (arg == "--replay") {
-            if (++index >= argc) {
+            if (++index >= argc || !has_value(argv[index])) {
                 std::cerr << "missing value for --replay\n";
                 return ParseResult::Error;
             }
@@ -112,7 +128,7 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
             continue;
         }
         if (arg == "--record-failure") {
-            if (++index >= argc) {
+            if (++index >= argc || !has_value(argv[index])) {
                 std::cerr << "missing value for --record-failure\n";
                 return ParseResult::Error;
             }
@@ -126,6 +142,13 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
     if (!options.exact_case.empty() && !options.filter.empty()) {
         std::cerr << "--case/--filter-exact cannot be combined with --filter\n";
         return ParseResult::Error;
+    }
+    if (!options.replay_path.empty()) {
+        if (options.list_only || options.list_manual_only || !options.exact_case.empty() || !options.filter.empty() ||
+            options.has_seed_index || options.has_generated_seed_count || !options.run_manual || !options.run_regression_corpus) {
+            std::cerr << "--replay cannot be combined with list, selector, seed, generated-seeds, or skip options\n";
+            return ParseResult::Error;
+        }
     }
     return ParseResult::Ok;
 }

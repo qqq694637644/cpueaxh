@@ -5,9 +5,15 @@ on:
     branches: [ main ]
     paths:
       - ".github/workflows/**"
+      - ".github/pull_request_template.md"
       - "cpueaxh/**"
       - "test/**"
+      - "TEST_FRAMEWORK_PLAN_CN.md"
+      - "docs/development-workflow.md"
       - "docs/instruction-status.yml"
+      - "docs/replay-schema.md"
+      - "docs/instruction-test-generator-template.md"
+      - "docs/hardware-runner-matrix.md"
       - "cpueaxh.sln"
       - "**/*.vcxproj"
       - "**/*.props"
@@ -16,9 +22,15 @@ on:
     branches: [ main ]
     paths:
       - ".github/workflows/**"
+      - ".github/pull_request_template.md"
       - "cpueaxh/**"
       - "test/**"
+      - "TEST_FRAMEWORK_PLAN_CN.md"
+      - "docs/development-workflow.md"
       - "docs/instruction-status.yml"
+      - "docs/replay-schema.md"
+      - "docs/instruction-test-generator-template.md"
+      - "docs/hardware-runner-matrix.md"
       - "cpueaxh.sln"
       - "**/*.vcxproj"
       - "**/*.props"

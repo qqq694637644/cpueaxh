@@ -18,9 +18,10 @@ Required fields:
 }
 ```
 
-Accepted compatibility fields:
+`case_selector` must be a non-empty exact generated spec name. `seed_index` must be an unquoted JSON number. Quoted numbers, negative values, signed values, and overflow values are rejected.
 
-- `spec_name`: used as a fallback if `case_selector` is absent.
+Accepted diagnostic fields:
+
 - `seed`: diagnostic only; replay derives the deterministic seed from `case_selector` and `seed_index`.
 - `image_hex`: diagnostic only; replay regenerates the case image from the current generator.
 - `detail`: diagnostic only.
@@ -38,6 +39,12 @@ Equivalent exact selector command:
 ```powershell
 .\x64\Release\test.exe --case add_rr_rax_rbx --seed-index 0
 ```
+
+`--replay` is mutually exclusive with list, selector, seed, generated-seed-count, and skip options. This prevents a replay record from silently overriding command-line selectors.
+
+Long generated fuzz failures are also directly reproducible by the emitted `replay_hint`: `--seed-index <n>` runs a single deterministic seed and is not limited by the default full-suite seed count.
+
+The default full suite fails if `test/regression/` is missing, not a directory, or cannot be enumerated. This prevents the corpus from silently disappearing.
 
 ## Manual / unsafe-native index records
 

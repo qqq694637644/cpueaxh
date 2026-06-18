@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -424,6 +425,7 @@ struct TestOptions {
     bool has_seed_index = false;
     std::uint64_t seed_index = 0;
     std::uint64_t generated_seed_count = kSeedCount;
+    bool has_generated_seed_count = false;
     std::string filter;
     std::string exact_case;
     std::string failure_record_path;
@@ -588,22 +590,27 @@ inline bool json_extract_u64(const std::string& json, const std::string& key, st
     while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
         ++pos;
     }
-    bool quoted = false;
-    if (pos < json.size() && json[pos] == '"') {
-        quoted = true;
-        ++pos;
-    }
-    const std::size_t begin = pos;
-    while (pos < json.size() && std::isdigit(static_cast<unsigned char>(json[pos]))) {
-        ++pos;
-    }
-    if (begin == pos) {
+    if (pos >= json.size() || !std::isdigit(static_cast<unsigned char>(json[pos]))) {
         return false;
     }
-    if (quoted && (pos >= json.size() || json[pos] != '"')) {
+
+    std::uint64_t result = 0;
+    do {
+        const std::uint64_t digit = static_cast<std::uint64_t>(json[pos] - '0');
+        if (result > (std::numeric_limits<std::uint64_t>::max() - digit) / 10u) {
+            return false;
+        }
+        result = result * 10u + digit;
+        ++pos;
+    } while (pos < json.size() && std::isdigit(static_cast<unsigned char>(json[pos])));
+
+    while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
+        ++pos;
+    }
+    if (pos < json.size() && json[pos] != ',' && json[pos] != '}') {
         return false;
     }
-    value = std::strtoull(json.substr(begin, pos - begin).c_str(), nullptr, 10);
+    value = result;
     return true;
 }
 
@@ -615,9 +622,8 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
     }
 
     std::string exact_case;
-    if (!json_extract_string(json, "case_selector", exact_case) &&
-        !json_extract_string(json, "spec_name", exact_case)) {
-        error = "replay file has no case_selector or spec_name: " + path;
+    if (!json_extract_string(json, "case_selector", exact_case) || exact_case.empty()) {
+        error = "replay file has no non-empty case_selector: " + path;
         return false;
     }
 
@@ -639,19 +645,36 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
     return true;
 }
 
-inline std::vector<std::string> list_regression_replay_files() {
-    std::vector<std::string> files;
+inline bool list_regression_replay_files(std::vector<std::string>& files, std::string& error) {
+    files.clear();
     const std::filesystem::path regression_dir = std::filesystem::path("test") / "regression";
     std::error_code ec;
-    if (!std::filesystem::exists(regression_dir, ec) || !std::filesystem::is_directory(regression_dir, ec)) {
-        return files;
+    if (!std::filesystem::exists(regression_dir, ec)) {
+        error = "regression corpus directory missing: " + regression_dir.string();
+        return false;
+    }
+    if (!std::filesystem::is_directory(regression_dir, ec)) {
+        error = "regression corpus path is not a directory: " + regression_dir.string();
+        return false;
     }
 
-    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(regression_dir, ec)) {
+    std::filesystem::directory_iterator iterator(regression_dir, ec);
+    if (ec) {
+        error = "failed to enumerate regression corpus: " + ec.message();
+        return false;
+    }
+    const std::filesystem::directory_iterator end;
+    for (; iterator != end; iterator.increment(ec)) {
         if (ec) {
-            break;
+            error = "failed to enumerate regression corpus: " + ec.message();
+            return false;
         }
+        const std::filesystem::directory_entry& entry = *iterator;
         if (!entry.is_regular_file(ec)) {
+            if (ec) {
+                error = "failed to inspect regression corpus entry: " + ec.message();
+                return false;
+            }
             continue;
         }
         if (entry.path().extension() == ".json") {
@@ -659,7 +682,7 @@ inline std::vector<std::string> list_regression_replay_files() {
         }
     }
     std::sort(files.begin(), files.end());
-    return files;
+    return true;
 }
 
 struct HostFeatures {
@@ -9705,11 +9728,6 @@ inline bool run_all_tests(const TestOptions& options) {
         return false;
     }
 
-    if (options.has_seed_index && options.seed_index >= options.generated_seed_count) {
-        std::cerr << "seed index out of range: " << options.seed_index << " >= " << options.generated_seed_count << std::endl;
-        return false;
-    }
-
     std::uint64_t selected_specs = 0;
     for (const ProgramSpec& spec : specs) {
         if (selected_by_filter(spec, options)) {
@@ -9728,14 +9746,31 @@ inline bool run_all_tests(const TestOptions& options) {
             std::cout << "manual special cases: " << manual_special_case_count(features) << std::endl;
         }
         if (options.filter.empty() && options.exact_case.empty() && !options.has_seed_index && options.run_regression_corpus) {
-            std::cout << "regression replay files: " << list_regression_replay_files().size() << std::endl;
+            std::vector<std::string> regression_files;
+            std::string regression_error;
+            if (!list_regression_replay_files(regression_files, regression_error)) {
+                std::cerr << regression_error << std::endl;
+                return false;
+            }
+            std::cout << "regression replay files: " << regression_files.size() << std::endl;
         }
         return true;
     }
 
     const bool run_manual = options.run_manual && options.filter.empty() && options.exact_case.empty() && !options.has_seed_index;
     const bool run_regression_corpus = options.run_regression_corpus && options.filter.empty() && options.exact_case.empty() && !options.has_seed_index;
-    const std::vector<std::string> regression_files = run_regression_corpus ? list_regression_replay_files() : std::vector<std::string>{};
+    std::vector<std::string> regression_files;
+    if (run_regression_corpus) {
+        std::string regression_error;
+        if (!list_regression_replay_files(regression_files, regression_error)) {
+            Failure failure;
+            failure.case_name = "regression_corpus";
+            failure.detail = regression_error;
+            std::cerr << regression_error << std::endl;
+            write_failure_record(options.failure_record_path, failure);
+            return false;
+        }
+    }
     const std::uint64_t selected_seed_count = options.has_seed_index ? 1ull : options.generated_seed_count;
     const std::uint64_t total = selected_specs * selected_seed_count +
         (run_manual ? manual_special_case_count(features) : 0ull) +

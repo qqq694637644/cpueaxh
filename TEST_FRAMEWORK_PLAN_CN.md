@@ -160,7 +160,7 @@ Windows x64 Release build
 失败记录 artifact 上传
 ```
 
-第一阶段 workflow 使用 `paths` 过滤触发范围：`.github/workflows/**`、`cpueaxh/**`、`test/**`、`docs/instruction-status.yml`、`cpueaxh.sln`、`*.vcxproj`、`*.props`、`*.targets` 相关改动才触发。
+第一阶段 workflow 使用 `paths` 过滤触发范围：`.github/workflows/**`、`.github/pull_request_template.md`、`cpueaxh/**`、`test/**`、`TEST_FRAMEWORK_PLAN_CN.md`、开发契约文档、`docs/instruction-status.yml`、`cpueaxh.sln`、`*.vcxproj`、`*.props`、`*.targets` 相关改动才触发。
 
 Nightly 或自托管真机可扩展：
 
@@ -225,7 +225,7 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 }
 ```
 
-第二阶段已经将生成式用例 replay 从 substring `--filter` 提升为精确 selector：`failure.json` 使用 `case_selector`，`replay_hint` 使用 `--case <exact-name> --seed-index <n>`，并支持 `test.exe --replay <path>`。当前 replay 范围仍限定在生成式差分用例；manual 或 unsafe-native 用例仍需要显式 C++ 测试覆盖。
+第二阶段已经将生成式用例 replay 从 substring `--filter` 提升为精确 selector：`failure.json` 使用必填 `case_selector`，`replay_hint` 使用 `--case <exact-name> --seed-index <n>`，并支持 `test.exe --replay <path>`。`--seed-index` 不再受默认 seed 总数限制，因此 long fuzz 中失败的单个 seed 可以直接用 replay hint 复现。当前 replay 范围仍限定在生成式差分用例；manual 或 unsafe-native 用例仍需要显式 C++ 测试覆盖。
 
 后续可扩展字段：
 
