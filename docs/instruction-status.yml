@@ -1,0 +1,278 @@
+# Instruction implementation and test coverage ledger.
+#
+# Keep this file conservative: mark a form as implemented only when the emulator
+# supports that listed form and the full regression suite protects it. A
+# mnemonic-level grouping is not a claim that every encoding/form/operand size is
+# implemented.
+
+schema: cpueaxh.instruction-status.v1
+granularity:
+  required_identity_fields:
+    - mnemonic
+    - form.name
+    - form.encoding
+    - form.operands
+    - form.operand_size
+    - form.mode
+    - form.feature_gate
+  interpretation:
+    implemented_means_only_listed_form: true
+    unlisted_forms_are_supported: false
+
+policy:
+  new_instruction_pr_requires:
+    - true_cpu_differential_tests_when_safe_and_supported
+    - manual_or_model_coverage_for_unsafe_native_cases
+    - full_regression_suite
+    - ci_pass
+    - small_reviewable_change
+    - instruction_status_update
+
+status_values:
+  - todo
+  - implemented
+  - implemented_partial
+  - differential_tested
+  - manual_tested
+  - feature_gated
+  - unsafe_for_native
+  - blocked
+
+families:
+  integer_alu:
+    status: in_progress
+    regression_gate: test.exe full suite
+    entries:
+      - mnemonic: ADD
+        forms:
+          - name: add_rr_rax_rbx
+            encoding: "REX.W 01 /r"
+            operands: ["r/m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: true
+              manual: false
+            unsafe_native_reason: null
+          - name: add_mem
+            encoding: "REX.W 01 /r memory destination"
+            operands: ["m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: ADC
+        forms:
+          - name: adc_rr_rax_rbx
+            encoding: "REX.W 11 /r"
+            operands: ["r/m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: SUB
+        forms:
+          - name: sub_rr_rax_rbx
+            encoding: "REX.W 29 /r"
+            operands: ["r/m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: SBB
+        forms:
+          - name: sbb_rr_rax_rbx
+            encoding: "REX.W 19 /r"
+            operands: ["r/m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: AND
+        forms:
+          - name: and_rr_rax_rbx
+            encoding: "REX.W 21 /r"
+            operands: ["r/m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: OR
+        forms:
+          - name: or_rr_rax_rbx
+            encoding: "REX.W 09 /r"
+            operands: ["r/m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: XOR
+        forms:
+          - name: xor_rr_rax_rbx
+            encoding: "REX.W 31 /r"
+            operands: ["r/m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: CMP
+        forms:
+          - name: cmp_rr_rax_rbx
+            encoding: "REX.W 39 /r"
+            operands: ["r/m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: TEST
+        forms:
+          - name: test_rr_rax_rbx
+            encoding: "REX.W 85 /r"
+            operands: ["r/m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+
+  control_flow:
+    status: in_progress
+    regression_gate: test.exe full suite
+    entries:
+      - mnemonic: JMP
+        forms:
+          - name: jmp_skip
+            encoding: "E9 rel32"
+            operands: ["rel32"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: true
+            unsafe_native_reason: null
+      - mnemonic: CALL
+        forms:
+          - name: call_add
+            encoding: "E8 rel32"
+            operands: ["rel32"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: true
+            unsafe_native_reason: null
+      - mnemonic: RET
+        forms:
+          - name: ret_near
+            encoding: "C3 / C2 imm16"
+            operands: ["stack target"]
+            operand_size: "16/32/64 by mode and prefixes"
+            mode: long64_and_compat32
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: true
+            unsafe_native_reason: null
+      - mnemonic: Jcc
+        forms:
+          - name: jz
+            encoding: "0F 84 rel32 / short Jcc family by condition"
+            operands: ["rel"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+
+  vector:
+    status: in_progress
+    regression_gate: feature-gated true-CPU differential tests
+    note: Optional CPU features are selected from CPUID at runtime. Coverage is currently a mix of generated data-area comparisons and manual edge cases, not a universal full register-file comparison.
+    entries:
+      - mnemonic: AESENC
+        forms:
+          - name: aesenc
+            encoding: "66 0F 38 DC /r"
+            operands: ["xmm", "xmm/m128"]
+            operand_size: 128
+            mode: long64
+            feature_gate: aes
+            status: feature_gated
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: privileged_or_system
+        forms:
+          - name: privileged_system_index
+            encoding: "various"
+            operands: []
+            operand_size: null
+            mode: system
+            feature_gate: controlled_environment
+            status: unsafe_for_native
+            coverage:
+              generated_differential: false
+              regression_replay: false
+              manual: true
+            unsafe_native_reason: "Privileged/MSR/VMX/SVM/system instructions are not executed directly in normal user-mode CI."

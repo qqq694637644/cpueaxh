@@ -1,0 +1,10 @@
+{
+  "schema": "cpueaxh.failure.v1",
+  "case_name": "add_rr_rax_rbx:15002038354403240456",
+  "detail": "regression corpus seed for add_rr_rax_rbx",
+  "spec_name": "add_rr_rax_rbx",
+  "case_selector": "add_rr_rax_rbx",
+  "seed_index": 0,
+  "seed": "15002038354403240456",
+  "replay_hint": "test.exe --case add_rr_rax_rbx --seed-index 0"
+}

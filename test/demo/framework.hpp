@@ -4,12 +4,18 @@
 
 #include <windows.h>
 #include <intrin.h>
+#include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -144,6 +150,42 @@ inline std::string hex64(std::uint64_t value) {
 inline std::string hex8(std::uint8_t value) {
     std::ostringstream stream;
     stream << "0x" << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(value);
+    return stream.str();
+}
+
+inline std::string bytes_hex(const std::vector<std::uint8_t>& bytes) {
+    std::ostringstream stream;
+    stream << std::hex << std::setfill('0');
+    for (std::size_t index = 0; index < bytes.size(); ++index) {
+        if (index != 0) {
+            stream << ' ';
+        }
+        stream << std::setw(2) << static_cast<unsigned>(bytes[index]);
+    }
+    return stream.str();
+}
+
+inline std::string json_escape(const std::string& value) {
+    std::ostringstream stream;
+    for (const char ch : value) {
+        switch (ch) {
+        case '\\': stream << "\\\\"; break;
+        case '"': stream << "\\\""; break;
+        case '\b': stream << "\\b"; break;
+        case '\f': stream << "\\f"; break;
+        case '\n': stream << "\\n"; break;
+        case '\r': stream << "\\r"; break;
+        case '\t': stream << "\\t"; break;
+        default:
+            if (static_cast<unsigned char>(ch) < 0x20u) {
+                stream << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<unsigned>(static_cast<unsigned char>(ch));
+            }
+            else {
+                stream << ch;
+            }
+            break;
+        }
+    }
     return stream.str();
 }
 
@@ -368,7 +410,287 @@ struct BuiltCase {
 struct Failure {
     std::string case_name;
     std::string detail;
+    std::string spec_name;
+    std::string image_hex;
+    std::uint64_t seed = 0;
+    std::uint64_t seed_index = 0;
+    bool has_seed = false;
+    bool has_seed_index = false;
 };
+
+struct TestOptions {
+    bool list_only = false;
+    bool list_manual_only = false;
+    bool run_manual = true;
+    bool has_seed_index = false;
+    std::uint64_t seed_index = 0;
+    std::uint64_t generated_seed_count = kSeedCount;
+    bool has_generated_seed_count = false;
+    std::string filter;
+    std::string exact_case;
+    std::string failure_record_path;
+    std::string replay_path;
+    bool run_regression_corpus = true;
+};
+
+struct ManualCaseIndexEntry {
+    const char* name;
+    const char* category;
+    const char* coverage;
+};
+
+inline constexpr std::array<ManualCaseIndexEntry, 10> kManualCaseIndex = {{
+    { "compat32_control_transfer", "manual", "near/far ret and cross-mode control-transfer edge cases" },
+    { "exception_priority", "manual", "memory, stack, canonical-address, and UD exception ordering" },
+    { "invalid_prefix_ud", "manual", "LOCK/VEX/EVEX invalid encoding cases" },
+    { "x87_state", "manual", "x87 control/status/env and wait/no-wait behavior" },
+    { "host_stack_roundtrip", "manual", "host-mode stack and return-slot behavior" },
+    { "cached_rmw_recompute", "manual", "cached decoded RMW recomputation for xchg/xadd/cmpxchg" },
+    { "context_api", "manual", "public context read/write register-file coupling" },
+    { "simd_encoding_edges", "manual", "selected SSE/AVX/EVEX prefix and register-extension edge cases" },
+    { "port_io_escape", "unsafe-native", "I/O instructions are escape/model tested rather than native user-mode executed" },
+    { "privileged_system", "unsafe-native", "privileged/MSR/VMX/SVM/system semantics require model or controlled-runner tests" },
+}};
+
+inline void print_manual_case_index() {
+    std::cout << "cpueaxh manual/unsafe-native test index: " << kManualCaseIndex.size() << std::endl;
+    for (const ManualCaseIndexEntry& entry : kManualCaseIndex) {
+        std::cout << entry.name << " [" << entry.category << "] " << entry.coverage << std::endl;
+    }
+}
+
+inline bool selected_by_filter(const std::string& name, const TestOptions& options) {
+    if (!options.exact_case.empty()) {
+        return name == options.exact_case;
+    }
+    return options.filter.empty() || name.find(options.filter) != std::string::npos;
+}
+
+inline bool selected_by_filter(const ProgramSpec& spec, const TestOptions& options) {
+    return selected_by_filter(spec.name, options);
+}
+
+inline void attach_built_case_to_failure(Failure& failure, const BuiltCase& built, std::uint64_t seed_index) {
+    if (failure.case_name.empty()) {
+        failure.case_name = built.spec.name + ":" + std::to_string(built.seed);
+    }
+    failure.spec_name = built.spec.name;
+    failure.image_hex = bytes_hex(built.image);
+    failure.seed = built.seed;
+    failure.seed_index = seed_index;
+    failure.has_seed = true;
+    failure.has_seed_index = true;
+}
+
+inline bool write_failure_record(const std::string& path, const Failure& failure) {
+    if (path.empty()) {
+        return true;
+    }
+
+    std::ofstream file(path, std::ios::out | std::ios::trunc);
+    if (!file) {
+        std::cerr << "failed to open failure record: " << path << std::endl;
+        return false;
+    }
+
+    file << "{\n";
+    file << "  \"schema\": \"cpueaxh.failure.v1\",\n";
+    file << "  \"case_name\": \"" << json_escape(failure.case_name) << "\",\n";
+    file << "  \"detail\": \"" << json_escape(failure.detail) << "\"";
+    if (!failure.spec_name.empty()) {
+        file << ",\n  \"spec_name\": \"" << json_escape(failure.spec_name) << "\"";
+    }
+    if (failure.has_seed_index) {
+        file << ",\n  \"seed_index\": " << failure.seed_index;
+    }
+    if (failure.has_seed) {
+        file << ",\n  \"seed\": \"" << failure.seed << "\"";
+    }
+    if (!failure.image_hex.empty()) {
+        file << ",\n  \"image_hex\": \"" << json_escape(failure.image_hex) << "\"";
+    }
+    if (!failure.spec_name.empty() && failure.has_seed_index) {
+        file << ",\n  \"case_selector\": \"" << json_escape(failure.spec_name) << "\"";
+        file << ",\n  \"replay_hint\": \"test.exe --case " << json_escape(failure.spec_name)
+             << " --seed-index " << failure.seed_index << "\"";
+    }
+    file << "\n}\n";
+    return true;
+}
+
+inline bool read_text_file(const std::string& path, std::string& contents) {
+    std::ifstream file(path, std::ios::in | std::ios::binary);
+    if (!file) {
+        return false;
+    }
+    std::ostringstream stream;
+    stream << file.rdbuf();
+    contents = stream.str();
+    return true;
+}
+
+inline bool json_extract_string(const std::string& json, const std::string& key, std::string& value) {
+    const std::string pattern = std::string("\"") + key + "\"";
+    std::size_t pos = json.find(pattern);
+    if (pos == std::string::npos) {
+        return false;
+    }
+    pos = json.find(':', pos + pattern.size());
+    if (pos == std::string::npos) {
+        return false;
+    }
+    ++pos;
+    while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
+        ++pos;
+    }
+    if (pos >= json.size() || json[pos] != '"') {
+        return false;
+    }
+    ++pos;
+
+    std::string result;
+    while (pos < json.size()) {
+        const char ch = json[pos++];
+        if (ch == '"') {
+            value = result;
+            return true;
+        }
+        if (ch == '\\' && pos < json.size()) {
+            const char esc = json[pos++];
+            switch (esc) {
+            case '"': result.push_back('"'); break;
+            case '\\': result.push_back('\\'); break;
+            case '/': result.push_back('/'); break;
+            case 'b': result.push_back('\b'); break;
+            case 'f': result.push_back('\f'); break;
+            case 'n': result.push_back('\n'); break;
+            case 'r': result.push_back('\r'); break;
+            case 't': result.push_back('\t'); break;
+            default: result.push_back(esc); break;
+            }
+        }
+        else {
+            result.push_back(ch);
+        }
+    }
+    return false;
+}
+
+inline bool json_extract_u64(const std::string& json, const std::string& key, std::uint64_t& value) {
+    const std::string pattern = std::string("\"") + key + "\"";
+    std::size_t pos = json.find(pattern);
+    if (pos == std::string::npos) {
+        return false;
+    }
+    pos = json.find(':', pos + pattern.size());
+    if (pos == std::string::npos) {
+        return false;
+    }
+    ++pos;
+    while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
+        ++pos;
+    }
+    if (pos >= json.size() || !std::isdigit(static_cast<unsigned char>(json[pos]))) {
+        return false;
+    }
+
+    std::uint64_t result = 0;
+    do {
+        const std::uint64_t digit = static_cast<std::uint64_t>(json[pos] - '0');
+        if (result > (std::numeric_limits<std::uint64_t>::max() - digit) / 10u) {
+            return false;
+        }
+        result = result * 10u + digit;
+        ++pos;
+    } while (pos < json.size() && std::isdigit(static_cast<unsigned char>(json[pos])));
+
+    while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
+        ++pos;
+    }
+    if (pos < json.size() && json[pos] != ',' && json[pos] != '}') {
+        return false;
+    }
+    value = result;
+    return true;
+}
+
+inline bool apply_replay_file(const std::string& path, TestOptions& options, std::string& error) {
+    std::string json;
+    if (!read_text_file(path, json)) {
+        error = "failed to read replay file: " + path;
+        return false;
+    }
+
+    std::string schema;
+    if (!json_extract_string(json, "schema", schema) || schema != "cpueaxh.failure.v1") {
+        error = "replay file has unsupported schema: " + path;
+        return false;
+    }
+
+    std::string exact_case;
+    if (!json_extract_string(json, "case_selector", exact_case) || exact_case.empty()) {
+        error = "replay file has no non-empty case_selector: " + path;
+        return false;
+    }
+
+    std::uint64_t seed_index = 0;
+    if (!json_extract_u64(json, "seed_index", seed_index)) {
+        error = "replay file has no numeric seed_index: " + path;
+        return false;
+    }
+
+    options.exact_case = exact_case;
+    options.filter.clear();
+    options.seed_index = seed_index;
+    options.has_seed_index = true;
+    options.run_manual = false;
+    options.run_regression_corpus = false;
+    return true;
+}
+
+inline bool list_regression_replay_files(std::vector<std::string>& files, std::string& error) {
+    files.clear();
+    const std::filesystem::path regression_dir = std::filesystem::path("test") / "regression";
+    std::error_code ec;
+    if (!std::filesystem::exists(regression_dir, ec)) {
+        error = "regression corpus directory missing: " + regression_dir.string();
+        return false;
+    }
+    if (!std::filesystem::is_directory(regression_dir, ec)) {
+        error = "regression corpus path is not a directory: " + regression_dir.string();
+        return false;
+    }
+
+    std::filesystem::directory_iterator iterator(regression_dir, ec);
+    if (ec) {
+        error = "failed to enumerate regression corpus: " + ec.message();
+        return false;
+    }
+    const std::filesystem::directory_iterator end;
+    for (; iterator != end; iterator.increment(ec)) {
+        if (ec) {
+            error = "failed to enumerate regression corpus: " + ec.message();
+            return false;
+        }
+        const std::filesystem::directory_entry& entry = *iterator;
+        if (!entry.is_regular_file(ec)) {
+            if (ec) {
+                error = "failed to inspect regression corpus entry: " + ec.message();
+                return false;
+            }
+            continue;
+        }
+        if (entry.path().extension() == ".json") {
+            files.push_back(entry.path().string());
+        }
+    }
+    std::sort(files.begin(), files.end());
+    if (files.empty()) {
+        error = "regression corpus has no replay json files: " + regression_dir.string();
+        return false;
+    }
+    return true;
+}
 
 struct HostFeatures {
     bool avx = false;
@@ -7170,7 +7492,7 @@ inline std::uint64_t manual_special_case_count(const HostFeatures& features) {
     return kSeedCount * per_seed_special + kExceptionSeedCount * exception_special + kHostStackSeedCount * 4ull + kContextApiSeedCount;
 }
 
-inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t& executed, std::uint64_t total) {
+inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t& executed, std::uint64_t total, Failure* first_failure = nullptr) {
     const std::vector<std::uint8_t> endbr64 = { 0xF3, 0x0F, 0x1E, 0xFA, 0xC3 };
     const std::vector<std::uint8_t> endbr32 = { 0xF3, 0x0F, 0x1E, 0xFB, 0xC3 };
     const std::vector<std::uint8_t> rcl_bx_cl = { 0x66, 0xD3, 0xD3 };
@@ -7300,8 +7622,13 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> invalid_palignr_lock = { 0xF0, 0x66, 0x0F, 0x3A, 0x0F, 0xC8, 0x05 };
     const std::vector<std::uint8_t> invalid_palignr_misaligned = { 0x66, 0x0F, 0x3A, 0x0F, 0x44, 0x24, 0x41, 0x07 };
 
+    bool all_ok = true;
     auto tick = [&](bool result, const Failure& failure) -> bool {
         if (!result) {
+            all_ok = false;
+            if (first_failure && first_failure->case_name.empty()) {
+                *first_failure = failure;
+            }
             std::cerr << "FAIL " << failure.case_name << std::endl;
             std::cerr << failure.detail << std::endl;
             // Allow CPUEAXH_TEST_CONTINUE=1 to surface every regression rather
@@ -8868,7 +9195,7 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         if (!tick(run_context_api_case("context_api:" + std::to_string(seed8), seed8, failure), failure)) return false;
     }
 
-    return true;
+    return all_ok;
 }
 
 inline bool emit_host_mov_reg_imm64(std::vector<std::uint8_t>& code, std::uint8_t reg_low3, std::uint64_t imm) {
@@ -9358,42 +9685,215 @@ private:
     std::string init_error_;
 };
 
-inline bool run_all_tests() {
+inline const ProgramSpec* find_spec_by_name(const std::vector<ProgramSpec>& specs, const std::string& name) {
+    for (const ProgramSpec& spec : specs) {
+        if (spec.name == name) {
+            return &spec;
+        }
+    }
+    return nullptr;
+}
+
+inline bool run_generated_case_by_name(
+    Harness& harness,
+    const std::vector<ProgramSpec>& specs,
+    const std::string& case_name,
+    std::uint64_t seed_index,
+    Failure& failure)
+{
+    const ProgramSpec* spec = find_spec_by_name(specs, case_name);
+    if (!spec) {
+        failure.case_name = case_name;
+        failure.detail = "generated test spec not found";
+        return false;
+    }
+
+    const std::uint64_t seed = seeded(
+        seed_index,
+        static_cast<std::uint64_t>(spec->op) +
+        (static_cast<std::uint64_t>(spec->family) << 8) +
+        (static_cast<std::uint64_t>(spec->variant) << 16));
+    BuiltCase built = build_case(*spec, seed);
+    if (!harness.run_case(built, failure)) {
+        attach_built_case_to_failure(failure, built, seed_index);
+        return false;
+    }
+    return true;
+}
+
+inline bool run_all_tests(const TestOptions& options) {
     const HostFeatures features = query_host_features();
     const std::vector<ProgramSpec> specs = make_specs(features);
-    const std::uint64_t total = static_cast<std::uint64_t>(specs.size()) * kSeedCount + manual_special_case_count(features);
+
+    if (options.list_manual_only) {
+        print_manual_case_index();
+        return true;
+    }
+
+    if (options.generated_seed_count == 0) {
+        std::cerr << "generated seed count must be greater than zero" << std::endl;
+        return false;
+    }
+
+    std::uint64_t selected_specs = 0;
+    for (const ProgramSpec& spec : specs) {
+        if (selected_by_filter(spec, options)) {
+            ++selected_specs;
+        }
+    }
+
+    if (options.list_only) {
+        std::cout << "cpueaxh generated test specs: " << selected_specs << "/" << specs.size() << std::endl;
+        for (const ProgramSpec& spec : specs) {
+            if (selected_by_filter(spec, options)) {
+                std::cout << spec.name << std::endl;
+            }
+        }
+        if (options.filter.empty() && options.exact_case.empty() && !options.has_seed_index && options.run_manual) {
+            std::cout << "manual special cases: " << manual_special_case_count(features) << std::endl;
+        }
+        if (options.filter.empty() && options.exact_case.empty() && !options.has_seed_index && options.run_regression_corpus) {
+            std::vector<std::string> regression_files;
+            std::string regression_error;
+            if (!list_regression_replay_files(regression_files, regression_error)) {
+                std::cerr << regression_error << std::endl;
+                return false;
+            }
+            std::cout << "regression replay files: " << regression_files.size() << std::endl;
+        }
+        return true;
+    }
+
+    const bool run_manual = options.run_manual && options.filter.empty() && options.exact_case.empty() && !options.has_seed_index;
+    const bool run_regression_corpus = options.run_regression_corpus && options.filter.empty() && options.exact_case.empty() && !options.has_seed_index;
+    std::vector<std::string> regression_files;
+    if (run_regression_corpus) {
+        std::string regression_error;
+        if (!list_regression_replay_files(regression_files, regression_error)) {
+            Failure failure;
+            failure.case_name = "regression_corpus";
+            failure.detail = regression_error;
+            std::cerr << regression_error << std::endl;
+            write_failure_record(options.failure_record_path, failure);
+            return false;
+        }
+    }
+    const std::uint64_t selected_seed_count = options.has_seed_index ? 1ull : options.generated_seed_count;
+    const std::uint64_t total = selected_specs * selected_seed_count +
+        (run_manual ? manual_special_case_count(features) : 0ull) +
+        static_cast<std::uint64_t>(regression_files.size());
+    if (total == 0) {
+        std::cerr << "no test cases selected" << std::endl;
+        return false;
+    }
     std::cout << "cpueaxh test cases: " << total << std::endl;
+    if (!options.filter.empty()) {
+        std::cout << "filter: " << options.filter << std::endl;
+    }
+    if (!options.exact_case.empty()) {
+        std::cout << "case: " << options.exact_case << std::endl;
+    }
+    if (options.has_seed_index) {
+        std::cout << "seed-index: " << options.seed_index << std::endl;
+    }
+    if (options.generated_seed_count != kSeedCount && !options.has_seed_index) {
+        std::cout << "generated-seeds: " << options.generated_seed_count << std::endl;
+    }
+    if (!run_manual) {
+        std::cout << "manual special cases: skipped" << std::endl;
+    }
+    if (run_regression_corpus) {
+        std::cout << "regression replay files: " << regression_files.size() << std::endl;
+    }
 
     Harness harness;
     if (!harness.ready()) {
-        std::cerr << harness.init_error() << std::endl;
+        Failure failure;
+        failure.case_name = "harness_init";
+        failure.detail = harness.init_error();
+        std::cerr << failure.detail << std::endl;
+        write_failure_record(options.failure_record_path, failure);
         return false;
     }
 
     std::uint64_t executed = 0;
+    auto run_generated_seed = [&](const ProgramSpec& spec, std::uint64_t seed_index) -> bool {
+        const std::uint64_t seed = seeded(seed_index, static_cast<std::uint64_t>(spec.op) + (static_cast<std::uint64_t>(spec.family) << 8) + (static_cast<std::uint64_t>(spec.variant) << 16));
+        BuiltCase built = build_case(spec, seed);
+        Failure failure;
+        if (!harness.run_case(built, failure)) {
+            attach_built_case_to_failure(failure, built, seed_index);
+            std::cerr << "FAIL " << failure.case_name << std::endl;
+            std::cerr << failure.detail << std::endl;
+            write_failure_record(options.failure_record_path, failure);
+            return false;
+        }
+        ++executed;
+        if ((executed % 1024) == 0 || executed == total) {
+            std::cout << "progress " << executed << "/" << total << std::endl;
+        }
+        return true;
+    };
+
     for (const ProgramSpec& spec : specs) {
-        for (std::uint64_t seed_index = 0; seed_index < kSeedCount; ++seed_index) {
-            const std::uint64_t seed = seeded(seed_index, static_cast<std::uint64_t>(spec.op) + (static_cast<std::uint64_t>(spec.family) << 8) + (static_cast<std::uint64_t>(spec.variant) << 16));
-            BuiltCase built = build_case(spec, seed);
-            Failure failure;
-            if (!harness.run_case(built, failure)) {
-                std::cerr << "FAIL " << failure.case_name << std::endl;
-                std::cerr << failure.detail << std::endl;
+        if (!selected_by_filter(spec, options)) {
+            continue;
+        }
+        if (options.has_seed_index) {
+            if (!run_generated_seed(spec, options.seed_index)) {
                 return false;
             }
-            ++executed;
-            if ((executed % 1024) == 0 || executed == total) {
-                std::cout << "progress " << executed << "/" << total << std::endl;
+        }
+        else {
+            for (std::uint64_t seed_index = 0; seed_index < options.generated_seed_count; ++seed_index) {
+                if (!run_generated_seed(spec, seed_index)) {
+                    return false;
+                }
             }
         }
     }
 
-    if (!run_manual_special_tests(features, executed, total)) {
-        return false;
+    if (run_manual) {
+        Failure failure;
+        if (!run_manual_special_tests(features, executed, total, &failure)) {
+            write_failure_record(options.failure_record_path, failure);
+            return false;
+        }
+    }
+
+    for (const std::string& regression_file : regression_files) {
+        TestOptions replay_options;
+        std::string replay_error;
+        if (!apply_replay_file(regression_file, replay_options, replay_error)) {
+            Failure failure;
+            failure.case_name = regression_file;
+            failure.detail = replay_error;
+            std::cerr << "FAIL regression " << regression_file << std::endl;
+            std::cerr << replay_error << std::endl;
+            write_failure_record(options.failure_record_path, failure);
+            return false;
+        }
+
+        Failure failure;
+        if (!run_generated_case_by_name(harness, specs, replay_options.exact_case, replay_options.seed_index, failure)) {
+            std::cerr << "FAIL regression " << regression_file << std::endl;
+            std::cerr << failure.case_name << std::endl;
+            std::cerr << failure.detail << std::endl;
+            write_failure_record(options.failure_record_path, failure);
+            return false;
+        }
+        ++executed;
+        if ((executed % 1024) == 0 || executed == total) {
+            std::cout << "progress " << executed << "/" << total << std::endl;
+        }
     }
 
     std::cout << "PASS " << executed << "/" << total << std::endl;
     return true;
+}
+
+inline bool run_all_tests() {
+    return run_all_tests(TestOptions{});
 }
 
 }
