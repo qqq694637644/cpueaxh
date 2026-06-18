@@ -4,11 +4,14 @@
 
 #include <windows.h>
 #include <intrin.h>
+#include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -420,10 +423,16 @@ struct TestOptions {
     bool has_seed_index = false;
     std::uint64_t seed_index = 0;
     std::string filter;
+    std::string exact_case;
     std::string failure_record_path;
+    std::string replay_path;
+    bool run_regression_corpus = true;
 };
 
 inline bool selected_by_filter(const std::string& name, const TestOptions& options) {
+    if (!options.exact_case.empty()) {
+        return name == options.exact_case;
+    }
     return options.filter.empty() || name.find(options.filter) != std::string::npos;
 }
 
@@ -471,11 +480,155 @@ inline bool write_failure_record(const std::string& path, const Failure& failure
         file << ",\n  \"image_hex\": \"" << json_escape(failure.image_hex) << "\"";
     }
     if (!failure.spec_name.empty() && failure.has_seed_index) {
-        file << ",\n  \"replay_hint\": \"test.exe --filter " << json_escape(failure.spec_name)
+        file << ",\n  \"case_selector\": \"" << json_escape(failure.spec_name) << "\"";
+        file << ",\n  \"replay_hint\": \"test.exe --case " << json_escape(failure.spec_name)
              << " --seed-index " << failure.seed_index << "\"";
     }
     file << "\n}\n";
     return true;
+}
+
+inline bool read_text_file(const std::string& path, std::string& contents) {
+    std::ifstream file(path, std::ios::in | std::ios::binary);
+    if (!file) {
+        return false;
+    }
+    std::ostringstream stream;
+    stream << file.rdbuf();
+    contents = stream.str();
+    return true;
+}
+
+inline bool json_extract_string(const std::string& json, const std::string& key, std::string& value) {
+    const std::string pattern = std::string("\"") + key + "\"";
+    std::size_t pos = json.find(pattern);
+    if (pos == std::string::npos) {
+        return false;
+    }
+    pos = json.find(':', pos + pattern.size());
+    if (pos == std::string::npos) {
+        return false;
+    }
+    ++pos;
+    while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
+        ++pos;
+    }
+    if (pos >= json.size() || json[pos] != '"') {
+        return false;
+    }
+    ++pos;
+
+    std::string result;
+    while (pos < json.size()) {
+        const char ch = json[pos++];
+        if (ch == '"') {
+            value = result;
+            return true;
+        }
+        if (ch == '\\' && pos < json.size()) {
+            const char esc = json[pos++];
+            switch (esc) {
+            case '"': result.push_back('"'); break;
+            case '\\': result.push_back('\\'); break;
+            case '/': result.push_back('/'); break;
+            case 'b': result.push_back('\b'); break;
+            case 'f': result.push_back('\f'); break;
+            case 'n': result.push_back('\n'); break;
+            case 'r': result.push_back('\r'); break;
+            case 't': result.push_back('\t'); break;
+            default: result.push_back(esc); break;
+            }
+        }
+        else {
+            result.push_back(ch);
+        }
+    }
+    return false;
+}
+
+inline bool json_extract_u64(const std::string& json, const std::string& key, std::uint64_t& value) {
+    const std::string pattern = std::string("\"") + key + "\"";
+    std::size_t pos = json.find(pattern);
+    if (pos == std::string::npos) {
+        return false;
+    }
+    pos = json.find(':', pos + pattern.size());
+    if (pos == std::string::npos) {
+        return false;
+    }
+    ++pos;
+    while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
+        ++pos;
+    }
+    bool quoted = false;
+    if (pos < json.size() && json[pos] == '"') {
+        quoted = true;
+        ++pos;
+    }
+    const std::size_t begin = pos;
+    while (pos < json.size() && std::isdigit(static_cast<unsigned char>(json[pos]))) {
+        ++pos;
+    }
+    if (begin == pos) {
+        return false;
+    }
+    if (quoted && (pos >= json.size() || json[pos] != '"')) {
+        return false;
+    }
+    value = std::strtoull(json.substr(begin, pos - begin).c_str(), nullptr, 10);
+    return true;
+}
+
+inline bool apply_replay_file(const std::string& path, TestOptions& options, std::string& error) {
+    std::string json;
+    if (!read_text_file(path, json)) {
+        error = "failed to read replay file: " + path;
+        return false;
+    }
+
+    std::string exact_case;
+    if (!json_extract_string(json, "case_selector", exact_case) &&
+        !json_extract_string(json, "spec_name", exact_case)) {
+        error = "replay file has no case_selector or spec_name: " + path;
+        return false;
+    }
+
+    std::uint64_t seed_index = 0;
+    if (!json_extract_u64(json, "seed_index", seed_index)) {
+        error = "replay file has no numeric seed_index: " + path;
+        return false;
+    }
+
+    options.exact_case = exact_case;
+    options.filter.clear();
+    options.seed_index = seed_index;
+    options.has_seed_index = true;
+    options.run_manual = false;
+    options.run_regression_corpus = false;
+    return true;
+}
+
+inline std::vector<std::string> list_regression_replay_files() {
+    std::vector<std::string> files;
+    const std::filesystem::path regression_dir = std::filesystem::path("test") / "regression";
+    std::error_code ec;
+    if (!std::filesystem::exists(regression_dir, ec) || !std::filesystem::is_directory(regression_dir, ec)) {
+        return files;
+    }
+
+    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(regression_dir, ec)) {
+        if (ec) {
+            break;
+        }
+        if (!entry.is_regular_file(ec)) {
+            continue;
+        }
+        if (entry.path().extension() == ".json") {
+            files.push_back(entry.path().string());
+        }
+    }
+    std::sort(files.begin(), files.end());
+    return files;
 }
 
 struct HostFeatures {
@@ -9471,6 +9624,48 @@ private:
     std::string init_error_;
 };
 
+inline const ProgramSpec* find_spec_by_name(const std::vector<ProgramSpec>& specs, const std::string& name) {
+    for (const ProgramSpec& spec : specs) {
+        if (spec.name == name) {
+            return &spec;
+        }
+    }
+    return nullptr;
+}
+
+inline bool run_generated_case_by_name(
+    Harness& harness,
+    const std::vector<ProgramSpec>& specs,
+    const std::string& case_name,
+    std::uint64_t seed_index,
+    Failure& failure)
+{
+    if (seed_index >= kSeedCount) {
+        failure.case_name = case_name;
+        failure.detail = "seed index out of range: " + std::to_string(seed_index);
+        return false;
+    }
+
+    const ProgramSpec* spec = find_spec_by_name(specs, case_name);
+    if (!spec) {
+        failure.case_name = case_name;
+        failure.detail = "generated test spec not found";
+        return false;
+    }
+
+    const std::uint64_t seed = seeded(
+        seed_index,
+        static_cast<std::uint64_t>(spec->op) +
+        (static_cast<std::uint64_t>(spec->family) << 8) +
+        (static_cast<std::uint64_t>(spec->variant) << 16));
+    BuiltCase built = build_case(*spec, seed);
+    if (!harness.run_case(built, failure)) {
+        attach_built_case_to_failure(failure, built, seed_index);
+        return false;
+    }
+    return true;
+}
+
 inline bool run_all_tests(const TestOptions& options) {
     const HostFeatures features = query_host_features();
     const std::vector<ProgramSpec> specs = make_specs(features);
@@ -9494,15 +9689,22 @@ inline bool run_all_tests(const TestOptions& options) {
                 std::cout << spec.name << std::endl;
             }
         }
-        if (options.filter.empty() && !options.has_seed_index && options.run_manual) {
+        if (options.filter.empty() && options.exact_case.empty() && !options.has_seed_index && options.run_manual) {
             std::cout << "manual special cases: " << manual_special_case_count(features) << std::endl;
+        }
+        if (options.filter.empty() && options.exact_case.empty() && !options.has_seed_index && options.run_regression_corpus) {
+            std::cout << "regression replay files: " << list_regression_replay_files().size() << std::endl;
         }
         return true;
     }
 
-    const bool run_manual = options.run_manual && options.filter.empty() && !options.has_seed_index;
+    const bool run_manual = options.run_manual && options.filter.empty() && options.exact_case.empty() && !options.has_seed_index;
+    const bool run_regression_corpus = options.run_regression_corpus && options.filter.empty() && options.exact_case.empty() && !options.has_seed_index;
+    const std::vector<std::string> regression_files = run_regression_corpus ? list_regression_replay_files() : std::vector<std::string>{};
     const std::uint64_t selected_seed_count = options.has_seed_index ? 1ull : kSeedCount;
-    const std::uint64_t total = selected_specs * selected_seed_count + (run_manual ? manual_special_case_count(features) : 0ull);
+    const std::uint64_t total = selected_specs * selected_seed_count +
+        (run_manual ? manual_special_case_count(features) : 0ull) +
+        static_cast<std::uint64_t>(regression_files.size());
     if (total == 0) {
         std::cerr << "no test cases selected" << std::endl;
         return false;
@@ -9511,11 +9713,17 @@ inline bool run_all_tests(const TestOptions& options) {
     if (!options.filter.empty()) {
         std::cout << "filter: " << options.filter << std::endl;
     }
+    if (!options.exact_case.empty()) {
+        std::cout << "case: " << options.exact_case << std::endl;
+    }
     if (options.has_seed_index) {
         std::cout << "seed-index: " << options.seed_index << std::endl;
     }
     if (!run_manual) {
         std::cout << "manual special cases: skipped" << std::endl;
+    }
+    if (run_regression_corpus) {
+        std::cout << "regression replay files: " << regression_files.size() << std::endl;
     }
 
     Harness harness;
@@ -9558,6 +9766,33 @@ inline bool run_all_tests(const TestOptions& options) {
         if (!run_manual_special_tests(features, executed, total, &failure)) {
             write_failure_record(options.failure_record_path, failure);
             return false;
+        }
+    }
+
+    for (const std::string& regression_file : regression_files) {
+        TestOptions replay_options;
+        std::string replay_error;
+        if (!apply_replay_file(regression_file, replay_options, replay_error)) {
+            Failure failure;
+            failure.case_name = regression_file;
+            failure.detail = replay_error;
+            std::cerr << "FAIL regression " << regression_file << std::endl;
+            std::cerr << replay_error << std::endl;
+            write_failure_record(options.failure_record_path, failure);
+            return false;
+        }
+
+        Failure failure;
+        if (!run_generated_case_by_name(harness, specs, replay_options.exact_case, replay_options.seed_index, failure)) {
+            std::cerr << "FAIL regression " << regression_file << std::endl;
+            std::cerr << failure.case_name << std::endl;
+            std::cerr << failure.detail << std::endl;
+            write_failure_record(options.failure_record_path, failure);
+            return false;
+        }
+        ++executed;
+        if ((executed % 1024) == 0 || executed == total) {
+            std::cout << "progress " << executed << "/" << total << std::endl;
         }
     }
 

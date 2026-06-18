@@ -18,13 +18,18 @@ void print_usage(const char* exe) {
         << "Options:\n"
         << "  --help                         Show this help.\n"
         << "  --list                         List generated differential test specs.\n"
+        << "  --case <exact-name>            Run/list one exact generated spec name.\n"
+        << "  --filter-exact <exact-name>    Alias for --case.\n"
         << "  --filter <substring>           Run/list specs whose names contain substring.\n"
         << "  --seed-index <0..127>          Run one deterministic seed index.\n"
+        << "  --replay <path>                Replay a generated failure/regression JSON.\n"
         << "  --record-failure <path>        Write the first failure as JSON.\n"
         << "  --no-manual                    Skip manual special/regression cases.\n"
+        << "  --no-regression-corpus         Skip test/regression/*.json replay files.\n"
         << "\n"
         << "Default mode runs all generated true-CPU differential tests plus manual\n"
-        << "special cases. Filtered or single-seed runs skip manual cases by design.\n";
+        << "special cases and replay files from test/regression/*.json. Filtered,\n"
+        << "exact-case, replay, or single-seed runs skip manual/corpus cases by design.\n";
 }
 
 bool parse_u64(const char* text, std::uint64_t& value) {
@@ -57,6 +62,18 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
             options.run_manual = false;
             continue;
         }
+        if (arg == "--no-regression-corpus") {
+            options.run_regression_corpus = false;
+            continue;
+        }
+        if (arg == "--case" || arg == "--filter-exact") {
+            if (++index >= argc) {
+                std::cerr << "missing value for " << arg << "\n";
+                return ParseResult::Error;
+            }
+            options.exact_case = argv[index];
+            continue;
+        }
         if (arg == "--filter") {
             if (++index >= argc) {
                 std::cerr << "missing value for --filter\n";
@@ -73,6 +90,14 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
             options.has_seed_index = true;
             continue;
         }
+        if (arg == "--replay") {
+            if (++index >= argc) {
+                std::cerr << "missing value for --replay\n";
+                return ParseResult::Error;
+            }
+            options.replay_path = argv[index];
+            continue;
+        }
         if (arg == "--record-failure") {
             if (++index >= argc) {
                 std::cerr << "missing value for --record-failure\n";
@@ -83,6 +108,10 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
         }
 
         std::cerr << "unknown option: " << arg << "\n";
+        return ParseResult::Error;
+    }
+    if (!options.exact_case.empty() && !options.filter.empty()) {
+        std::cerr << "--case/--filter-exact cannot be combined with --filter\n";
         return ParseResult::Error;
     }
     return ParseResult::Ok;
@@ -99,6 +128,14 @@ int main(int argc, char** argv) {
     if (parse_result == ParseResult::Error) {
         print_usage(argv[0]);
         return 2;
+    }
+
+    if (!options.replay_path.empty()) {
+        std::string replay_error;
+        if (!cpueaxh_test::apply_replay_file(options.replay_path, options, replay_error)) {
+            std::cerr << replay_error << "\n";
+            return 2;
+        }
     }
 
     return cpueaxh_test::run_all_tests(options) ? 0 : 1;

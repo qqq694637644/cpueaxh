@@ -177,10 +177,14 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 
 ```powershell
 .\x64\Release\test.exe --list
+.\x64\Release\test.exe --case add_rr_rax_rbx
+.\x64\Release\test.exe --filter-exact add_rr_rax_rbx
 .\x64\Release\test.exe --filter add_rr_rax_rbx
 .\x64\Release\test.exe --filter add_rr_rax_rbx --seed-index 0
+.\x64\Release\test.exe --replay test\regression\add_rr_rax_rbx_seed0.json
 .\x64\Release\test.exe --record-failure failure.json
 .\x64\Release\test.exe --no-manual
+.\x64\Release\test.exe --no-regression-corpus
 ```
 
 各参数用途：
@@ -188,12 +192,16 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 | 参数 | 用途 |
 | --- | --- |
 | `--list` | 列出当前生成式差分测试 spec，便于审查和定位 |
+| `--case <exact-name>` | 精确选择一个生成式差分测试 spec |
+| `--filter-exact <exact-name>` | `--case` 的别名 |
 | `--filter <substring>` | 只运行名称包含该 substring 的 spec，用于新指令定向开发；不是精确单 case selector |
 | `--seed-index <0..127>` | 只运行一个 deterministic seed，便于复现 |
+| `--replay <path>` | 从 failure/regression JSON 中读取 `case_selector` 和 `seed_index` 并复现 |
 | `--record-failure <path>` | 将第一个失败写成 JSON |
 | `--no-manual` | 跳过手写特殊用例，主要用于快速定向调试 |
+| `--no-regression-corpus` | 跳过 `test/regression/*.json` replay corpus |
 
-默认无参数时必须运行完整回归，不应默认进入精简模式。
+默认无参数时必须运行完整回归：生成式差分、manual special cases，以及 `test/regression/*.json` replay corpus，不应默认进入精简模式。
 
 ## 5. 失败记录格式
 
@@ -205,14 +213,15 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
   "case_name": "add_rr_rax_rbx:123456",
   "detail": "rax guest=0x... native=0x...",
   "spec_name": "add_rr_rax_rbx",
+  "case_selector": "add_rr_rax_rbx",
   "seed_index": 0,
   "seed": "123456",
   "image_hex": "48 01 d8 c3",
-  "replay_hint": "test.exe --filter add_rr_rax_rbx --seed-index 0"
+  "replay_hint": "test.exe --case add_rr_rax_rbx --seed-index 0"
 }
 ```
 
-第一阶段先实现记录与人工复现；`replay_hint` 使用 `--filter`，因此属于 best-effort 复现提示，不是严格单 case replay。第二阶段必须增加 `--case <exact-name>` 或 `--filter-exact <name>` 这类精确 selector，并让 `failure.json` 的 `replay_hint` 使用精确 selector；之后再实现自动 replay parser。
+第二阶段已经将生成式用例 replay 从 substring `--filter` 提升为精确 selector：`failure.json` 使用 `case_selector`，`replay_hint` 使用 `--case <exact-name> --seed-index <n>`，并支持 `test.exe --replay <path>`。当前 replay 范围仍限定在生成式差分用例；manual 或 unsafe-native 用例仍需要显式 C++ 测试覆盖。
 
 后续可扩展字段：
 
@@ -360,18 +369,26 @@ GitHub Actions Windows x64 Release CI 已通过
 未修改 instructions/* 指令实现文件
 ```
 
-## 11. 第二阶段建议
+## 11. 第二阶段建议 / 当前实现
 
-第二阶段应补齐 replay 和 corpus 自动化：
+第二阶段当前已补齐生成式 replay 和 corpus 自动化的最小闭环：
 
 ```text
-1. 定义 failure/replay JSON 完整 schema
-2. 增加 `--case <exact-name>` 或 `--filter-exact <name>` 精确 selector
-3. 让 failure.json replay_hint 使用精确 selector，而不是 substring filter
-4. 增加 --replay <path>
-5. 将 test/regression/*.json 纳入默认全量回归
-6. 扩展 CI failure artifact：上传 failure.json、测试日志、CPU feature 信息，必要时上传最小 replay bundle
-7. 在 PR 模板中要求填写新增/修改的指令状态项
+1. 增加 `--case <exact-name>` 和 `--filter-exact <name>` 精确 selector
+2. 让 failure.json replay_hint 使用精确 selector，而不是 substring filter
+3. 增加 --replay <path>
+4. 将 test/regression/*.json 纳入默认全量回归
+5. 增加一个最小 replay corpus 样例
+6. 扩展 CI failure artifact：上传 failure.json、测试日志和 runner CPU 信息
+```
+
+第二阶段仍建议后续继续补：
+
+```text
+1. 定义更完整的 failure/replay JSON schema
+2. 支持 manual/unsafe-native 用例的结构化 replay 或索引
+3. 必要时上传最小 replay bundle
+4. 在 PR 模板中要求填写新增/修改的指令状态项
 ```
 
 ## 12. 第三阶段建议
@@ -395,8 +412,8 @@ GitHub Actions Windows x64 Release CI 已通过
 1. CI workflow 是否符合仓库策略
 2. 默认 test.exe 是否仍然跑完整回归
 3. --filter / --seed-index 是否只影响定向调试，不影响默认门禁
-4. 文档是否明确第一阶段 --filter replay_hint 只是 best-effort，第二阶段需要 exact selector
-5. failure.json 是否足够作为第一批生成式用例的人工复现入口
+4. failure.json 是否使用 exact case_selector，而不是 substring filter
+5. --replay 是否能复现 test/regression/*.json 中的生成式用例
 6. 手写 special tests 在 CPUEAXH_TEST_CONTINUE=1 下是否仍会最终失败
 7. 文档中对 AI 开发边界是否足够明确
 ```
