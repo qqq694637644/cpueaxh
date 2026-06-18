@@ -18,10 +18,12 @@ void print_usage(const char* exe) {
         << "Options:\n"
         << "  --help                         Show this help.\n"
         << "  --list                         List generated differential test specs.\n"
+        << "  --list-manual                  List manual/unsafe-native coverage index.\n"
         << "  --case <exact-name>            Run/list one exact generated spec name.\n"
         << "  --filter-exact <exact-name>    Alias for --case.\n"
         << "  --filter <substring>           Run/list specs whose names contain substring.\n"
-        << "  --seed-index <0..127>          Run one deterministic seed index.\n"
+        << "  --seed-index <index>           Run one deterministic seed index.\n"
+        << "  --generated-seeds <count>      Run count generated seeds per selected spec.\n"
         << "  --replay <path>                Replay a generated failure/regression JSON.\n"
         << "  --record-failure <path>        Write the first failure as JSON.\n"
         << "  --no-manual                    Skip manual special/regression cases.\n"
@@ -58,6 +60,10 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
             options.list_only = true;
             continue;
         }
+        if (arg == "--list-manual") {
+            options.list_manual_only = true;
+            continue;
+        }
         if (arg == "--no-manual") {
             options.run_manual = false;
             continue;
@@ -88,6 +94,13 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
                 return ParseResult::Error;
             }
             options.has_seed_index = true;
+            continue;
+        }
+        if (arg == "--generated-seeds") {
+            if (++index >= argc || !parse_u64(argv[index], options.generated_seed_count) || options.generated_seed_count == 0) {
+                std::cerr << "invalid value for --generated-seeds\n";
+                return ParseResult::Error;
+            }
             continue;
         }
         if (arg == "--replay") {

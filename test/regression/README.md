@@ -26,3 +26,9 @@ Replay JSON files currently require an exact generated spec selector and a seed 
 ```
 
 Manual or unsafe-native cases still need explicit C++ test coverage until a richer replay schema is added.
+
+See also:
+
+- `docs/replay-schema.md` for the generated replay contract.
+- `docs/instruction-test-generator-template.md` for adding new generated differential cases.
+- `docs/hardware-runner-matrix.md` for long-running and self-hosted hardware validation guidance.

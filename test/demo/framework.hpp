@@ -419,15 +419,43 @@ struct Failure {
 
 struct TestOptions {
     bool list_only = false;
+    bool list_manual_only = false;
     bool run_manual = true;
     bool has_seed_index = false;
     std::uint64_t seed_index = 0;
+    std::uint64_t generated_seed_count = kSeedCount;
     std::string filter;
     std::string exact_case;
     std::string failure_record_path;
     std::string replay_path;
     bool run_regression_corpus = true;
 };
+
+struct ManualCaseIndexEntry {
+    const char* name;
+    const char* category;
+    const char* coverage;
+};
+
+inline constexpr std::array<ManualCaseIndexEntry, 10> kManualCaseIndex = {{
+    { "compat32_control_transfer", "manual", "near/far ret and cross-mode control-transfer edge cases" },
+    { "exception_priority", "manual", "memory, stack, canonical-address, and UD exception ordering" },
+    { "invalid_prefix_ud", "manual", "LOCK/VEX/EVEX invalid encoding cases" },
+    { "x87_state", "manual", "x87 control/status/env and wait/no-wait behavior" },
+    { "host_stack_roundtrip", "manual", "host-mode stack and return-slot behavior" },
+    { "cached_rmw_recompute", "manual", "cached decoded RMW recomputation for xchg/xadd/cmpxchg" },
+    { "context_api", "manual", "public context read/write register-file coupling" },
+    { "simd_encoding_edges", "manual", "selected SSE/AVX/EVEX prefix and register-extension edge cases" },
+    { "port_io_escape", "unsafe-native", "I/O instructions are escape/model tested rather than native user-mode executed" },
+    { "privileged_system", "unsafe-native", "privileged/MSR/VMX/SVM/system semantics require model or controlled-runner tests" },
+}};
+
+inline void print_manual_case_index() {
+    std::cout << "cpueaxh manual/unsafe-native test index: " << kManualCaseIndex.size() << std::endl;
+    for (const ManualCaseIndexEntry& entry : kManualCaseIndex) {
+        std::cout << entry.name << " [" << entry.category << "] " << entry.coverage << std::endl;
+    }
+}
 
 inline bool selected_by_filter(const std::string& name, const TestOptions& options) {
     if (!options.exact_case.empty()) {
@@ -603,6 +631,9 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
     options.filter.clear();
     options.seed_index = seed_index;
     options.has_seed_index = true;
+    if (options.generated_seed_count <= seed_index) {
+        options.generated_seed_count = seed_index + 1;
+    }
     options.run_manual = false;
     options.run_regression_corpus = false;
     return true;
@@ -9640,12 +9671,6 @@ inline bool run_generated_case_by_name(
     std::uint64_t seed_index,
     Failure& failure)
 {
-    if (seed_index >= kSeedCount) {
-        failure.case_name = case_name;
-        failure.detail = "seed index out of range: " + std::to_string(seed_index);
-        return false;
-    }
-
     const ProgramSpec* spec = find_spec_by_name(specs, case_name);
     if (!spec) {
         failure.case_name = case_name;
@@ -9670,8 +9695,18 @@ inline bool run_all_tests(const TestOptions& options) {
     const HostFeatures features = query_host_features();
     const std::vector<ProgramSpec> specs = make_specs(features);
 
-    if (options.has_seed_index && options.seed_index >= kSeedCount) {
-        std::cerr << "seed index out of range: " << options.seed_index << " >= " << kSeedCount << std::endl;
+    if (options.list_manual_only) {
+        print_manual_case_index();
+        return true;
+    }
+
+    if (options.generated_seed_count == 0) {
+        std::cerr << "generated seed count must be greater than zero" << std::endl;
+        return false;
+    }
+
+    if (options.has_seed_index && options.seed_index >= options.generated_seed_count) {
+        std::cerr << "seed index out of range: " << options.seed_index << " >= " << options.generated_seed_count << std::endl;
         return false;
     }
 
@@ -9701,7 +9736,7 @@ inline bool run_all_tests(const TestOptions& options) {
     const bool run_manual = options.run_manual && options.filter.empty() && options.exact_case.empty() && !options.has_seed_index;
     const bool run_regression_corpus = options.run_regression_corpus && options.filter.empty() && options.exact_case.empty() && !options.has_seed_index;
     const std::vector<std::string> regression_files = run_regression_corpus ? list_regression_replay_files() : std::vector<std::string>{};
-    const std::uint64_t selected_seed_count = options.has_seed_index ? 1ull : kSeedCount;
+    const std::uint64_t selected_seed_count = options.has_seed_index ? 1ull : options.generated_seed_count;
     const std::uint64_t total = selected_specs * selected_seed_count +
         (run_manual ? manual_special_case_count(features) : 0ull) +
         static_cast<std::uint64_t>(regression_files.size());
@@ -9718,6 +9753,9 @@ inline bool run_all_tests(const TestOptions& options) {
     }
     if (options.has_seed_index) {
         std::cout << "seed-index: " << options.seed_index << std::endl;
+    }
+    if (options.generated_seed_count != kSeedCount && !options.has_seed_index) {
+        std::cout << "generated-seeds: " << options.generated_seed_count << std::endl;
     }
     if (!run_manual) {
         std::cout << "manual special cases: skipped" << std::endl;
@@ -9742,7 +9780,7 @@ inline bool run_all_tests(const TestOptions& options) {
             continue;
         }
         const std::uint64_t first_seed_index = options.has_seed_index ? options.seed_index : 0ull;
-        const std::uint64_t last_seed_index = options.has_seed_index ? options.seed_index + 1ull : kSeedCount;
+        const std::uint64_t last_seed_index = options.has_seed_index ? options.seed_index + 1ull : options.generated_seed_count;
         for (std::uint64_t seed_index = first_seed_index; seed_index < last_seed_index; ++seed_index) {
             const std::uint64_t seed = seeded(seed_index, static_cast<std::uint64_t>(spec.op) + (static_cast<std::uint64_t>(spec.family) << 8) + (static_cast<std::uint64_t>(spec.variant) << 16));
             BuiltCase built = build_case(spec, seed);

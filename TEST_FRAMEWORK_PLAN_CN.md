@@ -160,7 +160,7 @@ Windows x64 Release build
 失败记录 artifact 上传
 ```
 
-第一阶段 workflow 使用 `paths` 过滤触发范围：`.github/workflows/msvc-test.yml`、`cpueaxh/**`、`test/**`、`docs/instruction-status.yml`、`cpueaxh.sln`、`*.vcxproj`、`*.props`、`*.targets` 相关改动才触发。
+第一阶段 workflow 使用 `paths` 过滤触发范围：`.github/workflows/**`、`cpueaxh/**`、`test/**`、`docs/instruction-status.yml`、`cpueaxh.sln`、`*.vcxproj`、`*.props`、`*.targets` 相关改动才触发。
 
 Nightly 或自托管真机可扩展：
 
@@ -177,10 +177,12 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 
 ```powershell
 .\x64\Release\test.exe --list
+.\x64\Release\test.exe --list-manual
 .\x64\Release\test.exe --case add_rr_rax_rbx
 .\x64\Release\test.exe --filter-exact add_rr_rax_rbx
 .\x64\Release\test.exe --filter add_rr_rax_rbx
 .\x64\Release\test.exe --filter add_rr_rax_rbx --seed-index 0
+.\x64\Release\test.exe --generated-seeds 512 --record-failure failure.json
 .\x64\Release\test.exe --replay test\regression\add_rr_rax_rbx_seed0.json
 .\x64\Release\test.exe --record-failure failure.json
 .\x64\Release\test.exe --no-manual
@@ -192,10 +194,12 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 | 参数 | 用途 |
 | --- | --- |
 | `--list` | 列出当前生成式差分测试 spec，便于审查和定位 |
+| `--list-manual` | 列出 manual/unsafe-native 覆盖索引 |
 | `--case <exact-name>` | 精确选择一个生成式差分测试 spec |
 | `--filter-exact <exact-name>` | `--case` 的别名 |
 | `--filter <substring>` | 只运行名称包含该 substring 的 spec，用于新指令定向开发；不是精确单 case selector |
-| `--seed-index <0..127>` | 只运行一个 deterministic seed，便于复现 |
+| `--seed-index <index>` | 只运行一个 deterministic seed，便于复现；默认完整回归使用 0..127，`--generated-seeds` 可扩大范围 |
+| `--generated-seeds <count>` | 控制每个生成式 spec 运行的 seed 数，供 long fuzz / nightly 使用 |
 | `--replay <path>` | 从 failure/regression JSON 中读取 `case_selector` 和 `seed_index` 并复现 |
 | `--record-failure <path>` | 将第一个失败写成 JSON |
 | `--no-manual` | 跳过手写特殊用例，主要用于快速定向调试 |
@@ -379,16 +383,15 @@ GitHub Actions Windows x64 Release CI 已通过
 3. 增加 --replay <path>
 4. 将 test/regression/*.json 纳入默认全量回归
 5. 增加一个最小 replay corpus 样例
-6. 扩展 CI failure artifact：上传 failure.json、测试日志和 runner CPU 信息
+6. 扩展 CI failure artifact：上传 failure.json、测试日志、manual index 和 runner CPU 信息
 ```
 
 第二阶段仍建议后续继续补：
 
 ```text
-1. 定义更完整的 failure/replay JSON schema
-2. 支持 manual/unsafe-native 用例的结构化 replay 或索引
-3. 必要时上传最小 replay bundle
-4. 在 PR 模板中要求填写新增/修改的指令状态项
+1. 支持 manual/unsafe-native 用例的结构化 replay，而不只是索引
+2. 必要时上传最小 replay bundle
+3. 按真实硬件 runner 接入情况扩展自托管矩阵 workflow
 ```
 
 ## 12. 第三阶段建议
@@ -398,8 +401,8 @@ GitHub Actions Windows x64 Release CI 已通过
 ```text
 1. 完善 instruction-status.yml 到 mnemonic + form + encoding + operand-size + feature gate 粒度
 2. 为每个指令族建立生成器模板
-3. 引入 nightly long fuzz
-4. 接入自托管硬件矩阵
+3. 引入 nightly / workflow_dispatch long fuzz
+4. 文档化自托管硬件矩阵和 unsafe-native 策略
 5. 对 decoder/executor 公共改动增加专项回归
 6. 对 undefined flags、异常优先级、内存访问顺序建立专项测试
 ```

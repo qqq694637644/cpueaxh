@@ -1,37 +1,27 @@
-name: msvc-test
+name: extended-regression
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - ".github/workflows/**"
-      - "cpueaxh/**"
-      - "test/**"
-      - "docs/instruction-status.yml"
-      - "cpueaxh.sln"
-      - "**/*.vcxproj"
-      - "**/*.props"
-      - "**/*.targets"
-  pull_request:
-    branches: [ main ]
-    paths:
-      - ".github/workflows/**"
-      - "cpueaxh/**"
-      - "test/**"
-      - "docs/instruction-status.yml"
-      - "cpueaxh.sln"
-      - "**/*.vcxproj"
-      - "**/*.props"
-      - "**/*.targets"
+  workflow_dispatch:
+    inputs:
+      generated_seeds:
+        description: Number of generated seeds per selected spec
+        required: false
+        default: "512"
+      case_filter:
+        description: Optional generated spec substring filter
+        required: false
+        default: ""
+  schedule:
+    - cron: "23 3 * * *"
 
 permissions:
   contents: read
 
 jobs:
-  test-x64:
-    name: Windows x64 Release regression
+  hosted-long-regression:
+    name: Hosted Windows long regression
     runs-on: windows-2022
-    timeout-minutes: 30
+    timeout-minutes: 120
 
     steps:
       - name: Checkout
@@ -62,14 +52,6 @@ jobs:
             Format-List |
             Out-File -FilePath cpu-info.txt -Encoding utf8
 
-      - name: List generated differential specs
-        shell: pwsh
-        run: |
-          & "$env:CPUEAXH_TEST_EXE" --list *> test-specs.log
-          $exitCode = $LASTEXITCODE
-          Get-Content test-specs.log
-          if ($exitCode -ne 0) { exit $exitCode }
-
       - name: List manual coverage index
         shell: pwsh
         run: |
@@ -78,23 +60,29 @@ jobs:
           Get-Content manual-index.log
           if ($exitCode -ne 0) { exit $exitCode }
 
-      - name: Run full regression suite
+      - name: Run long generated regression
         shell: pwsh
         run: |
-          & "$env:CPUEAXH_TEST_EXE" --record-failure failure.json *> test-run.log
+          $seedCount = '${{ inputs.generated_seeds }}'
+          if ([string]::IsNullOrWhiteSpace($seedCount)) { $seedCount = '512' }
+          $filter = '${{ inputs.case_filter }}'
+          $args = @('--generated-seeds', $seedCount, '--record-failure', 'failure.json')
+          if (-not [string]::IsNullOrWhiteSpace($filter)) {
+            $args += @('--filter', $filter)
+          }
+          & "$env:CPUEAXH_TEST_EXE" @args *> extended-test-run.log
           $exitCode = $LASTEXITCODE
-          Get-Content test-run.log
+          Get-Content extended-test-run.log
           if ($exitCode -ne 0) { exit $exitCode }
 
-      - name: Upload failure diagnostics
-        if: failure()
+      - name: Upload diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cpueaxh-failure-diagnostics
+          name: cpueaxh-extended-regression-diagnostics
           if-no-files-found: ignore
           path: |
             failure.json
-            test-specs.log
+            extended-test-run.log
             manual-index.log
-            test-run.log
             cpu-info.txt
