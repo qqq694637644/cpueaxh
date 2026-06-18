@@ -1,5 +1,26 @@
 $ErrorActionPreference = 'Stop'
 
+$RequiredStage3Gates = @(
+    'public_helper_full_regression',
+    'generated_long_fuzz',
+    'undefined_flags',
+    'exception_priority',
+    'memory_access_order',
+    'simd_state_boundary',
+    'hardware_feature_matrix'
+)
+
+$RequiredGeneratorFamilies = @(
+    'integer_alu',
+    'memory_rmw',
+    'stack',
+    'control_flow',
+    'string_ops',
+    'vector_simd',
+    'x87',
+    'unsafe_native'
+)
+
 function Assert-FileContains {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -12,6 +33,104 @@ function Assert-FileContains {
     $content = Get-Content -LiteralPath $Path -Raw
     if ($content -notmatch $Pattern) {
         throw $Message
+    }
+}
+
+function Assert-SetEquals {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Actual,
+        [Parameter(Mandatory = $true)][string[]]$Expected,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+    $actualSorted = @($Actual | Sort-Object -Unique)
+    $expectedSorted = @($Expected | Sort-Object -Unique)
+    $missing = @($expectedSorted | Where-Object { $_ -notin $actualSorted })
+    $extra = @($actualSorted | Where-Object { $_ -notin $expectedSorted })
+    if ($missing.Count -ne 0 -or $extra.Count -ne 0) {
+        throw "$Label mismatch. Missing: $($missing -join ', ') Extra: $($extra -join ', ')"
+    }
+}
+
+function Get-YamlNamedBlocks {
+    param([Parameter(Mandatory = $true)][string]$Content)
+    $blocks = @{}
+    $matches = [regex]::Matches($Content, '(?ms)^\s+-\s+name:\s*([^\r\n]+)\s*$.*?(?=^\s+-\s+name:\s*|\z)')
+    foreach ($match in $matches) {
+        $name = $match.Groups[1].Value.Trim()
+        $blocks[$name] = $match.Value
+    }
+    return $blocks
+}
+
+function Assert-Stage3GateManifest {
+    $path = 'docs/stage3-regression-gates.yml'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "Missing required file: $path"
+    }
+    $content = Get-Content -LiteralPath $path -Raw
+    if ($content -notmatch '(?m)^schema:\s*cpueaxh\.stage3-regression-gates\.v1\s*$') {
+        throw 'stage3-regression-gates.yml has an invalid or missing schema.'
+    }
+    foreach ($field in @('policy:', 'required_gates:', 'high_risk_files:')) {
+        if ($content -notmatch [regex]::Escape($field)) {
+            throw "stage3-regression-gates.yml is missing required section: $field"
+        }
+    }
+
+    $blocks = Get-YamlNamedBlocks -Content $content
+    Assert-SetEquals -Actual ([string[]]$blocks.Keys) -Expected $RequiredStage3Gates -Label 'Stage3 gate name set'
+
+    foreach ($gate in $RequiredStage3Gates) {
+        $block = $blocks[$gate]
+        foreach ($field in @('category', 'purpose', 'command')) {
+            if ($block -notmatch "(?m)^\s+${field}:\s*\S+") {
+                throw "Stage3 gate '$gate' missing required field '$field'."
+            }
+        }
+    }
+}
+
+function Assert-GeneratorTemplates {
+    $path = 'docs/generator-templates.yml'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "Missing required file: $path"
+    }
+    $content = Get-Content -LiteralPath $path -Raw
+    if ($content -notmatch '(?m)^schema:\s*cpueaxh\.generator-templates\.v1\s*$') {
+        throw 'generator-templates.yml has an invalid or missing schema.'
+    }
+    foreach ($section in @('naming:', 'shared_requirements:', 'families:')) {
+        if ($content -notmatch [regex]::Escape($section)) {
+            throw "generator-templates.yml is missing required section: $section"
+        }
+    }
+    foreach ($requirement in @('exact_selector_required: true', 'stable_names: true', 'deterministic_seed: true', 'safe_return_path: true', 'flag_mask_required: true')) {
+        if ($content -notmatch [regex]::Escape($requirement)) {
+            throw "generator-templates.yml missing shared requirement: $requirement"
+        }
+    }
+
+    $familiesSectionMatch = [regex]::Match($content, '(?ms)^families:\s*$.*\z')
+    if (-not $familiesSectionMatch.Success) {
+        throw 'generator-templates.yml is missing a parseable families section.'
+    }
+    $familiesSection = $familiesSectionMatch.Value
+    $familyMatches = [regex]::Matches($familiesSection, '(?m)^\s{2}([a-z0-9_]+):\s*$')
+    $families = @($familyMatches | ForEach-Object { $_.Groups[1].Value })
+    Assert-SetEquals -Actual $families -Expected $RequiredGeneratorFamilies -Label 'Generator template family set'
+
+    foreach ($family in $RequiredGeneratorFamilies) {
+        $escapedFamily = [regex]::Escape($family)
+        $blockMatch = [regex]::Match($content, "(?ms)^\s{2}${escapedFamily}:\s*$.*?(?=^\s{2}[a-z0-9_]+:\s*$|\z)")
+        if (-not $blockMatch.Success) {
+            throw "Generator family '$family' block not found."
+        }
+        $block = $blockMatch.Value
+        foreach ($field in @('examples:', 'required_fields:', 'special_rules:')) {
+            if ($block -notmatch [regex]::Escape($field)) {
+                throw "Generator family '$family' missing required section '$field'."
+            }
+        }
     }
 }
 
@@ -40,16 +159,15 @@ function Assert-NonEmptyJsonCorpus {
 
 Assert-FileContains -Path 'docs/instruction-status.yml' -Pattern 'required_identity_fields' -Message 'instruction-status.yml must define form-level identity fields.'
 Assert-FileContains -Path 'docs/instruction-status.yml' -Pattern 'unsafe_for_native' -Message 'instruction-status.yml must keep unsafe_for_native status available.'
-Assert-FileContains -Path 'docs/stage3-regression-gates.yml' -Pattern 'public_helper_full_regression' -Message 'stage3 gates must include public helper full regression gate.'
-Assert-FileContains -Path 'docs/stage3-regression-gates.yml' -Pattern 'undefined_flags' -Message 'stage3 gates must include undefined flags gate.'
-Assert-FileContains -Path 'docs/stage3-regression-gates.yml' -Pattern 'memory_access_order' -Message 'stage3 gates must include memory access order gate.'
-Assert-FileContains -Path 'docs/generator-templates.yml' -Pattern 'integer_alu' -Message 'generator templates must include integer_alu family.'
-Assert-FileContains -Path 'docs/generator-templates.yml' -Pattern 'unsafe_native' -Message 'generator templates must include unsafe_native policy.'
+Assert-FileContains -Path 'docs/instruction-status.yml' -Pattern 'stage3_contracts' -Message 'instruction-status.yml must link stage3 contracts.'
 Assert-FileContains -Path 'docs/replay-schema.md' -Pattern 'cpueaxh\.host-features\.v1' -Message 'replay schema must document host feature records.'
 Assert-FileContains -Path 'TEST_FRAMEWORK_PLAN_CN.md' -Pattern '第三阶段' -Message 'Chinese plan must preserve stage 3 section.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern '--list-gates' -Message 'required CI must log stage3 regression gates.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-regression-contract\.ps1' -Message 'required CI must run regression contract validation.'
+Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-stage3-gate-output\.ps1' -Message 'required CI must validate stage3 gate output consistency.'
 
+Assert-Stage3GateManifest
+Assert-GeneratorTemplates
 Assert-NonEmptyJsonCorpus
 
 Write-Host 'Regression contract validation passed.'

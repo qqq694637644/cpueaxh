@@ -80,6 +80,10 @@ jobs:
           Get-Content stage3-gates.log
           if ($exitCode -ne 0) { exit $exitCode }
 
+      - name: Validate stage3 gate output
+        shell: pwsh
+        run: ./tools/validate-stage3-gate-output.ps1 -OutputPath stage3-gates.log
+
       - name: Run long generated regression
         shell: pwsh
         run: |

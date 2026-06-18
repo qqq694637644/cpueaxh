@@ -412,7 +412,8 @@ GitHub Actions Windows x64 Release CI 已通过
 4. docs/hardware-runner-matrix.md 文档化自托管硬件矩阵和 unsafe-native 策略
 5. docs/stage3-regression-gates.yml 定义 decoder/executor/public helper 专项 gate
 6. --list-gates 和 CI stage3-gates.log 暴露 undefined flags、异常优先级、内存访问顺序等 gate
-7. tools/validate-regression-contract.ps1 在 CI 中校验状态表、replay corpus、stage3 gate 和生成器模板契约
+7. tools/validate-regression-contract.ps1 在 CI 中结构化校验状态表、replay corpus、stage3 gate 名称/必填字段和生成器模板 family/必填段契约
+8. tools/validate-stage3-gate-output.ps1 在 CI 中校验 `--list-gates` 输出与 docs/stage3-regression-gates.yml 的 gate 名称、category、command 一致
 ```
 
 第三阶段仍未声称完成完整 AMD64 指令集覆盖。后续补具体指令时，必须继续按 instruction-status.yml form 粒度扩展状态表、测试生成器和 regression corpus。

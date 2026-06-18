@@ -477,7 +477,7 @@ inline constexpr std::array<Stage3GateIndexEntry, 7> kStage3GateIndex = {{
     { "exception_priority", "manual", "manual exception ordering and split-access cases guard decoder/executor rollback behavior", "test.exe --list-manual" },
     { "memory_access_order", "targeted", "memory/RMW/string cases guard guest memory ordering and writeback semantics", "test.exe --filter mem --generated-seeds 256 --record-bundle failure-bundle" },
     { "simd_state_boundary", "feature-gated", "SIMD tests currently compare data-area effects and selected public register-state paths", "test.exe --filter xmm --generated-seeds 256 --record-bundle failure-bundle" },
-    { "hardware_feature_matrix", "extended", "feature evidence must be preserved with CPUID/OS-enabled matrix records", "test.exe --dump-features cpu-features.json" },
+    { "hardware_feature_matrix", "evidence", "feature evidence must be preserved with CPUID/OS-enabled matrix records", "test.exe --dump-features cpu-features.json" },
 }};
 
 inline void print_stage3_gate_index() {
