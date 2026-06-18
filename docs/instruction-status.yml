@@ -1,0 +1,66 @@
+# Instruction implementation and test coverage ledger.
+#
+# Keep this file conservative: mark an instruction as implemented only when the
+# emulator supports the listed forms and the full regression suite protects them.
+# Add new entries incrementally as instruction work lands.
+
+schema: cpueaxh.instruction-status.v1
+policy:
+  new_instruction_pr_requires:
+    - true_cpu_differential_tests
+    - full_regression_suite
+    - ci_pass
+    - small_reviewable_change
+
+families:
+  integer_alu:
+    status: in_progress
+    regression_gate: test.exe full suite
+    entries:
+      - mnemonic: ADD
+        status: implemented
+        coverage: generated-differential
+      - mnemonic: ADC
+        status: implemented
+        coverage: generated-differential
+      - mnemonic: SUB
+        status: implemented
+        coverage: generated-differential
+      - mnemonic: SBB
+        status: implemented
+        coverage: generated-differential
+      - mnemonic: AND
+        status: implemented
+        coverage: generated-differential
+      - mnemonic: OR
+        status: implemented
+        coverage: generated-differential
+      - mnemonic: XOR
+        status: implemented
+        coverage: generated-differential
+      - mnemonic: CMP
+        status: implemented
+        coverage: generated-differential
+      - mnemonic: TEST
+        status: implemented
+        coverage: generated-differential
+  control_flow:
+    status: in_progress
+    regression_gate: test.exe full suite
+    entries:
+      - mnemonic: JMP
+        status: implemented
+        coverage: generated-differential-and-manual
+      - mnemonic: CALL
+        status: implemented
+        coverage: generated-differential-and-manual
+      - mnemonic: RET
+        status: implemented
+        coverage: generated-differential-and-manual
+      - mnemonic: Jcc
+        status: implemented
+        coverage: generated-differential
+  vector:
+    status: in_progress
+    regression_gate: feature-gated true-CPU differential tests
+    note: Optional CPU features are selected from CPUID at runtime.

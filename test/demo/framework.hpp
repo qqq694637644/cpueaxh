@@ -7,7 +7,9 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -144,6 +146,42 @@ inline std::string hex64(std::uint64_t value) {
 inline std::string hex8(std::uint8_t value) {
     std::ostringstream stream;
     stream << "0x" << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned>(value);
+    return stream.str();
+}
+
+inline std::string bytes_hex(const std::vector<std::uint8_t>& bytes) {
+    std::ostringstream stream;
+    stream << std::hex << std::setfill('0');
+    for (std::size_t index = 0; index < bytes.size(); ++index) {
+        if (index != 0) {
+            stream << ' ';
+        }
+        stream << std::setw(2) << static_cast<unsigned>(bytes[index]);
+    }
+    return stream.str();
+}
+
+inline std::string json_escape(const std::string& value) {
+    std::ostringstream stream;
+    for (const char ch : value) {
+        switch (ch) {
+        case '\\': stream << "\\\\"; break;
+        case '"': stream << "\\\""; break;
+        case '\b': stream << "\\b"; break;
+        case '\f': stream << "\\f"; break;
+        case '\n': stream << "\\n"; break;
+        case '\r': stream << "\\r"; break;
+        case '\t': stream << "\\t"; break;
+        default:
+            if (static_cast<unsigned char>(ch) < 0x20u) {
+                stream << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<unsigned>(static_cast<unsigned char>(ch));
+            }
+            else {
+                stream << ch;
+            }
+            break;
+        }
+    }
     return stream.str();
 }
 
@@ -368,7 +406,77 @@ struct BuiltCase {
 struct Failure {
     std::string case_name;
     std::string detail;
+    std::string spec_name;
+    std::string image_hex;
+    std::uint64_t seed = 0;
+    std::uint64_t seed_index = 0;
+    bool has_seed = false;
+    bool has_seed_index = false;
 };
+
+struct TestOptions {
+    bool list_only = false;
+    bool run_manual = true;
+    bool has_seed_index = false;
+    std::uint64_t seed_index = 0;
+    std::string filter;
+    std::string failure_record_path;
+};
+
+inline bool selected_by_filter(const std::string& name, const TestOptions& options) {
+    return options.filter.empty() || name.find(options.filter) != std::string::npos;
+}
+
+inline bool selected_by_filter(const ProgramSpec& spec, const TestOptions& options) {
+    return selected_by_filter(spec.name, options);
+}
+
+inline void attach_built_case_to_failure(Failure& failure, const BuiltCase& built, std::uint64_t seed_index) {
+    if (failure.case_name.empty()) {
+        failure.case_name = built.spec.name + ":" + std::to_string(built.seed);
+    }
+    failure.spec_name = built.spec.name;
+    failure.image_hex = bytes_hex(built.image);
+    failure.seed = built.seed;
+    failure.seed_index = seed_index;
+    failure.has_seed = true;
+    failure.has_seed_index = true;
+}
+
+inline bool write_failure_record(const std::string& path, const Failure& failure) {
+    if (path.empty()) {
+        return true;
+    }
+
+    std::ofstream file(path, std::ios::out | std::ios::trunc);
+    if (!file) {
+        std::cerr << "failed to open failure record: " << path << std::endl;
+        return false;
+    }
+
+    file << "{\n";
+    file << "  \"schema\": \"cpueaxh.failure.v1\",\n";
+    file << "  \"case_name\": \"" << json_escape(failure.case_name) << "\",\n";
+    file << "  \"detail\": \"" << json_escape(failure.detail) << "\"";
+    if (!failure.spec_name.empty()) {
+        file << ",\n  \"spec_name\": \"" << json_escape(failure.spec_name) << "\"";
+    }
+    if (failure.has_seed_index) {
+        file << ",\n  \"seed_index\": " << failure.seed_index;
+    }
+    if (failure.has_seed) {
+        file << ",\n  \"seed\": \"" << failure.seed << "\"";
+    }
+    if (!failure.image_hex.empty()) {
+        file << ",\n  \"image_hex\": \"" << json_escape(failure.image_hex) << "\"";
+    }
+    if (!failure.spec_name.empty() && failure.has_seed_index) {
+        file << ",\n  \"replay_hint\": \"test.exe --filter " << json_escape(failure.spec_name)
+             << " --seed-index " << failure.seed_index << "\"";
+    }
+    file << "\n}\n";
+    return true;
+}
 
 struct HostFeatures {
     bool avx = false;
@@ -7170,7 +7278,7 @@ inline std::uint64_t manual_special_case_count(const HostFeatures& features) {
     return kSeedCount * per_seed_special + kExceptionSeedCount * exception_special + kHostStackSeedCount * 4ull + kContextApiSeedCount;
 }
 
-inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t& executed, std::uint64_t total) {
+inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t& executed, std::uint64_t total, Failure* first_failure = nullptr) {
     const std::vector<std::uint8_t> endbr64 = { 0xF3, 0x0F, 0x1E, 0xFA, 0xC3 };
     const std::vector<std::uint8_t> endbr32 = { 0xF3, 0x0F, 0x1E, 0xFB, 0xC3 };
     const std::vector<std::uint8_t> rcl_bx_cl = { 0x66, 0xD3, 0xD3 };
@@ -7300,8 +7408,13 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> invalid_palignr_lock = { 0xF0, 0x66, 0x0F, 0x3A, 0x0F, 0xC8, 0x05 };
     const std::vector<std::uint8_t> invalid_palignr_misaligned = { 0x66, 0x0F, 0x3A, 0x0F, 0x44, 0x24, 0x41, 0x07 };
 
+    bool all_ok = true;
     auto tick = [&](bool result, const Failure& failure) -> bool {
         if (!result) {
+            all_ok = false;
+            if (first_failure && first_failure->case_name.empty()) {
+                *first_failure = failure;
+            }
             std::cerr << "FAIL " << failure.case_name << std::endl;
             std::cerr << failure.detail << std::endl;
             // Allow CPUEAXH_TEST_CONTINUE=1 to surface every regression rather
@@ -8868,7 +8981,7 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         if (!tick(run_context_api_case("context_api:" + std::to_string(seed8), seed8, failure), failure)) return false;
     }
 
-    return true;
+    return all_ok;
 }
 
 inline bool emit_host_mov_reg_imm64(std::vector<std::uint8_t>& code, std::uint8_t reg_low3, std::uint64_t imm) {
@@ -9358,27 +9471,79 @@ private:
     std::string init_error_;
 };
 
-inline bool run_all_tests() {
+inline bool run_all_tests(const TestOptions& options) {
     const HostFeatures features = query_host_features();
     const std::vector<ProgramSpec> specs = make_specs(features);
-    const std::uint64_t total = static_cast<std::uint64_t>(specs.size()) * kSeedCount + manual_special_case_count(features);
+
+    if (options.has_seed_index && options.seed_index >= kSeedCount) {
+        std::cerr << "seed index out of range: " << options.seed_index << " >= " << kSeedCount << std::endl;
+        return false;
+    }
+
+    std::uint64_t selected_specs = 0;
+    for (const ProgramSpec& spec : specs) {
+        if (selected_by_filter(spec, options)) {
+            ++selected_specs;
+        }
+    }
+
+    if (options.list_only) {
+        std::cout << "cpueaxh generated test specs: " << selected_specs << "/" << specs.size() << std::endl;
+        for (const ProgramSpec& spec : specs) {
+            if (selected_by_filter(spec, options)) {
+                std::cout << spec.name << std::endl;
+            }
+        }
+        if (options.filter.empty() && !options.has_seed_index && options.run_manual) {
+            std::cout << "manual special cases: " << manual_special_case_count(features) << std::endl;
+        }
+        return true;
+    }
+
+    const bool run_manual = options.run_manual && options.filter.empty() && !options.has_seed_index;
+    const std::uint64_t selected_seed_count = options.has_seed_index ? 1ull : kSeedCount;
+    const std::uint64_t total = selected_specs * selected_seed_count + (run_manual ? manual_special_case_count(features) : 0ull);
+    if (total == 0) {
+        std::cerr << "no test cases selected" << std::endl;
+        return false;
+    }
     std::cout << "cpueaxh test cases: " << total << std::endl;
+    if (!options.filter.empty()) {
+        std::cout << "filter: " << options.filter << std::endl;
+    }
+    if (options.has_seed_index) {
+        std::cout << "seed-index: " << options.seed_index << std::endl;
+    }
+    if (!run_manual) {
+        std::cout << "manual special cases: skipped" << std::endl;
+    }
 
     Harness harness;
     if (!harness.ready()) {
-        std::cerr << harness.init_error() << std::endl;
+        Failure failure;
+        failure.case_name = "harness_init";
+        failure.detail = harness.init_error();
+        std::cerr << failure.detail << std::endl;
+        write_failure_record(options.failure_record_path, failure);
         return false;
     }
 
     std::uint64_t executed = 0;
     for (const ProgramSpec& spec : specs) {
-        for (std::uint64_t seed_index = 0; seed_index < kSeedCount; ++seed_index) {
+        if (!selected_by_filter(spec, options)) {
+            continue;
+        }
+        const std::uint64_t first_seed_index = options.has_seed_index ? options.seed_index : 0ull;
+        const std::uint64_t last_seed_index = options.has_seed_index ? options.seed_index + 1ull : kSeedCount;
+        for (std::uint64_t seed_index = first_seed_index; seed_index < last_seed_index; ++seed_index) {
             const std::uint64_t seed = seeded(seed_index, static_cast<std::uint64_t>(spec.op) + (static_cast<std::uint64_t>(spec.family) << 8) + (static_cast<std::uint64_t>(spec.variant) << 16));
             BuiltCase built = build_case(spec, seed);
             Failure failure;
             if (!harness.run_case(built, failure)) {
+                attach_built_case_to_failure(failure, built, seed_index);
                 std::cerr << "FAIL " << failure.case_name << std::endl;
                 std::cerr << failure.detail << std::endl;
+                write_failure_record(options.failure_record_path, failure);
                 return false;
             }
             ++executed;
@@ -9388,12 +9553,20 @@ inline bool run_all_tests() {
         }
     }
 
-    if (!run_manual_special_tests(features, executed, total)) {
-        return false;
+    if (run_manual) {
+        Failure failure;
+        if (!run_manual_special_tests(features, executed, total, &failure)) {
+            write_failure_record(options.failure_record_path, failure);
+            return false;
+        }
     }
 
     std::cout << "PASS " << executed << "/" << total << std::endl;
     return true;
+}
+
+inline bool run_all_tests() {
+    return run_all_tests(TestOptions{});
 }
 
 }
