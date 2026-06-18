@@ -157,17 +157,45 @@ function Assert-NonEmptyJsonCorpus {
     }
 }
 
+function Assert-ManualIndexRecords {
+    $dir = 'test/manual'
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
+        throw "Manual replay directory is missing: $dir"
+    }
+    $files = Get-ChildItem -LiteralPath $dir -Filter '*.json' -File
+    if (-not $files -or $files.Count -eq 0) {
+        throw "Manual replay directory has no JSON records: $dir"
+    }
+    foreach ($file in $files) {
+        $json = Get-Content -LiteralPath $file.FullName -Raw
+        if ($json -notmatch '"schema"\s*:\s*"cpueaxh\.manual-index\.v1"') {
+            throw "Manual replay record missing required schema: $($file.FullName)"
+        }
+        if ($json -notmatch '"case_selector"\s*:\s*"[^"]+"') {
+            throw "Manual replay record missing non-empty case_selector: $($file.FullName)"
+        }
+        if ($json -notmatch '"category"\s*:\s*"(manual|unsafe-native)"') {
+            throw "Manual replay record category must be manual or unsafe-native: $($file.FullName)"
+        }
+        if ($json -notmatch '"replay"\s*:\s*"test\.exe --manual-case [^"]+"') {
+            throw "Manual replay record must include a --manual-case replay command: $($file.FullName)"
+        }
+    }
+}
+
 Assert-FileContains -Path 'docs/instruction-status.yml' -Pattern 'required_identity_fields' -Message 'instruction-status.yml must define form-level identity fields.'
 Assert-FileContains -Path 'docs/instruction-status.yml' -Pattern 'unsafe_for_native' -Message 'instruction-status.yml must keep unsafe_for_native status available.'
 Assert-FileContains -Path 'docs/instruction-status.yml' -Pattern 'stage3_contracts' -Message 'instruction-status.yml must link stage3 contracts.'
 Assert-FileContains -Path 'docs/replay-schema.md' -Pattern 'cpueaxh\.host-features\.v1' -Message 'replay schema must document host feature records.'
 Assert-FileContains -Path 'TEST_FRAMEWORK_PLAN_CN.md' -Pattern '第三阶段' -Message 'Chinese plan must preserve stage 3 section.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern '--list-gates' -Message 'required CI must log stage3 regression gates.'
+Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'test\\manual\\exception_priority\.json' -Message 'required CI must replay a manual-index sample.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-regression-contract\.ps1' -Message 'required CI must run regression contract validation.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-stage3-gate-output\.ps1' -Message 'required CI must validate stage3 gate output consistency.'
 
 Assert-Stage3GateManifest
 Assert-GeneratorTemplates
 Assert-NonEmptyJsonCorpus
+Assert-ManualIndexRecords
 
 Write-Host 'Regression contract validation passed.'

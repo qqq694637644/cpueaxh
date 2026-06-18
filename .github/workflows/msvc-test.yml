@@ -120,6 +120,14 @@ jobs:
         shell: pwsh
         run: ./tools/validate-stage3-gate-output.ps1 -OutputPath stage3-gates.log
 
+      - name: Replay manual coverage sample
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --replay test\manual\exception_priority.json --record-bundle manual-replay-bundle *> manual-replay.log
+          $exitCode = $LASTEXITCODE
+          Get-Content manual-replay.log
+          if ($exitCode -ne 0) { exit $exitCode }
+
       - name: Run full regression suite
         shell: pwsh
         run: |
@@ -136,9 +144,11 @@ jobs:
           if-no-files-found: ignore
           path: |
             failure-bundle/**
+            manual-replay-bundle/**
             cpu-features.json
             test-specs.log
             manual-index.log
             stage3-gates.log
+            manual-replay.log
             test-run.log
             cpu-info.txt

@@ -31,6 +31,12 @@
   .\tools\validate-regression-contract.ps1
   ```
 
+- [ ] Manual/unsafe-native coverage group replay was considered when relevant:
+
+  ```powershell
+  .\x64\Release\test.exe --replay test\manual\exception_priority.json --record-bundle failure-bundle
+  ```
+
 - [ ] CI passed on the latest commit.
 
 ## Risk notes

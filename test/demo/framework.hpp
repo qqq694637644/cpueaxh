@@ -429,6 +429,7 @@ struct TestOptions {
     bool has_generated_seed_count = false;
     std::string filter;
     std::string exact_case;
+    std::string manual_case;
     std::string failure_record_path;
     std::string feature_record_path;
     std::string record_bundle_dir;
@@ -468,6 +469,15 @@ inline void print_manual_case_index() {
     for (const ManualCaseIndexEntry& entry : kManualCaseIndex) {
         std::cout << entry.name << " [" << entry.category << "] " << entry.coverage << std::endl;
     }
+}
+
+inline const ManualCaseIndexEntry* find_manual_case_index_entry(const std::string& name) {
+    for (const ManualCaseIndexEntry& entry : kManualCaseIndex) {
+        if (name == entry.name) {
+            return &entry;
+        }
+    }
+    return nullptr;
 }
 
 inline constexpr std::array<Stage3GateIndexEntry, 7> kStage3GateIndex = {{
@@ -670,7 +680,31 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
     }
 
     std::string schema;
-    if (!json_extract_string(json, "schema", schema) || schema != "cpueaxh.failure.v1") {
+    if (!json_extract_string(json, "schema", schema)) {
+        error = "replay file has unsupported schema: " + path;
+        return false;
+    }
+
+    if (schema == "cpueaxh.manual-index.v1") {
+        std::string manual_case;
+        if (!json_extract_string(json, "case_selector", manual_case) || manual_case.empty()) {
+            error = "manual replay file has no non-empty case_selector: " + path;
+            return false;
+        }
+        if (!find_manual_case_index_entry(manual_case)) {
+            error = "manual replay case is not in the manual index: " + manual_case;
+            return false;
+        }
+        options.manual_case = manual_case;
+        options.filter.clear();
+        options.exact_case.clear();
+        options.has_seed_index = false;
+        options.run_manual = true;
+        options.run_regression_corpus = false;
+        return true;
+    }
+
+    if (schema != "cpueaxh.failure.v1") {
         error = "replay file has unsupported schema: " + path;
         return false;
     }
@@ -689,6 +723,7 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
 
     options.exact_case = exact_case;
     options.filter.clear();
+    options.manual_case.clear();
     options.seed_index = seed_index;
     options.has_seed_index = true;
     options.run_manual = false;
@@ -9831,6 +9866,27 @@ inline bool run_all_tests(const TestOptions& options) {
     if (options.generated_seed_count == 0) {
         std::cerr << "generated seed count must be greater than zero" << std::endl;
         return false;
+    }
+
+    if (!options.manual_case.empty()) {
+        const ManualCaseIndexEntry* entry = find_manual_case_index_entry(options.manual_case);
+        if (!entry) {
+            std::cerr << "manual replay case is not in the manual index: " << options.manual_case << std::endl;
+            return false;
+        }
+        std::uint64_t executed = 0;
+        const std::uint64_t total = manual_special_case_count(features);
+        std::cout << "cpueaxh manual replay case: " << entry->name << " [" << entry->category << "]" << std::endl;
+        std::cout << "coverage: " << entry->coverage << std::endl;
+        std::cout << "manual replay mode: full manual special suite" << std::endl;
+        std::cout << "cpueaxh test cases: " << total << std::endl;
+        Failure failure;
+        if (!run_manual_special_tests(features, executed, total, &failure)) {
+            write_failure_record(options.failure_record_path, failure);
+            return false;
+        }
+        std::cout << "PASS " << executed << "/" << total << std::endl;
+        return true;
     }
 
     std::uint64_t selected_specs = 0;

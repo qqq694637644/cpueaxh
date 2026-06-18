@@ -76,11 +76,11 @@ This option is useful for CI artifacts because it keeps failure data and feature
 
 ## Manual / unsafe-native index records
 
-Manual and unsafe-native cases should be indexed by name and coverage category. They are not directly replayed by `--replay` yet.
+Manual and unsafe-native cases are indexed by name and coverage category. They can be replayed through `test.exe --replay <path>` when the record uses the `cpueaxh.manual-index.v1` schema.
 
 Use `test.exe --list-manual` to list the current manual/unsafe-native coverage index.
 
-Recommended future record shape:
+Current record shape:
 
 ```json
 {
@@ -88,8 +88,16 @@ Recommended future record shape:
   "case_selector": "exception_priority",
   "category": "manual",
   "coverage": "memory, stack, canonical-address, and UD exception ordering",
-  "replay": "explicit-cpp"
+  "replay": "test.exe --manual-case exception_priority --record-bundle failure-bundle"
 }
+```
+
+Current manual replay is intentionally conservative: the runner validates that `case_selector` exists in the manual index and then executes the full manual special suite. This avoids false confidence while still giving CI and reviewers a structured replay entry point for manual or unsafe-native coverage groups.
+
+Equivalent command:
+
+```powershell
+.\x64\Release\test.exe --manual-case exception_priority --record-bundle failure-bundle
 ```
 
 ## Failure artifact bundle
