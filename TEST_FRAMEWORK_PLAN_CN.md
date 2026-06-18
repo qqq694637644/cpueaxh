@@ -207,6 +207,8 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 
 默认无参数时必须运行完整回归：生成式差分、manual special cases，以及 `test/regression/*.json` replay corpus，不应默认进入精简模式。
 
+list 模式不允许吞掉运行参数：`--list-manual` 必须单独使用；`--list` 只能和 `--case` / `--filter-exact` / `--filter` 组合用于筛选列表，不能和 `--seed-index`、`--generated-seeds`、`--record-failure`、`--replay` 或 skip 选项组合。
+
 ## 5. 失败记录格式
 
 第一版 `failure.json` 目标字段：

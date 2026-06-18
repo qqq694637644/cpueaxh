@@ -143,6 +143,25 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
         std::cerr << "--case/--filter-exact cannot be combined with --filter\n";
         return ParseResult::Error;
     }
+    if (options.list_only && options.list_manual_only) {
+        std::cerr << "--list cannot be combined with --list-manual\n";
+        return ParseResult::Error;
+    }
+    if (options.list_manual_only) {
+        if (options.list_only || !options.exact_case.empty() || !options.filter.empty() || options.has_seed_index ||
+            options.has_generated_seed_count || !options.failure_record_path.empty() || !options.replay_path.empty() ||
+            !options.run_manual || !options.run_regression_corpus) {
+            std::cerr << "--list-manual cannot be combined with other options\n";
+            return ParseResult::Error;
+        }
+    }
+    if (options.list_only) {
+        if (options.has_seed_index || options.has_generated_seed_count || !options.failure_record_path.empty() ||
+            !options.replay_path.empty() || !options.run_manual || !options.run_regression_corpus) {
+            std::cerr << "--list can only be combined with --case/--filter-exact or --filter\n";
+            return ParseResult::Error;
+        }
+    }
     if (!options.replay_path.empty()) {
         if (options.list_only || options.list_manual_only || !options.exact_case.empty() || !options.filter.empty() ||
             options.has_seed_index || options.has_generated_seed_count || !options.run_manual || !options.run_regression_corpus) {

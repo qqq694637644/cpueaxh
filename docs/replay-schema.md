@@ -42,6 +42,8 @@ Equivalent exact selector command:
 
 `--replay` is mutually exclusive with list, selector, seed, generated-seed-count, and skip options. This prevents a replay record from silently overriding command-line selectors.
 
+List modes are also strict: `--list-manual` must be used alone, while `--list` may only be combined with generated spec selectors (`--case`, `--filter-exact`, or `--filter`).
+
 Long generated fuzz failures are also directly reproducible by the emitted `replay_hint`: `--seed-index <n>` runs a single deterministic seed and is not limited by the default full-suite seed count.
 
 The default full suite fails if `test/regression/` is missing, not a directory, cannot be enumerated, or contains no replay JSON files. This prevents the corpus from silently disappearing.
