@@ -62,7 +62,7 @@ The required PR CI workflow is path-scoped to instruction, test, build, workflow
 
 Stage 3 regression gates are defined in `docs/stage3-regression-gates.yml` and exposed by `test.exe --list-gates`. The required CI runs `tools/validate-regression-contract.ps1` before the MSVC build so that gate, corpus, replay-schema, and generator-template drift fails early. After `--list-gates`, CI also runs `tools/validate-stage3-gate-output.ps1` to ensure the executable gate output still matches the documented gate names, categories, and commands. CI also writes `generated-specs.json` with `test.exe --dump-specs` and validates it with `tools/validate-generated-spec-manifest.ps1`, including regression corpus selector coverage.
 
-Self-hosted hardware validation is available through the manual `hardware-matrix-regression.yml` workflow. Use it only when a matching self-hosted Windows x64 runner is registered; provide the exact `runs-on` labels through `runner_labels_json` and preserve the uploaded feature/spec/bundle artifacts as hardware evidence.
+Current validation is GitHub-hosted-runner based. The runner feature matrix is captured with `--dump-features` and `--dump-specs`, so optional CPU coverage is proven by the artifacts from that CI run rather than by a self-hosted hardware requirement.
 
 ## AI-assisted development rules
 

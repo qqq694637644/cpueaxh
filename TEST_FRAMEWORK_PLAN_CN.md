@@ -162,11 +162,11 @@ Windows x64 Release build
 
 第一阶段 workflow 使用 `paths` 过滤触发范围：`.github/workflows/**`、`.github/pull_request_template.md`、`cpueaxh/**`、`test/**`、`TEST_FRAMEWORK_PLAN_CN.md`、开发契约文档、`docs/instruction-status.yml`、`cpueaxh.sln`、`*.vcxproj`、`*.props`、`*.targets` 相关改动才触发。
 
-Nightly 或自托管真机可扩展：
+GitHub hosted runner 可扩展：
 
 ```text
 更多 seed
-更多 CPU feature 矩阵
+记录实际 CPU feature 矩阵
 更长时间 fuzz
 AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 ```
@@ -307,21 +307,23 @@ AI 不允许做以下事情：
 声称未运行过的测试已经通过
 ```
 
-## 8. 真机验证矩阵
+## 8. GitHub runner 验证矩阵
 
-GitHub hosted runner 可以作为基础门禁，但不适合覆盖完整 AMD64 硬件特性。
+GitHub hosted runner 是当前验证门禁目标。测试程序会在运行时通过 CPUID 和 OS-enabled state 检测 feature，并只运行当前 runner 支持的 generated specs。因此不需要引入自托管硬件作为当前 PR 门禁。
 
-建议后续准备自托管真机 runner：
+每次 hosted CI 都必须保留：
 
 ```text
-windows-2022-intel-sse2-baseline
-windows-2022-intel-avx2
-windows-2022-amd-zen3
-windows-2022-amd-zen4
-windows-2022-intel-avx512
+cpu-info.txt
+cpu-features.json
+generated-specs.json
+test-specs.log
+manual-index.log
+stage3-gates.log
+test-run.log
 ```
 
-每台机器运行前通过 CPUID 检测 feature，只运行硬件支持的测试。
+每次运行前通过 CPUID 检测 feature，只运行当前 GitHub runner 支持的测试。
 
 可选 feature 包括：
 
@@ -357,7 +359,7 @@ VMX/SVM 虚拟化指令
 ```text
 1. 纯软件建模：按手册实现，不直接真机执行。
 2. escape：由 host callback 或已有 escape 机制处理。
-3. 内核/虚拟化专用测试：只在受控自托管机器运行。
+3. 内核/虚拟化专用测试：不纳入当前 GitHub hosted runner 门禁，必须通过 model/escape/manual 方式覆盖。
 4. 标记 unsafe_for_native：在状态表中明确不能普通真机差分。
 ```
 
@@ -403,7 +405,7 @@ GitHub Actions Windows x64 Release CI 已通过
 ```text
 1. manual/unsafe-native 已有 `cpueaxh.manual-index.v1` 结构化 replay 入口，并在 CI 中用 `test/manual/exception_priority.json` 验证
 2. `--record-bundle` 已上传最小 replay bundle：feature matrix + generated spec manifest + failure record + 日志
-3. `.github/workflows/hardware-matrix-regression.yml` 已提供手动 `workflow_dispatch` 自托管硬件矩阵入口；真实 runner 接入后按 `runner_labels_json` 手动运行
+3. 不引入自托管硬件 workflow；当前以 GitHub hosted runner 的 feature-gated 测试和证据 artifact 为准
 ```
 
 ## 12. 第三阶段建议 / 当前实现
@@ -414,13 +416,13 @@ GitHub Actions Windows x64 Release CI 已通过
 1. instruction-status.yml 已采用 mnemonic + form + encoding + operand-size + feature gate 粒度结构
 2. docs/generator-templates.yml 定义每个主要指令族的生成器模板和安全约束
 3. extended-regression.yml 提供 nightly / workflow_dispatch long fuzz 入口
-4. docs/hardware-runner-matrix.md 文档化自托管硬件矩阵和 unsafe-native 策略
+4. docs/hardware-runner-matrix.md 文档化 GitHub hosted runner feature matrix 和 unsafe-native 策略
 5. docs/stage3-regression-gates.yml 定义 decoder/executor/public helper 专项 gate
 6. --list-gates 和 CI stage3-gates.log 暴露 undefined flags、异常优先级、内存访问顺序等 gate
 7. tools/validate-regression-contract.ps1 在 CI 中结构化校验状态表、replay corpus、stage3 gate 名称/必填字段和生成器模板 family/必填段契约
 8. tools/validate-stage3-gate-output.ps1 在 CI 中校验 `--list-gates` 输出与 docs/stage3-regression-gates.yml 的 gate 名称、category、command 一致
 9. --dump-specs 和 tools/validate-generated-spec-manifest.ps1 在 CI 中校验当前 generated spec manifest、唯一 selector，以及 regression corpus selector 均存在于 manifest 中
-10. hardware-matrix-regression.yml 提供手动 self-hosted hardware regression 入口，保留 runner labels、feature matrix、generated spec manifest、manual replay 和 long fuzz bundle 证据
+10. 当前不使用自托管硬件；GitHub hosted runner 保留 feature matrix、generated spec manifest、manual replay 和 full regression 证据
 ```
 
 第三阶段仍未声称完成完整 AMD64 指令集覆盖。后续补具体指令时，必须继续按 instruction-status.yml form 粒度扩展状态表、测试生成器和 regression corpus。
