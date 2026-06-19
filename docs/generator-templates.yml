@@ -66,7 +66,8 @@ families:
 
   control_flow:
     examples:
-      - jz
+      - jz_true
+      - jz_false
       - jmp_skip
       - call_add
     required_fields:

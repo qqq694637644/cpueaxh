@@ -1,4 +1,4 @@
-// instrusments/movbe.hpp - MOVBE instruction implementation
+// instructions/movbe.hpp - MOVBE instruction implementation
 
 static inline bool cpu_has_movbe_feature() {
     int cpu_info[4] = {};

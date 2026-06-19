@@ -466,6 +466,7 @@ inline void cpu_decode_instruction(
     const uint8_t raw_opc = (uint8_t)(opc & 0xFF);
     const uint8_t repeat_prefix = peek_repeat_prefix(buf, prefix_len);
     const uint8_t mandatory_prefix = peek_mandatory_prefix(buf, prefix_len);
+    const InstructionPrefixPresence prefix_presence = peek_instruction_prefix_presence(buf, prefix_len);
 
     // Replicates cpu_step_with_prefetch's REX.B detection.
     uint8_t last_rex_prefix = 0;
@@ -636,10 +637,10 @@ inline void cpu_decode_instruction(
     else if (opc == 0x0F38 && is_pshufb_instruction(buf, fetched, prefix_len)) {
         handler = execute_pshufb;
     }
-    else if (opc == 0x0F38 && mandatory_prefix == 0xF2 && is_crc32_instruction(buf, fetched, prefix_len)) {
+    else if (opc == 0x0F38 && prefix_presence.has_f2 && !prefix_presence.has_f3 && is_crc32_instruction(buf, fetched, prefix_len)) {
         handler = execute_crc32;
     }
-    else if (opc == 0x0F38 && (mandatory_prefix == 0x00 || mandatory_prefix == 0x66) && is_movbe_instruction(buf, fetched, prefix_len)) {
+    else if (opc == 0x0F38 && !prefix_presence.has_f2 && !prefix_presence.has_f3 && is_movbe_instruction(buf, fetched, prefix_len)) {
         handler = execute_movbe;
     }
     else if (opc == 0x0F38 && mandatory_prefix == 0) {

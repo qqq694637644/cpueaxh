@@ -278,6 +278,7 @@ enum class BitOp : std::uint8_t {
     Lzcnt,
     Crc32Byte,
     Crc32Word,
+    Crc32WordF2Then66,
     Crc32Dword,
     Crc32Qword,
     Crc32MemByte,
@@ -1130,6 +1131,76 @@ inline constexpr std::array<CondSpec, 16> kConditions = {{
     { 0xE, "le" },
     { 0xF, "g" },
 }};
+
+constexpr std::uint32_t kConditionTrueVariantBit = 0x100u;
+
+inline std::uint32_t condition_variant(std::uint8_t condition_code, bool should_be_true) {
+    return static_cast<std::uint32_t>(condition_code) | (should_be_true ? kConditionTrueVariantBit : 0u);
+}
+
+inline std::uint8_t condition_variant_code(std::uint32_t variant) {
+    return static_cast<std::uint8_t>(variant & 0x0Fu);
+}
+
+inline bool condition_variant_expected_true(std::uint32_t variant) {
+    return (variant & kConditionTrueVariantBit) != 0;
+}
+
+inline std::string condition_case_name(const char* prefix, const CondSpec& condition, bool should_be_true) {
+    return std::string(prefix) + condition.name + (should_be_true ? "_true" : "_false");
+}
+
+inline std::uint64_t forced_condition_flags(std::uint8_t condition_code, bool should_be_true) {
+    std::uint64_t flags = 0x202ull;
+    const auto set = [&flags](std::uint64_t bit, bool value) {
+        if (value) {
+            flags |= bit;
+        }
+        else {
+            flags &= ~bit;
+        }
+    };
+
+    switch (condition_code & 0x0F) {
+    case 0x0: set(kFlagOF, should_be_true); break;                         // O
+    case 0x1: set(kFlagOF, !should_be_true); break;                        // NO
+    case 0x2: set(kFlagCF, should_be_true); break;                         // B/C
+    case 0x3: set(kFlagCF, !should_be_true); break;                        // AE/NC
+    case 0x4: set(kFlagZF, should_be_true); break;                         // Z/E
+    case 0x5: set(kFlagZF, !should_be_true); break;                        // NZ/NE
+    case 0x6:                                                            // BE: CF || ZF
+        set(kFlagCF, should_be_true);
+        set(kFlagZF, false);
+        break;
+    case 0x7:                                                            // A: !CF && !ZF
+        set(kFlagCF, !should_be_true);
+        set(kFlagZF, false);
+        break;
+    case 0x8: set(kFlagSF, should_be_true); break;                         // S
+    case 0x9: set(kFlagSF, !should_be_true); break;                        // NS
+    case 0xA: set(kFlagPF, should_be_true); break;                         // P/PE
+    case 0xB: set(kFlagPF, !should_be_true); break;                        // NP/PO
+    case 0xC:                                                            // L: SF != OF
+        set(kFlagSF, should_be_true);
+        set(kFlagOF, false);
+        break;
+    case 0xD:                                                            // GE: SF == OF
+        set(kFlagSF, !should_be_true);
+        set(kFlagOF, false);
+        break;
+    case 0xE:                                                            // LE: ZF || SF != OF
+        set(kFlagZF, should_be_true);
+        set(kFlagSF, false);
+        set(kFlagOF, false);
+        break;
+    case 0xF:                                                            // G: !ZF && SF == OF
+        set(kFlagZF, !should_be_true);
+        set(kFlagSF, false);
+        set(kFlagOF, false);
+        break;
+    }
+    return flags;
+}
 
 inline const char* reg_name(Reg reg) {
     static constexpr const char* names[] = {
@@ -1987,6 +2058,16 @@ public:
     void crc32_r32_r16(Reg dst, Reg src) {
         emit8(0x66);
         emit8(0xF2);
+        emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF1);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void crc32_r32_r16_f2_66(Reg dst, Reg src) {
+        emit8(0xF2);
+        emit8(0x66);
         emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
         emit8(0x0F);
         emit8(0x38);
@@ -2959,6 +3040,7 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     if (features.sse42) {
         specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Byte), 0, 0, "crc32_r32_r8" });
         specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Word), 0, 0, "crc32_r32_r16" });
+        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32WordF2Then66), 0, 0, "crc32_r32_r16_f2_66" });
         specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Dword), 0, 0, "crc32_r32_r32" });
         specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Qword), 0, 0, "crc32_r64_r64" });
         specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32MemByte), 0, 0, "crc32_r32_m8" });
@@ -2967,9 +3049,13 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
         specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32MemQword), 0, 0, "crc32_r64_m64" });
     }
     for (const CondSpec& condition : kConditions) {
-        specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Setcc), condition.code, kStatusMask, std::string("set") + condition.name });
-        specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cmovcc), condition.code, kStatusMask, std::string("cmov") + condition.name });
-        specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Jcc), condition.code, kStatusMask, std::string("j") + condition.name });
+        for (int expected = 0; expected < 2; ++expected) {
+            const bool should_be_true = expected != 0;
+            const std::uint32_t variant = condition_variant(condition.code, should_be_true);
+            specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Setcc), variant, kStatusMask, condition_case_name("set", condition, should_be_true) });
+            specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cmovcc), variant, kStatusMask, condition_case_name("cmov", condition, should_be_true) });
+            specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Jcc), variant, kStatusMask, condition_case_name("j", condition, should_be_true) });
+        }
     }
     specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cmc), 0, kFlagCF, "cmc" });
     specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Clc), 0, kFlagCF, "clc" });
@@ -3258,6 +3344,9 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         case BitOp::Crc32Word:
             code.crc32_r32_r16(Reg::RAX, Reg::RBX);
             break;
+        case BitOp::Crc32WordF2Then66:
+            code.crc32_r32_r16_f2_66(Reg::RAX, Reg::RBX);
+            break;
         case BitOp::Crc32Dword:
             code.crc32_r32_r32(Reg::R8, Reg::R9);
             break;
@@ -3280,16 +3369,18 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         break;
     }
     case Family::FlagOps: {
-        const std::uint8_t cc = static_cast<std::uint8_t>(spec.variant);
+        const std::uint8_t cc = condition_variant_code(spec.variant);
         const auto program = static_cast<FlagProgram>(spec.op);
-        code.binary_reg_reg(BinaryOp::Cmp, Reg::RAX, Reg::RBX);
         if (program == FlagProgram::Setcc) {
+            built.initial_context.rflags = forced_condition_flags(cc, condition_variant_expected_true(spec.variant));
             code.setcc(cc, Reg::RAX);
         }
         else if (program == FlagProgram::Cmovcc) {
+            built.initial_context.rflags = forced_condition_flags(cc, condition_variant_expected_true(spec.variant));
             code.cmovcc(cc, Reg::R10, Reg::R11);
         }
         else if (program == FlagProgram::Jcc) {
+            built.initial_context.rflags = forced_condition_flags(cc, condition_variant_expected_true(spec.variant));
             code.jcc32(cc, label_true);
             code.mov_reg_reg(Reg::R12, Reg::R13);
             code.jmp32(label_end);

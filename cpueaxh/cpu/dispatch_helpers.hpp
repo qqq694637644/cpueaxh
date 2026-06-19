@@ -53,6 +53,24 @@ inline uint8_t peek_mandatory_prefix(const uint8_t* buf, int prefix_len) {
     return mandatory_prefix;
 }
 
+struct InstructionPrefixPresence {
+    bool has_66;
+    bool has_f2;
+    bool has_f3;
+    bool has_lock;
+};
+
+inline InstructionPrefixPresence peek_instruction_prefix_presence(const uint8_t* buf, int prefix_len) {
+    InstructionPrefixPresence prefixes = {};
+    for (int i = 0; i < prefix_len; i++) {
+        prefixes.has_66 = prefixes.has_66 || buf[i] == 0x66;
+        prefixes.has_f2 = prefixes.has_f2 || buf[i] == 0xF2;
+        prefixes.has_f3 = prefixes.has_f3 || buf[i] == 0xF3;
+        prefixes.has_lock = prefixes.has_lock || buf[i] == 0xF0;
+    }
+    return prefixes;
+}
+
 inline int peek_segment_override(const uint8_t* buf, int prefix_len) {
     int segment_override = -1;
     for (int i = 0; i < prefix_len; i++) {
