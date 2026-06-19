@@ -6,16 +6,52 @@
 
 namespace cpueaxh_test {
 
-inline std::uint64_t manual_special_case_count(const HostFeatures& features) {
+inline bool manual_case_runs_per_seed_group(const std::string& manual_case) {
+    return manual_case.empty() || manual_case == "compat32_control_transfer" || manual_case == "x87_state" || manual_case == "simd_encoding_edges";
+}
+
+inline bool manual_case_runs_exception_group(const std::string& manual_case) {
+    return manual_case.empty() || manual_case == "exception_priority" || manual_case == "invalid_prefix_ud" || manual_case == "x87_state" || manual_case == "simd_encoding_edges";
+}
+
+inline bool manual_case_runs_host_stack_group(const std::string& manual_case) {
+    return manual_case.empty() || manual_case == "host_stack_roundtrip" || manual_case == "cached_rmw_recompute";
+}
+
+inline bool manual_case_runs_context_api_group(const std::string& manual_case) {
+    return manual_case.empty() || manual_case == "context_api";
+}
+
+inline bool manual_case_has_exact_runner(const std::string& manual_case) {
+    return manual_case_runs_per_seed_group(manual_case) ||
+        manual_case_runs_exception_group(manual_case) ||
+        manual_case_runs_host_stack_group(manual_case) ||
+        manual_case_runs_context_api_group(manual_case);
+}
+
+inline std::uint64_t manual_special_case_count(const HostFeatures& features, const std::string& manual_case = std::string()) {
     const std::uint64_t per_seed_special = (features.avx ? 57ull : 44ull) + (features.popcnt ? 3ull : 0ull) + 12ull + (features.rdpid ? 3ull : 0ull)
         + (features.aes ? 6ull : 0ull)
         + ((features.aes && features.avx) ? 2ull : 0ull)
         + 4ull;
     const std::uint64_t exception_special = 80ull + ((features.aes && features.avx) ? 2ull : 0ull);
-    return kSeedCount * per_seed_special + kExceptionSeedCount * exception_special + kHostStackSeedCount * 4ull + kContextApiSeedCount;
+    std::uint64_t total = 0;
+    if (manual_case_runs_per_seed_group(manual_case)) {
+        total += kSeedCount * per_seed_special;
+    }
+    if (manual_case_runs_exception_group(manual_case)) {
+        total += kExceptionSeedCount * exception_special;
+    }
+    if (manual_case_runs_host_stack_group(manual_case)) {
+        total += kHostStackSeedCount * 4ull;
+    }
+    if (manual_case_runs_context_api_group(manual_case)) {
+        total += kContextApiSeedCount;
+    }
+    return total;
 }
 
-inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t& executed, std::uint64_t total, Failure* first_failure = nullptr) {
+inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t& executed, std::uint64_t total, Failure* first_failure = nullptr, const std::string& manual_case = std::string()) {
     const std::vector<std::uint8_t> endbr64 = { 0xF3, 0x0F, 0x1E, 0xFA, 0xC3 };
     const std::vector<std::uint8_t> endbr32 = { 0xF3, 0x0F, 0x1E, 0xFB, 0xC3 };
     const std::vector<std::uint8_t> rcl_bx_cl = { 0x66, 0xD3, 0xD3 };
@@ -178,6 +214,7 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         return true;
     };
 
+    if (manual_case_runs_per_seed_group(manual_case)) {
     for (std::uint64_t seed_index = 0; seed_index < kSeedCount; ++seed_index) {
         Failure failure;
         const std::uint64_t seed_compat_ret = seeded(seed_index, 0xE101);
@@ -1415,7 +1452,9 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
                 failure), failure)) return false;
         }
     }
+    }
 
+    if (manual_case_runs_exception_group(manual_case)) {
     for (std::uint64_t seed_index = 0; seed_index < kExceptionSeedCount; ++seed_index) {
         Failure failure;
         const std::uint64_t seed3 = seeded(seed_index, 0xE004);
@@ -1696,7 +1735,9 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         if (!tick(run_manual_exception_case_public("public_evex_vpextrd_vvvv_ud:" + std::to_string(seed_evex_vpextr_vvvv), invalid_evex_vpextrd_vvvv, seed_evex_vpextr_vvvv, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
         if (!tick(run_manual_exception_case("evex_vpextrd_vvvv_ud:" + std::to_string(seed_evex_vpextr_vvvv), invalid_evex_vpextrd_vvvv, seed_evex_vpextr_vvvv, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
     }
+    }
 
+    if (manual_case_runs_host_stack_group(manual_case)) {
     for (std::uint64_t seed_index = 0; seed_index < kHostStackSeedCount; ++seed_index) {
         Failure failure;
         const std::uint64_t seed7 = seeded(seed_index, 0xE251);
@@ -1711,11 +1752,14 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         const std::uint64_t seed_cmpxchg_cache = seeded(seed_index, 0xE263);
         if (!tick(run_cached_rmw_recompute_case("cached_cmpxchg_mem_recompute:" + std::to_string(seed_cmpxchg_cache), seed_cmpxchg_cache, 2, failure), failure)) return false;
     }
+    }
 
+    if (manual_case_runs_context_api_group(manual_case)) {
     for (std::uint64_t seed_index = 0; seed_index < kContextApiSeedCount; ++seed_index) {
         Failure failure;
         const std::uint64_t seed8 = seeded(seed_index, 0xE301);
         if (!tick(run_context_api_case("context_api:" + std::to_string(seed8), seed8, failure), failure)) return false;
+    }
     }
 
     return all_ok;

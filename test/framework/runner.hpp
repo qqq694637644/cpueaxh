@@ -69,14 +69,18 @@ inline bool run_all_tests(const TestOptions& options) {
             std::cerr << "manual replay case is not in the manual index: " << options.manual_case << std::endl;
             return false;
         }
+        if (!manual_case_has_exact_runner(options.manual_case)) {
+            std::cerr << "manual case '" << options.manual_case << "' has no exact runner" << std::endl;
+            return false;
+        }
         std::uint64_t executed = 0;
-        const std::uint64_t total = manual_special_case_count(features);
+        const std::uint64_t total = manual_special_case_count(features, options.manual_case);
         std::cout << "cpueaxh manual replay case: " << entry->name << " [" << entry->category << "]" << std::endl;
         std::cout << "coverage: " << entry->coverage << std::endl;
-        std::cout << "manual replay mode: full manual special suite" << std::endl;
+        std::cout << "manual replay mode: exact registered runner" << std::endl;
         std::cout << "cpueaxh test cases: " << total << std::endl;
         Failure failure;
-        if (!run_manual_special_tests(features, executed, total, &failure)) {
+        if (!run_manual_special_tests(features, executed, total, &failure, options.manual_case)) {
             record_failure(failure);
             return false;
         }

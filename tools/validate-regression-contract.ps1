@@ -66,6 +66,38 @@ function Assert-CoreHeadersHavePragmaOnce {
     }
 }
 
+function Assert-CoreHeaderSmokeTranslationUnits {
+    $required = @(
+        'cpueaxh/header_smoke/header_smoke_core.cpp',
+        'cpueaxh/header_smoke/header_smoke_integer.cpp',
+        'cpueaxh/header_smoke/header_smoke_control_flow.cpp',
+        'cpueaxh/header_smoke/header_smoke_stack.cpp',
+        'cpueaxh/header_smoke/header_smoke_string.cpp',
+        'cpueaxh/header_smoke/header_smoke_simd_sse.cpp',
+        'cpueaxh/header_smoke/header_smoke_simd_avx.cpp',
+        'cpueaxh/header_smoke/header_smoke_crypto.cpp',
+        'cpueaxh/header_smoke/header_smoke_system.cpp',
+        'cpueaxh/header_smoke/header_smoke_x87.cpp',
+        'cpueaxh/header_smoke/header_smoke_all_instructions.cpp'
+    )
+    foreach ($path in $required) {
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Missing core header smoke translation unit: $path"
+        }
+        $projectPath = $path.Replace('cpueaxh/', '').Replace('/', '\')
+        Assert-FileContains -Path 'cpueaxh/cpueaxh.vcxproj' -Pattern ([regex]::Escape($projectPath)) -Message "cpueaxh.vcxproj must compile $projectPath"
+    }
+}
+
+function Assert-CpueaxhInternalUsesInstructionModules {
+    Assert-FileContains -Path 'cpueaxh/cpueaxh_internal.hpp' -Pattern 'cpu/core\.hpp' -Message 'cpueaxh_internal.hpp must include cpu/core.hpp.'
+    Assert-FileContains -Path 'cpueaxh/cpueaxh_internal.hpp' -Pattern 'instructions/all_instructions\.hpp' -Message 'cpueaxh_internal.hpp must include instruction family umbrella.'
+    $internal = Get-Content -LiteralPath 'cpueaxh/cpueaxh_internal.hpp' -Raw
+    if ($internal -match 'instructions/(add|mov|avx_vex|sse2_|x87_)') {
+        throw 'cpueaxh_internal.hpp must not return to direct per-instruction includes.'
+    }
+}
+
 function Assert-NoLegacyFrameworkJsonExtractors {
     $content = Get-ChildItem -LiteralPath 'test/framework' -Filter '*.hpp' -File |
         ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }
@@ -247,6 +279,12 @@ Assert-TestFrameworkContains -Pattern 'cpueaxh\.generated-initial-state\.v1' -Me
 Assert-TestFrameworkContains -Pattern 'cpueaxh\.generated-result-state\.v1' -Message 'failure recorder must emit generated result-state records.'
 Assert-TestFrameworkContains -Pattern 'attach_host_features_to_failure' -Message 'failure recorder must attach host feature snapshots.'
 Assert-TestFrameworkContains -Pattern 'host_brand' -Message 'failure recorder must include host CPU brand strings.'
+Assert-TestFrameworkContains -Pattern 'manual_case_has_exact_runner' -Message 'manual replay must require exact registered runners.'
+Assert-TestFrameworkContains -Pattern 'manual replay mode: exact registered runner' -Message 'manual replay must not fall back to the full manual suite.'
+Assert-TestFrameworkContains -Pattern 'has no exact runner' -Message 'missing manual exact runners must fail explicitly.'
+if ((Get-ChildItem -LiteralPath 'test/framework' -Filter '*.hpp' -File | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n" -match 'manual replay mode: full manual special suite') {
+    throw 'manual replay must not run the full manual suite as a fallback.'
+}
 Assert-FileContains -Path 'TEST_FRAMEWORK_PLAN_CN.md' -Pattern '第三阶段' -Message 'Chinese plan must preserve stage 3 section.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern '--list-gates' -Message 'required CI must log stage3 regression gates.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'test\\manual\\exception_priority\.json' -Message 'required CI must replay a manual-index sample.'
@@ -270,6 +308,8 @@ Assert-GeneratorTemplates
 Assert-NonEmptyJsonCorpus
 Assert-ManualIndexRecords
 Assert-CoreHeadersHavePragmaOnce
+Assert-CoreHeaderSmokeTranslationUnits
+Assert-CpueaxhInternalUsesInstructionModules
 Assert-NoLegacyFrameworkJsonExtractors
 Assert-FrameworkHeadersDoNotRequireUmbrellaOrder
 
