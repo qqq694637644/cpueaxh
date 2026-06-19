@@ -256,7 +256,15 @@ enum class ShiftOp : std::uint8_t {
 enum class BitOp : std::uint8_t {
     BtImm,
     BtReg,
+    BtsImm,
+    BtsReg,
+    BtrImm,
+    BtrReg,
+    BtcImm,
+    BtcReg,
     Bsf,
+    Bsr,
+    Popcnt,
     Bswap,
     BsfAlt,
     BswapAlt,
@@ -289,6 +297,14 @@ enum class MoveProgram : std::uint8_t {
     Movsxd,
     Lea2,
     Lea4,
+    Cbw,
+    Cwde,
+    Cdqe,
+    Cwd,
+    Cdq,
+    Cqo,
+    XchgRegReg,
+    XchgRaxR8,
     MovbeLoad16,
     MovbeLoad32,
     MovbeLoad64,
@@ -1734,6 +1750,17 @@ public:
         emit_modrm(3, static_cast<std::uint8_t>(src), static_cast<std::uint8_t>(dst));
     }
 
+    void xchg_reg_reg(Reg left, Reg right) {
+        emit_rex(true, static_cast<std::uint8_t>(right), 0, static_cast<std::uint8_t>(left));
+        emit8(0x87);
+        emit_modrm(3, static_cast<std::uint8_t>(right), static_cast<std::uint8_t>(left));
+    }
+
+    void xchg_rax_reg(Reg reg) {
+        emit_rex(true, 0, 0, static_cast<std::uint8_t>(reg));
+        emit8(static_cast<std::uint8_t>(0x90u + (static_cast<std::uint8_t>(reg) & 7u)));
+    }
+
     void binary_reg_reg(BinaryOp op, Reg dst, Reg src) {
         emit_rex(true, static_cast<std::uint8_t>(src), 0, static_cast<std::uint8_t>(dst));
         switch (op) {
@@ -1831,6 +1858,14 @@ public:
         emit8(bit);
     }
 
+    void bit_reg_imm(std::uint8_t group, Reg reg, std::uint8_t bit) {
+        emit_rex(true, group, 0, static_cast<std::uint8_t>(reg));
+        emit8(0x0F);
+        emit8(0xBA);
+        emit_modrm(3, group, static_cast<std::uint8_t>(reg));
+        emit8(bit);
+    }
+
     void bt_reg_reg(Reg dst, Reg src) {
         emit_rex(true, static_cast<std::uint8_t>(src), 0, static_cast<std::uint8_t>(dst));
         emit8(0x0F);
@@ -1838,10 +1873,32 @@ public:
         emit_modrm(3, static_cast<std::uint8_t>(src), static_cast<std::uint8_t>(dst));
     }
 
+    void bit_reg_reg(std::uint8_t opcode, Reg dst, Reg src) {
+        emit_rex(true, static_cast<std::uint8_t>(src), 0, static_cast<std::uint8_t>(dst));
+        emit8(0x0F);
+        emit8(opcode);
+        emit_modrm(3, static_cast<std::uint8_t>(src), static_cast<std::uint8_t>(dst));
+    }
+
     void bsf(Reg dst, Reg src) {
         emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
         emit8(0x0F);
         emit8(0xBC);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void bsr(Reg dst, Reg src) {
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0xBD);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void popcnt(Reg dst, Reg src) {
+        emit8(0xF3);
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0xB8);
         emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
     }
 
@@ -2143,6 +2200,34 @@ public:
 
     void leave() {
         emit8(0xC9);
+    }
+
+    void cbw() {
+        emit8(0x66);
+        emit8(0x98);
+    }
+
+    void cwde() {
+        emit8(0x98);
+    }
+
+    void cdqe() {
+        emit8(0x48);
+        emit8(0x98);
+    }
+
+    void cwd() {
+        emit8(0x66);
+        emit8(0x99);
+    }
+
+    void cdq() {
+        emit8(0x99);
+    }
+
+    void cqo() {
+        emit8(0x48);
+        emit8(0x99);
     }
 
     void mov_r32_imm(Reg reg, std::uint32_t imm) {
@@ -2763,7 +2848,17 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     }
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtImm), 0, kBitTestMask, "bt_imm_rax" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtReg), 0, kBitTestMask, "bt_reg_r8_rcx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtsImm), 0, kBitTestMask, "bts_imm_r10" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtsReg), 0, kBitTestMask, "bts_reg_r11_rcx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtrImm), 0, kBitTestMask, "btr_imm_r12" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtrReg), 0, kBitTestMask, "btr_reg_r13_rcx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtcImm), 0, kBitTestMask, "btc_imm_r14" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtcReg), 0, kBitTestMask, "btc_reg_r15_rcx" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Bsf), 0, kBitScanMask, "bsf_rdx_rbx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Bsr), 0, kBitScanMask, "bsr_r9_r10" });
+    if (features.popcnt) {
+        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Popcnt), 0, kStatusMask, "popcnt_rdx_rbx" });
+    }
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Bswap), 0, kStatusMask, "bswap_r11" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BsfAlt), 0, kBitScanMask, "bsf_r9_r10" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BswapAlt), 0, kStatusMask, "bswap_rax" });
@@ -2794,6 +2889,14 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Movsxd), 0, 0, "movsxd_dword" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Lea2), 0, 0, "lea_scale2" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Lea4), 0, 0, "lea_scale4" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cbw), 0, 0, "cbw" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cwde), 0, 0, "cwde" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cdqe), 0, 0, "cdqe" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cwd), 0, 0, "cwd" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cdq), 0, 0, "cdq" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cqo), 0, 0, "cqo" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::XchgRegReg), 0, 0, "xchg_r8_r9" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::XchgRaxR8), 0, 0, "xchg_rax_r8" });
     if (features.movbe) {
         specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeLoad16), 0, 0, "movbe_r16_m16" });
         specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeLoad32), 0, 0, "movbe_r32_m32" });
@@ -2986,9 +3089,37 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
             code.bt_reg_reg(Reg::R8, Reg::RCX);
             break;
+        case BitOp::BtsImm:
+            code.bit_reg_imm(5, Reg::R10, static_cast<std::uint8_t>(seed % 63));
+            break;
+        case BitOp::BtsReg:
+            built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
+            code.bit_reg_reg(0xAB, Reg::R11, Reg::RCX);
+            break;
+        case BitOp::BtrImm:
+            code.bit_reg_imm(6, Reg::R12, static_cast<std::uint8_t>(seed % 63));
+            break;
+        case BitOp::BtrReg:
+            built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
+            code.bit_reg_reg(0xB3, Reg::R13, Reg::RCX);
+            break;
+        case BitOp::BtcImm:
+            code.bit_reg_imm(7, Reg::R14, static_cast<std::uint8_t>(seed % 63));
+            break;
+        case BitOp::BtcReg:
+            built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
+            code.bit_reg_reg(0xBB, Reg::R15, Reg::RCX);
+            break;
         case BitOp::Bsf:
             built.initial_context.regs[static_cast<std::size_t>(Reg::RBX)] |= 1;
             code.bsf(Reg::RDX, Reg::RBX);
+            break;
+        case BitOp::Bsr:
+            built.initial_context.regs[static_cast<std::size_t>(Reg::R10)] |= 1;
+            code.bsr(Reg::R9, Reg::R10);
+            break;
+        case BitOp::Popcnt:
+            code.popcnt(Reg::RDX, Reg::RBX);
             break;
         case BitOp::Bswap:
             code.bswap(Reg::R11);
@@ -3091,6 +3222,30 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             break;
         case MoveProgram::Lea4:
             code.lea_scaled(Reg::R15, Reg::R8, Reg::R9, 2, 0x18);
+            break;
+        case MoveProgram::Cbw:
+            code.cbw();
+            break;
+        case MoveProgram::Cwde:
+            code.cwde();
+            break;
+        case MoveProgram::Cdqe:
+            code.cdqe();
+            break;
+        case MoveProgram::Cwd:
+            code.cwd();
+            break;
+        case MoveProgram::Cdq:
+            code.cdq();
+            break;
+        case MoveProgram::Cqo:
+            code.cqo();
+            break;
+        case MoveProgram::XchgRegReg:
+            code.xchg_reg_reg(Reg::R8, Reg::R9);
+            break;
+        case MoveProgram::XchgRaxR8:
+            code.xchg_rax_reg(Reg::R8);
             break;
         case MoveProgram::MovbeLoad16:
             code.movbe_r16_m16(Reg::RAX, slot0);

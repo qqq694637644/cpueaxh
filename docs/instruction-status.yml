@@ -285,10 +285,223 @@ families:
               manual: false
             unsafe_native_reason: null
 
+  bit_manipulation:
+    status: in_progress
+    regression_gate: test.exe full suite
+    entries:
+      - mnemonic: BTS
+        forms:
+          - name: bts_imm_r10
+            encoding: "REX.W 0F BA /5 ib"
+            operands: ["r64", "imm8"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: bts_reg_r11_rcx
+            encoding: "REX.W 0F AB /r"
+            operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: BTR
+        forms:
+          - name: btr_imm_r12
+            encoding: "REX.W 0F BA /6 ib"
+            operands: ["r64", "imm8"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: btr_reg_r13_rcx
+            encoding: "REX.W 0F B3 /r"
+            operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: BTC
+        forms:
+          - name: btc_imm_r14
+            encoding: "REX.W 0F BA /7 ib"
+            operands: ["r64", "imm8"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: btc_reg_r15_rcx
+            encoding: "REX.W 0F BB /r"
+            operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: BSR
+        forms:
+          - name: bsr_r9_r10
+            encoding: "REX.W 0F BD /r"
+            operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: POPCNT
+        forms:
+          - name: popcnt_rdx_rbx
+            encoding: "F3 REX.W 0F B8 /r"
+            operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: popcnt
+            status: feature_gated
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+
   data_movement:
     status: in_progress
     regression_gate: test.exe full suite
     entries:
+      - mnemonic: CBW/CWDE/CDQE
+        forms:
+          - name: cbw
+            encoding: "66 98"
+            operands: ["AX", "AL"]
+            operand_size: 16
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cwde
+            encoding: "98"
+            operands: ["EAX", "AX"]
+            operand_size: 32
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cdqe
+            encoding: "REX.W 98"
+            operands: ["RAX", "EAX"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: CWD/CDQ/CQO
+        forms:
+          - name: cwd
+            encoding: "66 99"
+            operands: ["DX:AX", "AX"]
+            operand_size: 16
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cdq
+            encoding: "99"
+            operands: ["EDX:EAX", "EAX"]
+            operand_size: 32
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cqo
+            encoding: "REX.W 99"
+            operands: ["RDX:RAX", "RAX"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: XCHG
+        forms:
+          - name: xchg_r8_r9
+            encoding: "REX.W 87 /r"
+            operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: xchg_rax_r8
+            encoding: "REX.W 90+rd"
+            operands: ["RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
       - mnemonic: MOVBE
         forms:
           - name: movbe_r16_m16
