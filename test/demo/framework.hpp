@@ -2205,6 +2205,10 @@ public:
         emit8(0xFC);
     }
 
+    void std_() {
+        emit8(0xFD);
+    }
+
     void lahf() {
         emit8(0x9F);
     }
@@ -3218,6 +3222,7 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             code.stc();
         }
         else if (program == FlagProgram::Cld) {
+            code.std_();
             code.cld();
         }
         else if (program == FlagProgram::Lahf) {
