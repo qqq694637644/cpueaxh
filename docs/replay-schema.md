@@ -86,8 +86,13 @@ Failure records also include `host_features` when the runner can attach the same
 {
   "schema": "cpueaxh.host-features.v1",
   "vendor": "GenuineIntel",
+  "brand": "Intel(R) Xeon(R) Platinum ...",
   "max_leaf": 32,
   "max_leaf7": 2,
+  "max_extended_leaf": 2147483656,
+  "family": 6,
+  "model": 85,
+  "stepping": 7,
   "features": {
     "avx": true,
     "avx2": true,
@@ -96,7 +101,7 @@ Failure records also include `host_features` when the runner can attach the same
 }
 ```
 
-This is a copy of the feature-gate evidence needed to interpret `generated-specs.json` and the selected generated tests. It is not a claim that unlisted optional CPU features were tested.
+This is a copy of the feature-gate evidence needed to interpret `generated-specs.json` and the selected generated tests. The family/model/stepping fields are derived from CPUID leaf 1, and the brand string is derived from extended CPUID leaves when available. It is not a claim that unlisted optional CPU features were tested.
 
 Replay command:
 
@@ -125,6 +130,14 @@ The default full suite fails if `test/regression/` is missing, not a directory, 
 ```json
 {
   "schema": "cpueaxh.host-features.v1",
+  "vendor": "GenuineIntel",
+  "brand": "Intel(R) Xeon(R) Platinum ...",
+  "max_leaf": 32,
+  "max_leaf7": 2,
+  "max_extended_leaf": 2147483656,
+  "family": 6,
+  "model": 85,
+  "stepping": 7,
   "features": {
     "avx": true,
     "avx2": true,
@@ -133,7 +146,7 @@ The default full suite fails if `test/regression/` is missing, not a directory, 
 }
 ```
 
-The record is intentionally derived from `query_host_features()` rather than only from OS inventory APIs, so it reflects both CPUID and OS-enabled state where required.
+The record is intentionally derived from `query_host_features()` rather than only from OS inventory APIs, so it reflects both CPUID and OS-enabled state where required. The `brand` field comes from extended CPUID leaves when available; feature booleans remain the authoritative source for generated-test selection.
 
 ## Generated spec manifest
 

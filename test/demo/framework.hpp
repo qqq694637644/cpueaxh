@@ -432,8 +432,13 @@ struct Failure {
     std::uint64_t emu_result_rflags = 0;
     std::uint32_t emu_result_mxcsr = 0;
     std::string host_vendor;
+    std::string host_brand;
     std::uint32_t host_max_leaf = 0;
     std::uint32_t host_max_leaf7 = 0;
+    std::uint32_t host_max_extended_leaf = 0;
+    std::uint32_t host_family = 0;
+    std::uint32_t host_model = 0;
+    std::uint32_t host_stepping = 0;
     bool host_feature_avx = false;
     bool host_feature_avx2 = false;
     bool host_feature_fma = false;
@@ -732,8 +737,13 @@ inline bool write_failure_record(const std::string& path, const Failure& failure
         file << ",\n  \"host_features\": {\n";
         file << "    \"schema\": \"cpueaxh.host-features.v1\",\n";
         file << "    \"vendor\": \"" << json_escape(failure.host_vendor) << "\",\n";
+        file << "    \"brand\": \"" << json_escape(failure.host_brand) << "\",\n";
         file << "    \"max_leaf\": " << failure.host_max_leaf << ",\n";
         file << "    \"max_leaf7\": " << failure.host_max_leaf7 << ",\n";
+        file << "    \"max_extended_leaf\": " << failure.host_max_extended_leaf << ",\n";
+        file << "    \"family\": " << failure.host_family << ",\n";
+        file << "    \"model\": " << failure.host_model << ",\n";
+        file << "    \"stepping\": " << failure.host_stepping << ",\n";
         file << "    \"features\": {\n";
         file << "      \"avx\": " << json_bool(failure.host_feature_avx) << ",\n";
         file << "      \"avx2\": " << json_bool(failure.host_feature_avx2) << ",\n";
@@ -960,8 +970,13 @@ inline bool list_regression_replay_files(std::vector<std::string>& files, std::s
 
 struct HostFeatures {
     std::string vendor;
+    std::string brand;
     std::uint32_t max_leaf = 0;
     std::uint32_t max_leaf7 = 0;
+    std::uint32_t max_extended_leaf = 0;
+    std::uint32_t family = 0;
+    std::uint32_t model = 0;
+    std::uint32_t stepping = 0;
     bool avx = false;
     bool avx2 = false;
     bool fma = false;
@@ -1102,6 +1117,18 @@ inline std::uint64_t make_initial_flags(std::uint64_t seed) {
     return flags;
 }
 
+inline std::string trim_cpu_brand_string(const char* text) {
+    std::string value(text ? text : "");
+    while (!value.empty() && (value.back() == ' ' || value.back() == '\0')) {
+        value.pop_back();
+    }
+    std::size_t start = 0;
+    while (start < value.size() && value[start] == ' ') {
+        ++start;
+    }
+    return start == 0 ? value : value.substr(start);
+}
+
 inline HostFeatures query_host_features() {
     HostFeatures features;
     int cpu_info[4] = {};
@@ -1115,6 +1142,17 @@ inline HostFeatures query_host_features() {
     features.vendor = vendor;
     if (max_leaf >= 1) {
         __cpuidex(cpu_info, 1, 0);
+        const std::uint32_t signature = static_cast<std::uint32_t>(cpu_info[0]);
+        const std::uint32_t base_stepping = signature & 0xFu;
+        const std::uint32_t base_model = (signature >> 4) & 0xFu;
+        const std::uint32_t base_family = (signature >> 8) & 0xFu;
+        const std::uint32_t extended_model = (signature >> 16) & 0xFu;
+        const std::uint32_t extended_family = (signature >> 20) & 0xFFu;
+        features.stepping = base_stepping;
+        features.family = base_family == 0xFu ? base_family + extended_family : base_family;
+        features.model = (base_family == 0x6u || base_family == 0xFu)
+            ? base_model + (extended_model << 4)
+            : base_model;
         const bool has_fma = (cpu_info[2] & (1 << 12)) != 0;
         features.popcnt = (cpu_info[2] & (1 << 23)) != 0;
         const bool has_xsave = (cpu_info[2] & (1 << 26)) != 0;
@@ -1140,9 +1178,18 @@ inline HostFeatures query_host_features() {
     }
     __cpuid(cpu_info, 0x80000000);
     const std::uint32_t max_extended_leaf = static_cast<std::uint32_t>(cpu_info[0]);
+    features.max_extended_leaf = max_extended_leaf;
     if (max_extended_leaf >= 0x80000001u) {
         __cpuidex(cpu_info, 0x80000001, 0);
         features.lzcnt = (cpu_info[2] & (1 << 5)) != 0;
+    }
+    if (max_extended_leaf >= 0x80000004u) {
+        char brand[49] = {};
+        for (std::uint32_t leaf = 0; leaf < 3; ++leaf) {
+            __cpuid(cpu_info, static_cast<int>(0x80000002u + leaf));
+            std::memcpy(brand + leaf * 16u, cpu_info, sizeof(cpu_info));
+        }
+        features.brand = trim_cpu_brand_string(brand);
     }
     return features;
 }
@@ -1164,8 +1211,13 @@ inline bool write_host_feature_record(const std::string& path, const HostFeature
     file << "{\n";
     file << "  \"schema\": \"cpueaxh.host-features.v1\",\n";
     file << "  \"vendor\": \"" << json_escape(features.vendor) << "\",\n";
+    file << "  \"brand\": \"" << json_escape(features.brand) << "\",\n";
     file << "  \"max_leaf\": " << features.max_leaf << ",\n";
     file << "  \"max_leaf7\": " << features.max_leaf7 << ",\n";
+    file << "  \"max_extended_leaf\": " << features.max_extended_leaf << ",\n";
+    file << "  \"family\": " << features.family << ",\n";
+    file << "  \"model\": " << features.model << ",\n";
+    file << "  \"stepping\": " << features.stepping << ",\n";
     file << "  \"features\": {\n";
     file << "    \"avx\": " << json_bool(features.avx) << ",\n";
     file << "    \"avx2\": " << json_bool(features.avx2) << ",\n";
@@ -1190,8 +1242,13 @@ inline bool dump_host_feature_record(const std::string& path) {
 
 inline void attach_host_features_to_failure(Failure& failure, const HostFeatures& features) {
     failure.host_vendor = features.vendor;
+    failure.host_brand = features.brand;
     failure.host_max_leaf = features.max_leaf;
     failure.host_max_leaf7 = features.max_leaf7;
+    failure.host_max_extended_leaf = features.max_extended_leaf;
+    failure.host_family = features.family;
+    failure.host_model = features.model;
+    failure.host_stepping = features.stepping;
     failure.host_feature_avx = features.avx;
     failure.host_feature_avx2 = features.avx2;
     failure.host_feature_fma = features.fma;
