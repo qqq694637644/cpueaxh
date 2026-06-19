@@ -241,6 +241,8 @@ enum class UnaryOp : std::uint8_t {
     Dec,
     Neg,
     Not,
+    Mul,
+    Imul,
 };
 
 enum class ShiftOp : std::uint8_t {
@@ -256,12 +258,33 @@ enum class ShiftOp : std::uint8_t {
 enum class BitOp : std::uint8_t {
     BtImm,
     BtReg,
+    BtMemImm,
+    BtsImm,
+    BtsReg,
+    BtsMemImm,
+    BtrImm,
+    BtrReg,
+    BtrMemImm,
+    BtcImm,
+    BtcReg,
+    BtcMemImm,
     Bsf,
+    Bsr,
+    Popcnt,
     Bswap,
     BsfAlt,
     BswapAlt,
     Tzcnt,
     Lzcnt,
+    Crc32Byte,
+    Crc32Word,
+    Crc32WordF2Then66,
+    Crc32Dword,
+    Crc32Qword,
+    Crc32MemByte,
+    Crc32MemWord,
+    Crc32MemDword,
+    Crc32MemQword,
 };
 
 enum class FlagProgram : std::uint8_t {
@@ -269,6 +292,11 @@ enum class FlagProgram : std::uint8_t {
     Cmovcc,
     Jcc,
     Cmc,
+    Clc,
+    Stc,
+    Cld,
+    Lahf,
+    Sahf,
 };
 
 enum class MoveProgram : std::uint8_t {
@@ -281,6 +309,20 @@ enum class MoveProgram : std::uint8_t {
     Movsxd,
     Lea2,
     Lea4,
+    Cbw,
+    Cwde,
+    Cdqe,
+    Cwd,
+    Cdq,
+    Cqo,
+    XchgRegReg,
+    XchgRaxR8,
+    MovbeLoad16,
+    MovbeLoad32,
+    MovbeLoad64,
+    MovbeStore16,
+    MovbeStore32,
+    MovbeStore64,
 };
 
 enum class MemoryProgram : std::uint8_t {
@@ -299,6 +341,8 @@ enum class StackProgram : std::uint8_t {
     PushPopFlags,
     EnterLeave,
     PushChain,
+    PushImm8Pop,
+    PushImm32Pop,
 };
 
 enum class StringProgram : std::uint8_t {
@@ -314,6 +358,7 @@ enum class StringProgram : std::uint8_t {
     Stosq,
     Cmpsb,
     Scasb,
+    Xlat,
 };
 
 enum class VectorProgram : std::uint8_t {
@@ -373,6 +418,9 @@ enum class ControlProgram : std::uint8_t {
     Loopnz,
     Loopz,
     Loop,
+    Nop,
+    NopModrm,
+    Pause,
 };
 
 struct PairSpec {
@@ -451,6 +499,7 @@ struct Failure {
     bool host_feature_rdpid = false;
     bool host_feature_bmi1 = false;
     bool host_feature_lzcnt = false;
+    bool host_feature_movbe = false;
     bool has_seed = false;
     bool has_seed_index = false;
     bool has_initial_state = false;
@@ -756,7 +805,8 @@ inline bool write_failure_record(const std::string& path, const Failure& failure
         file << "      \"aes\": " << json_bool(failure.host_feature_aes) << ",\n";
         file << "      \"rdpid\": " << json_bool(failure.host_feature_rdpid) << ",\n";
         file << "      \"bmi1\": " << json_bool(failure.host_feature_bmi1) << ",\n";
-        file << "      \"lzcnt\": " << json_bool(failure.host_feature_lzcnt) << "\n";
+        file << "      \"lzcnt\": " << json_bool(failure.host_feature_lzcnt) << ",\n";
+        file << "      \"movbe\": " << json_bool(failure.host_feature_movbe) << "\n";
         file << "    }\n";
         file << "  }";
     }
@@ -1035,6 +1085,7 @@ struct HostFeatures {
     bool rdpid = false;
     bool bmi1 = false;
     bool lzcnt = false;
+    bool movbe = false;
 };
 
 inline constexpr std::array<std::uint8_t, 4> kAesKeygenAssistImmediates = {{ 0x01, 0x1B, 0x36, 0x80 }};
@@ -1062,15 +1113,152 @@ inline constexpr std::array<RegSpec, 4> kUnaryRegs = {{
     { Reg::R13, "r13" },
 }};
 
-inline constexpr std::array<CondSpec, 7> kConditions = {{
+inline constexpr std::array<CondSpec, 16> kConditions = {{
     { 0x0, "o" },
+    { 0x1, "no" },
     { 0x2, "b" },
+    { 0x3, "ae" },
     { 0x4, "z" },
+    { 0x5, "nz" },
+    { 0x6, "be" },
+    { 0x7, "a" },
     { 0x8, "s" },
+    { 0x9, "ns" },
     { 0xA, "p" },
+    { 0xB, "np" },
     { 0xC, "l" },
+    { 0xD, "ge" },
     { 0xE, "le" },
+    { 0xF, "g" },
 }};
+
+constexpr std::uint32_t kConditionTrueVariantBit = 0x100u;
+
+inline std::uint32_t condition_variant(std::uint8_t condition_code, bool should_be_true) {
+    return static_cast<std::uint32_t>(condition_code) | (should_be_true ? kConditionTrueVariantBit : 0u);
+}
+
+inline std::uint8_t condition_variant_code(std::uint32_t variant) {
+    return static_cast<std::uint8_t>(variant & 0x0Fu);
+}
+
+inline bool condition_variant_expected_true(std::uint32_t variant) {
+    return (variant & kConditionTrueVariantBit) != 0;
+}
+
+inline std::string condition_case_name(const char* prefix, const CondSpec& condition, bool should_be_true) {
+    return std::string(prefix) + condition.name + (should_be_true ? "_true" : "_false");
+}
+
+inline std::uint64_t forced_condition_flags(std::uint8_t condition_code, bool should_be_true) {
+    std::uint64_t flags = 0x202ull;
+    const auto set = [&flags](std::uint64_t bit, bool value) {
+        if (value) {
+            flags |= bit;
+        }
+        else {
+            flags &= ~bit;
+        }
+    };
+
+    switch (condition_code & 0x0F) {
+    case 0x0: set(kFlagOF, should_be_true); break;                         // O
+    case 0x1: set(kFlagOF, !should_be_true); break;                        // NO
+    case 0x2: set(kFlagCF, should_be_true); break;                         // B/C
+    case 0x3: set(kFlagCF, !should_be_true); break;                        // AE/NC
+    case 0x4: set(kFlagZF, should_be_true); break;                         // Z/E
+    case 0x5: set(kFlagZF, !should_be_true); break;                        // NZ/NE
+    case 0x6:                                                            // BE: CF || ZF
+        set(kFlagCF, should_be_true);
+        set(kFlagZF, false);
+        break;
+    case 0x7:                                                            // A: !CF && !ZF
+        set(kFlagCF, !should_be_true);
+        set(kFlagZF, false);
+        break;
+    case 0x8: set(kFlagSF, should_be_true); break;                         // S
+    case 0x9: set(kFlagSF, !should_be_true); break;                        // NS
+    case 0xA: set(kFlagPF, should_be_true); break;                         // P/PE
+    case 0xB: set(kFlagPF, !should_be_true); break;                        // NP/PO
+    case 0xC:                                                            // L: SF != OF
+        set(kFlagSF, should_be_true);
+        set(kFlagOF, false);
+        break;
+    case 0xD:                                                            // GE: SF == OF
+        set(kFlagSF, !should_be_true);
+        set(kFlagOF, false);
+        break;
+    case 0xE:                                                            // LE: ZF || SF != OF
+        set(kFlagZF, should_be_true);
+        set(kFlagSF, false);
+        set(kFlagOF, false);
+        break;
+    case 0xF:                                                            // G: !ZF && SF == OF
+        set(kFlagZF, !should_be_true);
+        set(kFlagSF, false);
+        set(kFlagOF, false);
+        break;
+    }
+    return flags;
+}
+
+struct Crc32CaseSpec {
+    BitOp op;
+    const char* name;
+    Reg dst;
+    Reg src;
+    bool memory_source;
+    int source_bits;
+    bool rex_w;
+    bool f2_before_66;
+};
+
+inline constexpr std::array<Crc32CaseSpec, 9> kCrc32Cases = {{
+    { BitOp::Crc32Byte, "crc32_r32_r8", Reg::RAX, Reg::RBX, false, 8, false, false },
+    { BitOp::Crc32Word, "crc32_r32_r16", Reg::RAX, Reg::RBX, false, 16, false, false },
+    { BitOp::Crc32WordF2Then66, "crc32_r32_r16_f2_66", Reg::RAX, Reg::RBX, false, 16, false, true },
+    { BitOp::Crc32Dword, "crc32_r32_r32", Reg::R8, Reg::R9, false, 32, false, false },
+    { BitOp::Crc32Qword, "crc32_r64_r64", Reg::R10, Reg::R11, false, 64, true, false },
+    { BitOp::Crc32MemByte, "crc32_r32_m8", Reg::RAX, Reg::RAX, true, 8, false, false },
+    { BitOp::Crc32MemWord, "crc32_r32_m16", Reg::R8, Reg::RAX, true, 16, false, false },
+    { BitOp::Crc32MemDword, "crc32_r32_m32", Reg::R10, Reg::RAX, true, 32, false, false },
+    { BitOp::Crc32MemQword, "crc32_r64_m64", Reg::R11, Reg::RAX, true, 64, true, false },
+}};
+
+inline const Crc32CaseSpec* find_crc32_case(BitOp op) {
+    for (const Crc32CaseSpec& spec : kCrc32Cases) {
+        if (spec.op == op) {
+            return &spec;
+        }
+    }
+    return nullptr;
+}
+
+struct MovbeCaseSpec {
+    MoveProgram op;
+    const char* name;
+    Reg reg;
+    int operand_bits;
+    bool store_to_memory;
+};
+
+inline constexpr std::array<MovbeCaseSpec, 6> kMovbeCases = {{
+    { MoveProgram::MovbeLoad16, "movbe_r16_m16", Reg::RAX, 16, false },
+    { MoveProgram::MovbeLoad32, "movbe_r32_m32", Reg::R8, 32, false },
+    { MoveProgram::MovbeLoad64, "movbe_r64_m64", Reg::R10, 64, false },
+    { MoveProgram::MovbeStore16, "movbe_m16_r16", Reg::RAX, 16, true },
+    { MoveProgram::MovbeStore32, "movbe_m32_r32", Reg::R8, 32, true },
+    { MoveProgram::MovbeStore64, "movbe_m64_r64", Reg::R10, 64, true },
+}};
+
+inline const MovbeCaseSpec* find_movbe_case(MoveProgram op) {
+    for (const MovbeCaseSpec& spec : kMovbeCases) {
+        if (spec.op == op) {
+            return &spec;
+        }
+    }
+    return nullptr;
+}
 
 inline const char* reg_name(Reg reg) {
     static constexpr const char* names[] = {
@@ -1099,7 +1287,9 @@ inline const char* unary_name(UnaryOp op) {
     case UnaryOp::Inc: return "inc";
     case UnaryOp::Dec: return "dec";
     case UnaryOp::Neg: return "neg";
-    default: return "not";
+    case UnaryOp::Not: return "not";
+    case UnaryOp::Mul: return "mul";
+    default: return "imul";
     }
 }
 
@@ -1134,6 +1324,9 @@ inline std::uint64_t unary_flag_mask(UnaryOp op) {
         return kIncDecMask;
     case UnaryOp::Neg:
         return kStatusMask;
+    case UnaryOp::Mul:
+    case UnaryOp::Imul:
+        return kRotationMask;
     default:
         return 0;
     }
@@ -1212,6 +1405,7 @@ inline HostFeatures query_host_features() {
         features.ssse3 = (cpu_info[2] & (1 << 9)) != 0;
         features.sse41 = (cpu_info[2] & (1 << 19)) != 0;
         features.sse42 = (cpu_info[2] & (1 << 20)) != 0;
+        features.movbe = (cpu_info[2] & (1 << 22)) != 0;
         features.aes = (cpu_info[2] & (1 << 25)) != 0;
     }
     if (max_leaf >= 7) {
@@ -1276,7 +1470,8 @@ inline bool write_host_feature_record(const std::string& path, const HostFeature
     file << "    \"aes\": " << json_bool(features.aes) << ",\n";
     file << "    \"rdpid\": " << json_bool(features.rdpid) << ",\n";
     file << "    \"bmi1\": " << json_bool(features.bmi1) << ",\n";
-    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << "\n";
+    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << ",\n";
+    file << "    \"movbe\": " << json_bool(features.movbe) << "\n";
     file << "  }\n";
     file << "}\n";
     return true;
@@ -1307,6 +1502,7 @@ inline void attach_host_features_to_failure(Failure& failure, const HostFeatures
     failure.host_feature_rdpid = features.rdpid;
     failure.host_feature_bmi1 = features.bmi1;
     failure.host_feature_lzcnt = features.lzcnt;
+    failure.host_feature_movbe = features.movbe;
     failure.has_host_features = true;
 }
 
@@ -1358,7 +1554,8 @@ inline bool write_generated_spec_manifest(const std::string& path, const std::ve
     file << "    \"aes\": " << json_bool(features.aes) << ",\n";
     file << "    \"rdpid\": " << json_bool(features.rdpid) << ",\n";
     file << "    \"bmi1\": " << json_bool(features.bmi1) << ",\n";
-    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << "\n";
+    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << ",\n";
+    file << "    \"movbe\": " << json_bool(features.movbe) << "\n";
     file << "  },\n";
     file << "  \"specs\": [\n";
     for (std::size_t index = 0; index < specs.size(); ++index) {
@@ -1686,6 +1883,21 @@ public:
         emit8(0xC3);
     }
 
+    void nop1() {
+        emit8(0x90);
+    }
+
+    void nop_modrm_reg() {
+        emit8(0x0F);
+        emit8(0x1F);
+        emit_modrm(3, 0, static_cast<std::uint8_t>(Reg::RAX));
+    }
+
+    void pause() {
+        emit8(0xF3);
+        emit8(0x90);
+    }
+
     void jmp32(Label label) {
         emit8(0xE9);
         rel32(label);
@@ -1711,6 +1923,17 @@ public:
         emit_rex(true, static_cast<std::uint8_t>(src), 0, static_cast<std::uint8_t>(dst));
         emit8(0x89);
         emit_modrm(3, static_cast<std::uint8_t>(src), static_cast<std::uint8_t>(dst));
+    }
+
+    void xchg_reg_reg(Reg left, Reg right) {
+        emit_rex(true, static_cast<std::uint8_t>(right), 0, static_cast<std::uint8_t>(left));
+        emit8(0x87);
+        emit_modrm(3, static_cast<std::uint8_t>(right), static_cast<std::uint8_t>(left));
+    }
+
+    void xchg_rax_reg(Reg reg) {
+        emit_rex(true, 0, 0, static_cast<std::uint8_t>(reg));
+        emit8(static_cast<std::uint8_t>(0x90u + (static_cast<std::uint8_t>(reg) & 7u)));
     }
 
     void binary_reg_reg(BinaryOp op, Reg dst, Reg src) {
@@ -1763,6 +1986,8 @@ public:
         case UnaryOp::Dec: reg_field = 1; opcode = 0xFF; break;
         case UnaryOp::Not: reg_field = 2; opcode = 0xF7; break;
         case UnaryOp::Neg: reg_field = 3; opcode = 0xF7; break;
+        case UnaryOp::Mul: reg_field = 4; opcode = 0xF7; break;
+        case UnaryOp::Imul: reg_field = 5; opcode = 0xF7; break;
         }
         emit_rex(true, reg_field, 0, static_cast<std::uint8_t>(reg));
         emit8(opcode);
@@ -1810,6 +2035,23 @@ public:
         emit8(bit);
     }
 
+    void bit_reg_imm(std::uint8_t group, Reg reg, std::uint8_t bit) {
+        emit_rex(true, group, 0, static_cast<std::uint8_t>(reg));
+        emit8(0x0F);
+        emit8(0xBA);
+        emit_modrm(3, group, static_cast<std::uint8_t>(reg));
+        emit8(bit);
+    }
+
+    void bit_mem_imm(std::uint8_t group, Label label, std::uint8_t bit) {
+        emit_rex(true, group, 0, 5);
+        emit8(0x0F);
+        emit8(0xBA);
+        emit_modrm(0, group, 5);
+        rip_rel32(label);
+        emit8(bit);
+    }
+
     void bt_reg_reg(Reg dst, Reg src) {
         emit_rex(true, static_cast<std::uint8_t>(src), 0, static_cast<std::uint8_t>(dst));
         emit8(0x0F);
@@ -1817,10 +2059,32 @@ public:
         emit_modrm(3, static_cast<std::uint8_t>(src), static_cast<std::uint8_t>(dst));
     }
 
+    void bit_reg_reg(std::uint8_t opcode, Reg dst, Reg src) {
+        emit_rex(true, static_cast<std::uint8_t>(src), 0, static_cast<std::uint8_t>(dst));
+        emit8(0x0F);
+        emit8(opcode);
+        emit_modrm(3, static_cast<std::uint8_t>(src), static_cast<std::uint8_t>(dst));
+    }
+
     void bsf(Reg dst, Reg src) {
         emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
         emit8(0x0F);
         emit8(0xBC);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void bsr(Reg dst, Reg src) {
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0xBD);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void popcnt(Reg dst, Reg src) {
+        emit8(0xF3);
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0xB8);
         emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
     }
 
@@ -1840,6 +2104,29 @@ public:
         emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
     }
 
+    void crc32_case(const Crc32CaseSpec& spec, Label memory_label) {
+        if (spec.source_bits == 16 && spec.f2_before_66) {
+            emit8(0xF2);
+            emit8(0x66);
+        }
+        else {
+            if (spec.source_bits == 16) {
+                emit8(0x66);
+            }
+            emit8(0xF2);
+        }
+        emit_rex(spec.rex_w, static_cast<std::uint8_t>(spec.dst), 0,
+            spec.memory_source ? 5 : static_cast<std::uint8_t>(spec.src));
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(spec.source_bits == 8 ? 0xF0 : 0xF1);
+        emit_modrm(spec.memory_source ? 0 : 3,
+            static_cast<std::uint8_t>(spec.dst),
+            spec.memory_source ? 5 : static_cast<std::uint8_t>(spec.src));
+        if (spec.memory_source) {
+            rip_rel32(memory_label);
+        }
+    }
     void bswap(Reg reg) {
         emit_rex(true, 0, 0, static_cast<std::uint8_t>(reg));
         emit8(0x0F);
@@ -1928,6 +2215,17 @@ public:
         rip_rel32(label);
     }
 
+    void movbe_case(const MovbeCaseSpec& spec, Label load_label, Label store_label) {
+        if (spec.operand_bits == 16) {
+            emit8(0x66);
+        }
+        emit_rex(spec.operand_bits == 64, static_cast<std::uint8_t>(spec.reg), 0, 5);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(spec.store_to_memory ? 0xF1 : 0xF0);
+        emit_modrm(0, static_cast<std::uint8_t>(spec.reg), 5);
+        rip_rel32(spec.store_to_memory ? store_label : load_label);
+    }
     void binary_mem_reg(BinaryOp op, Label label, Reg src) {
         emit_rex(true, static_cast<std::uint8_t>(src), 0, 5);
         switch (op) {
@@ -1963,6 +2261,16 @@ public:
         emit8(static_cast<std::uint8_t>(0x50u + (static_cast<std::uint8_t>(reg) & 7u)));
     }
 
+    void push_imm8(std::uint8_t imm) {
+        emit8(0x6A);
+        emit8(imm);
+    }
+
+    void push_imm32(std::uint32_t imm) {
+        emit8(0x68);
+        emit32(imm);
+    }
+
     void pop_reg(Reg reg) {
         emit_rex(false, 0, 0, static_cast<std::uint8_t>(reg));
         emit8(static_cast<std::uint8_t>(0x58u + (static_cast<std::uint8_t>(reg) & 7u)));
@@ -1976,8 +2284,28 @@ public:
         emit8(0xF5);
     }
 
+    void clc() {
+        emit8(0xF8);
+    }
+
+    void stc() {
+        emit8(0xF9);
+    }
+
+    void cld() {
+        emit8(0xFC);
+    }
+
+    void std_() {
+        emit8(0xFD);
+    }
+
     void lahf() {
         emit8(0x9F);
+    }
+
+    void sahf() {
+        emit8(0x9E);
     }
 
     void enter(std::uint16_t size) {
@@ -1988,6 +2316,34 @@ public:
 
     void leave() {
         emit8(0xC9);
+    }
+
+    void cbw() {
+        emit8(0x66);
+        emit8(0x98);
+    }
+
+    void cwde() {
+        emit8(0x98);
+    }
+
+    void cdqe() {
+        emit8(0x48);
+        emit8(0x98);
+    }
+
+    void cwd() {
+        emit8(0x66);
+        emit8(0x99);
+    }
+
+    void cdq() {
+        emit8(0x99);
+    }
+
+    void cqo() {
+        emit8(0x48);
+        emit8(0x99);
     }
 
     void mov_r32_imm(Reg reg, std::uint32_t imm) {
@@ -2016,6 +2372,7 @@ public:
     void stosq() { emit8(0x48); emit8(0xAB); }
     void cmpsb() { emit8(0xA6); }
     void scasb() { emit8(0xAE); }
+    void xlat() { emit8(0xD7); }
 
     void movdqu_load(Reg dst, Label label) {
         emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
@@ -2582,7 +2939,7 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
         BinaryOp::Add, BinaryOp::Sub, BinaryOp::And, BinaryOp::Or,
         BinaryOp::Xor, BinaryOp::Cmp, BinaryOp::Test
     };
-    const UnaryOp unary_ops[] = { UnaryOp::Inc, UnaryOp::Dec, UnaryOp::Neg, UnaryOp::Not };
+    const UnaryOp unary_ops[] = { UnaryOp::Inc, UnaryOp::Dec, UnaryOp::Neg, UnaryOp::Not, UnaryOp::Mul, UnaryOp::Imul };
     const ShiftOp shift_ops[] = { ShiftOp::Rol, ShiftOp::Ror, ShiftOp::Rcl, ShiftOp::Rcr, ShiftOp::Shl, ShiftOp::Shr, ShiftOp::Sar };
     for (const BinaryOp op : binary_ops) {
         for (std::size_t index = 0; index < kBinaryPairs.size(); ++index) {
@@ -2608,18 +2965,46 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     }
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtImm), 0, kBitTestMask, "bt_imm_rax" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtReg), 0, kBitTestMask, "bt_reg_r8_rcx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtMemImm), 0, kBitTestMask, "bt_imm_m64" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtsImm), 0, kBitTestMask, "bts_imm_r10" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtsReg), 0, kBitTestMask, "bts_reg_r11_rcx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtsMemImm), 0, kBitTestMask, "bts_imm_m64" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtrImm), 0, kBitTestMask, "btr_imm_r12" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtrReg), 0, kBitTestMask, "btr_reg_r13_rcx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtrMemImm), 0, kBitTestMask, "btr_imm_m64" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtcImm), 0, kBitTestMask, "btc_imm_r14" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtcReg), 0, kBitTestMask, "btc_reg_r15_rcx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtcMemImm), 0, kBitTestMask, "btc_imm_m64" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Bsf), 0, kBitScanMask, "bsf_rdx_rbx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Bsr), 0, kBitScanMask, "bsr_r9_r10" });
+    if (features.popcnt) {
+        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Popcnt), 0, kStatusMask, "popcnt_rdx_rbx" });
+    }
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Bswap), 0, kStatusMask, "bswap_r11" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BsfAlt), 0, kBitScanMask, "bsf_r9_r10" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BswapAlt), 0, kStatusMask, "bswap_rax" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Tzcnt), 0, features.bmi1 ? kBitCountMask : kBitScanMask, features.bmi1 ? "tzcnt_rdx_rbx" : "f3_bsf_rdx_rbx" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Lzcnt), 0, features.lzcnt ? kBitCountMask : kBitScanMask, features.lzcnt ? "lzcnt_r9_r10" : "f3_bsr_r9_r10" });
+    if (features.sse42) {
+        for (const Crc32CaseSpec& crc32_case : kCrc32Cases) {
+            specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(crc32_case.op), 0, 0, crc32_case.name });
+        }
+    }
     for (const CondSpec& condition : kConditions) {
-        specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Setcc), condition.code, kStatusMask, std::string("set") + condition.name });
-        specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cmovcc), condition.code, kStatusMask, std::string("cmov") + condition.name });
-        specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Jcc), condition.code, kStatusMask, std::string("j") + condition.name });
+        for (int expected = 0; expected < 2; ++expected) {
+            const bool should_be_true = expected != 0;
+            const std::uint32_t variant = condition_variant(condition.code, should_be_true);
+            specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Setcc), variant, kStatusMask, condition_case_name("set", condition, should_be_true) });
+            specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cmovcc), variant, kStatusMask, condition_case_name("cmov", condition, should_be_true) });
+            specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Jcc), variant, kStatusMask, condition_case_name("j", condition, should_be_true) });
+        }
     }
     specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cmc), 0, kFlagCF, "cmc" });
+    specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Clc), 0, kFlagCF, "clc" });
+    specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Stc), 0, kFlagCF, "stc" });
+    specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cld), 0, kFlagDF, "cld" });
+    specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Lahf), 0, 0, "lahf" });
+    specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Sahf), 0, kFlagCF | kFlagPF | kFlagAF | kFlagZF | kFlagSF, "sahf" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovA), 0, 0, "mov_rax_r8" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovB), 0, 0, "mov_r9_rbx" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovzxByte), 0, 0, "movzx_byte" });
@@ -2629,6 +3014,19 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Movsxd), 0, 0, "movsxd_dword" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Lea2), 0, 0, "lea_scale2" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Lea4), 0, 0, "lea_scale4" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cbw), 0, 0, "cbw" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cwde), 0, 0, "cwde" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cdqe), 0, 0, "cdqe" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cwd), 0, 0, "cwd" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cdq), 0, 0, "cdq" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Cqo), 0, 0, "cqo" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::XchgRegReg), 0, 0, "xchg_r8_r9" });
+    specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::XchgRaxR8), 0, 0, "xchg_rax_r8" });
+    if (features.movbe) {
+        for (const MovbeCaseSpec& movbe_case : kMovbeCases) {
+            specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(movbe_case.op), 0, 0, movbe_case.name });
+        }
+    }
     specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::MovRoundtrip), 0, 0, "mov_mem_roundtrip" });
     specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::AddMem), 0, kStatusMask, "add_mem" });
     specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::SubMem), 0, kStatusMask, "sub_mem" });
@@ -2641,6 +3039,8 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::PushPopFlags), 0, 0, "pushf_pop_lahf" });
     specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::EnterLeave), 0, 0, "enter_leave" });
     specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::PushChain), 0, 0, "push_chain" });
+    specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::PushImm8Pop), 0, 0, "push_imm8_pop" });
+    specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::PushImm32Pop), 0, 0, "push_imm32_pop" });
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Movsb), 0, 0, "movsb" });
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Movsw), 0, 0, "movsw" });
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Movsd), 0, 0, "movsd" });
@@ -2653,6 +3053,7 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Stosq), 0, 0, "stosq" });
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Cmpsb), 0, kStatusMask, "cmpsb" });
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Scasb), 0, kStatusMask, "scasb" });
+    specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Xlat), 0, 0, "xlat" });
     specs.push_back({ Family::VectorOps, static_cast<std::uint32_t>(VectorProgram::Paddq), 0, 0, "paddq" });
     specs.push_back({ Family::VectorOps, static_cast<std::uint32_t>(VectorProgram::Pxor), 0, 0, "pxor" });
     specs.push_back({ Family::VectorOps, static_cast<std::uint32_t>(VectorProgram::Pand), 0, 0, "pand" });
@@ -2747,6 +3148,9 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Loopnz), 0, kStatusMask, "loopnz_taken" });
     specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Loopz), 0, kStatusMask, "loopz_taken" });
     specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Loop), 0, kStatusMask, "loop_taken" });
+    specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Nop), 0, 0, "nop" });
+    specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::NopModrm), 0, 0, "nop_modrm" });
+    specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Pause), 0, 0, "pause" });
     return specs;
 }
 
@@ -2805,7 +3209,12 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         break;
     }
     case Family::BitOps: {
-        switch (static_cast<BitOp>(spec.op)) {
+        const auto op = static_cast<BitOp>(spec.op);
+        if (const Crc32CaseSpec* crc32_case = find_crc32_case(op)) {
+            code.crc32_case(*crc32_case, slot0);
+            break;
+        }
+        switch (op) {
         case BitOp::BtImm:
             code.bt_reg_imm(Reg::RAX, static_cast<std::uint8_t>(seed % 63));
             break;
@@ -2813,9 +3222,49 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
             code.bt_reg_reg(Reg::R8, Reg::RCX);
             break;
+        case BitOp::BtMemImm:
+            code.bit_mem_imm(4, buffer0, static_cast<std::uint8_t>(seed % 63));
+            break;
+        case BitOp::BtsImm:
+            code.bit_reg_imm(5, Reg::R10, static_cast<std::uint8_t>(seed % 63));
+            break;
+        case BitOp::BtsReg:
+            built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
+            code.bit_reg_reg(0xAB, Reg::R11, Reg::RCX);
+            break;
+        case BitOp::BtsMemImm:
+            code.bit_mem_imm(5, buffer0, static_cast<std::uint8_t>(seed % 63));
+            break;
+        case BitOp::BtrImm:
+            code.bit_reg_imm(6, Reg::R12, static_cast<std::uint8_t>(seed % 63));
+            break;
+        case BitOp::BtrReg:
+            built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
+            code.bit_reg_reg(0xB3, Reg::R13, Reg::RCX);
+            break;
+        case BitOp::BtrMemImm:
+            code.bit_mem_imm(6, buffer0, static_cast<std::uint8_t>(seed % 63));
+            break;
+        case BitOp::BtcImm:
+            code.bit_reg_imm(7, Reg::R14, static_cast<std::uint8_t>(seed % 63));
+            break;
+        case BitOp::BtcReg:
+            built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
+            code.bit_reg_reg(0xBB, Reg::R15, Reg::RCX);
+            break;
+        case BitOp::BtcMemImm:
+            code.bit_mem_imm(7, buffer0, static_cast<std::uint8_t>(seed % 63));
+            break;
         case BitOp::Bsf:
             built.initial_context.regs[static_cast<std::size_t>(Reg::RBX)] |= 1;
             code.bsf(Reg::RDX, Reg::RBX);
+            break;
+        case BitOp::Bsr:
+            built.initial_context.regs[static_cast<std::size_t>(Reg::R10)] |= 1;
+            code.bsr(Reg::R9, Reg::R10);
+            break;
+        case BitOp::Popcnt:
+            code.popcnt(Reg::RDX, Reg::RBX);
             break;
         case BitOp::Bswap:
             code.bswap(Reg::R11);
@@ -2837,16 +3286,18 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         break;
     }
     case Family::FlagOps: {
-        const std::uint8_t cc = static_cast<std::uint8_t>(spec.variant);
+        const std::uint8_t cc = condition_variant_code(spec.variant);
         const auto program = static_cast<FlagProgram>(spec.op);
-        code.binary_reg_reg(BinaryOp::Cmp, Reg::RAX, Reg::RBX);
         if (program == FlagProgram::Setcc) {
+            built.initial_context.rflags = forced_condition_flags(cc, condition_variant_expected_true(spec.variant));
             code.setcc(cc, Reg::RAX);
         }
         else if (program == FlagProgram::Cmovcc) {
+            built.initial_context.rflags = forced_condition_flags(cc, condition_variant_expected_true(spec.variant));
             code.cmovcc(cc, Reg::R10, Reg::R11);
         }
         else if (program == FlagProgram::Jcc) {
+            built.initial_context.rflags = forced_condition_flags(cc, condition_variant_expected_true(spec.variant));
             code.jcc32(cc, label_true);
             code.mov_reg_reg(Reg::R12, Reg::R13);
             code.jmp32(label_end);
@@ -2854,13 +3305,34 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             code.mov_reg_reg(Reg::R12, Reg::R14);
             code.mark(label_end);
         }
-        else {
+        else if (program == FlagProgram::Cmc) {
             code.cmc();
+        }
+        else if (program == FlagProgram::Clc) {
+            code.clc();
+        }
+        else if (program == FlagProgram::Stc) {
+            code.stc();
+        }
+        else if (program == FlagProgram::Cld) {
+            code.std_();
+            code.cld();
+        }
+        else if (program == FlagProgram::Lahf) {
+            code.lahf();
+        }
+        else {
+            code.sahf();
         }
         break;
     }
     case Family::MoveOps: {
-        switch (static_cast<MoveProgram>(spec.op)) {
+        const auto program = static_cast<MoveProgram>(spec.op);
+        if (const MovbeCaseSpec* movbe_case = find_movbe_case(program)) {
+            code.movbe_case(*movbe_case, slot0, buffer0);
+            break;
+        }
+        switch (program) {
         case MoveProgram::MovA:
             code.mov_reg_reg(Reg::RAX, Reg::R8);
             break;
@@ -2894,6 +3366,30 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             break;
         case MoveProgram::Lea4:
             code.lea_scaled(Reg::R15, Reg::R8, Reg::R9, 2, 0x18);
+            break;
+        case MoveProgram::Cbw:
+            code.cbw();
+            break;
+        case MoveProgram::Cwde:
+            code.cwde();
+            break;
+        case MoveProgram::Cdqe:
+            code.cdqe();
+            break;
+        case MoveProgram::Cwd:
+            code.cwd();
+            break;
+        case MoveProgram::Cdq:
+            code.cdq();
+            break;
+        case MoveProgram::Cqo:
+            code.cqo();
+            break;
+        case MoveProgram::XchgRegReg:
+            code.xchg_reg_reg(Reg::R8, Reg::R9);
+            break;
+        case MoveProgram::XchgRaxR8:
+            code.xchg_rax_reg(Reg::R8);
             break;
         }
         break;
@@ -2961,6 +3457,14 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             code.pop_reg(Reg::R12);
             code.pop_reg(Reg::R13);
             break;
+        case StackProgram::PushImm8Pop:
+            code.push_imm8(narrow8(seeded(seed, 0x7A0)));
+            code.pop_reg(Reg::R14);
+            break;
+        case StackProgram::PushImm32Pop:
+            code.push_imm32(narrow32(seeded(seed, 0x7A1)));
+            code.pop_reg(Reg::R15);
+            break;
         }
         break;
     }
@@ -3011,6 +3515,11 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         case StringProgram::Scasb:
             code.mov_r8_imm(Reg::RAX, data[kSlotSize * 4 + 5]);
             code.scasb();
+            break;
+        case StringProgram::Xlat:
+            code.lea_rip(Reg::RBX, buffer0);
+            code.mov_r8_imm(Reg::RAX, 5);
+            code.xlat();
             break;
         }
         break;
@@ -3367,6 +3876,15 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             code.mark(label_true);
             code.mov_reg_reg(Reg::R12, Reg::R14);
             code.mark(label_end);
+            break;
+        case ControlProgram::Nop:
+            code.nop1();
+            break;
+        case ControlProgram::NopModrm:
+            code.nop_modrm_reg();
+            break;
+        case ControlProgram::Pause:
+            code.pause();
             break;
         }
         break;

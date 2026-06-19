@@ -152,6 +152,18 @@ jobs:
           Get-Content test-run.log
           if ($exitCode -ne 0) { exit $exitCode }
 
+      - name: Upload regression evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpueaxh-regression-evidence
+          if-no-files-found: error
+          path: |
+            cpu-features.json
+            generated-specs.json
+            test-specs.log
+            cpu-info.txt
+
       - name: Upload failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
