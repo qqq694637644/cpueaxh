@@ -1202,6 +1202,64 @@ inline std::uint64_t forced_condition_flags(std::uint8_t condition_code, bool sh
     return flags;
 }
 
+struct Crc32CaseSpec {
+    BitOp op;
+    const char* name;
+    Reg dst;
+    Reg src;
+    bool memory_source;
+    int source_bits;
+    bool rex_w;
+    bool f2_before_66;
+};
+
+inline constexpr std::array<Crc32CaseSpec, 9> kCrc32Cases = {{
+    { BitOp::Crc32Byte, "crc32_r32_r8", Reg::RAX, Reg::RBX, false, 8, false, false },
+    { BitOp::Crc32Word, "crc32_r32_r16", Reg::RAX, Reg::RBX, false, 16, false, false },
+    { BitOp::Crc32WordF2Then66, "crc32_r32_r16_f2_66", Reg::RAX, Reg::RBX, false, 16, false, true },
+    { BitOp::Crc32Dword, "crc32_r32_r32", Reg::R8, Reg::R9, false, 32, false, false },
+    { BitOp::Crc32Qword, "crc32_r64_r64", Reg::R10, Reg::R11, false, 64, true, false },
+    { BitOp::Crc32MemByte, "crc32_r32_m8", Reg::RAX, Reg::RAX, true, 8, false, false },
+    { BitOp::Crc32MemWord, "crc32_r32_m16", Reg::R8, Reg::RAX, true, 16, false, false },
+    { BitOp::Crc32MemDword, "crc32_r32_m32", Reg::R10, Reg::RAX, true, 32, false, false },
+    { BitOp::Crc32MemQword, "crc32_r64_m64", Reg::R11, Reg::RAX, true, 64, true, false },
+}};
+
+inline const Crc32CaseSpec* find_crc32_case(BitOp op) {
+    for (const Crc32CaseSpec& spec : kCrc32Cases) {
+        if (spec.op == op) {
+            return &spec;
+        }
+    }
+    return nullptr;
+}
+
+struct MovbeCaseSpec {
+    MoveProgram op;
+    const char* name;
+    Reg reg;
+    int operand_bits;
+    bool store_to_memory;
+};
+
+inline constexpr std::array<MovbeCaseSpec, 6> kMovbeCases = {{
+    { MoveProgram::MovbeLoad16, "movbe_r16_m16", Reg::RAX, 16, false },
+    { MoveProgram::MovbeLoad32, "movbe_r32_m32", Reg::R8, 32, false },
+    { MoveProgram::MovbeLoad64, "movbe_r64_m64", Reg::R10, 64, false },
+    { MoveProgram::MovbeStore16, "movbe_m16_r16", Reg::RAX, 16, true },
+    { MoveProgram::MovbeStore32, "movbe_m32_r32", Reg::R8, 32, true },
+    { MoveProgram::MovbeStore64, "movbe_m64_r64", Reg::R10, 64, true },
+}};
+
+inline const MovbeCaseSpec* find_movbe_case(MoveProgram op) {
+    for (const MovbeCaseSpec& spec : kMovbeCases) {
+        if (spec.op == op) {
+            return &spec;
+        }
+    }
+    return nullptr;
+}
+
 inline const char* reg_name(Reg reg) {
     static constexpr const char* names[] = {
         "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
@@ -2046,94 +2104,29 @@ public:
         emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
     }
 
-    void crc32_r32_r8(Reg dst, Reg src) {
-        emit8(0xF2);
-        emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+    void crc32_case(const Crc32CaseSpec& spec, Label memory_label) {
+        if (spec.source_bits == 16 && spec.f2_before_66) {
+            emit8(0xF2);
+            emit8(0x66);
+        }
+        else {
+            if (spec.source_bits == 16) {
+                emit8(0x66);
+            }
+            emit8(0xF2);
+        }
+        emit_rex(spec.rex_w, static_cast<std::uint8_t>(spec.dst), 0,
+            spec.memory_source ? 5 : static_cast<std::uint8_t>(spec.src));
         emit8(0x0F);
         emit8(0x38);
-        emit8(0xF0);
-        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+        emit8(spec.source_bits == 8 ? 0xF0 : 0xF1);
+        emit_modrm(spec.memory_source ? 0 : 3,
+            static_cast<std::uint8_t>(spec.dst),
+            spec.memory_source ? 5 : static_cast<std::uint8_t>(spec.src));
+        if (spec.memory_source) {
+            rip_rel32(memory_label);
+        }
     }
-
-    void crc32_r32_r16(Reg dst, Reg src) {
-        emit8(0x66);
-        emit8(0xF2);
-        emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF1);
-        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
-    }
-
-    void crc32_r32_r16_f2_66(Reg dst, Reg src) {
-        emit8(0xF2);
-        emit8(0x66);
-        emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF1);
-        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
-    }
-
-    void crc32_r32_r32(Reg dst, Reg src) {
-        emit8(0xF2);
-        emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF1);
-        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
-    }
-
-    void crc32_r64_r64(Reg dst, Reg src) {
-        emit8(0xF2);
-        emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF1);
-        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
-    }
-
-    void crc32_r32_m8(Reg dst, Label label) {
-        emit8(0xF2);
-        emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF0);
-        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
-        rip_rel32(label);
-    }
-
-    void crc32_r32_m16(Reg dst, Label label) {
-        emit8(0x66);
-        emit8(0xF2);
-        emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF1);
-        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
-        rip_rel32(label);
-    }
-
-    void crc32_r32_m32(Reg dst, Label label) {
-        emit8(0xF2);
-        emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF1);
-        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
-        rip_rel32(label);
-    }
-
-    void crc32_r64_m64(Reg dst, Label label) {
-        emit8(0xF2);
-        emit_rex(true, static_cast<std::uint8_t>(dst), 0, 5);
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF1);
-        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
-        rip_rel32(label);
-    }
-
     void bswap(Reg reg) {
         emit_rex(true, 0, 0, static_cast<std::uint8_t>(reg));
         emit8(0x0F);
@@ -2222,62 +2215,17 @@ public:
         rip_rel32(label);
     }
 
-    void movbe_r16_m16(Reg dst, Label label) {
-        emit8(0x66);
-        emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
+    void movbe_case(const MovbeCaseSpec& spec, Label load_label, Label store_label) {
+        if (spec.operand_bits == 16) {
+            emit8(0x66);
+        }
+        emit_rex(spec.operand_bits == 64, static_cast<std::uint8_t>(spec.reg), 0, 5);
         emit8(0x0F);
         emit8(0x38);
-        emit8(0xF0);
-        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
-        rip_rel32(label);
+        emit8(spec.store_to_memory ? 0xF1 : 0xF0);
+        emit_modrm(0, static_cast<std::uint8_t>(spec.reg), 5);
+        rip_rel32(spec.store_to_memory ? store_label : load_label);
     }
-
-    void movbe_r32_m32(Reg dst, Label label) {
-        emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF0);
-        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
-        rip_rel32(label);
-    }
-
-    void movbe_r64_m64(Reg dst, Label label) {
-        emit_rex(true, static_cast<std::uint8_t>(dst), 0, 5);
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF0);
-        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
-        rip_rel32(label);
-    }
-
-    void movbe_m16_r16(Label label, Reg src) {
-        emit8(0x66);
-        emit_rex(false, static_cast<std::uint8_t>(src), 0, 5);
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF1);
-        emit_modrm(0, static_cast<std::uint8_t>(src), 5);
-        rip_rel32(label);
-    }
-
-    void movbe_m32_r32(Label label, Reg src) {
-        emit_rex(false, static_cast<std::uint8_t>(src), 0, 5);
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF1);
-        emit_modrm(0, static_cast<std::uint8_t>(src), 5);
-        rip_rel32(label);
-    }
-
-    void movbe_m64_r64(Label label, Reg src) {
-        emit_rex(true, static_cast<std::uint8_t>(src), 0, 5);
-        emit8(0x0F);
-        emit8(0x38);
-        emit8(0xF1);
-        emit_modrm(0, static_cast<std::uint8_t>(src), 5);
-        rip_rel32(label);
-    }
-
     void binary_mem_reg(BinaryOp op, Label label, Reg src) {
         emit_rex(true, static_cast<std::uint8_t>(src), 0, 5);
         switch (op) {
@@ -3038,15 +2986,9 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Tzcnt), 0, features.bmi1 ? kBitCountMask : kBitScanMask, features.bmi1 ? "tzcnt_rdx_rbx" : "f3_bsf_rdx_rbx" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Lzcnt), 0, features.lzcnt ? kBitCountMask : kBitScanMask, features.lzcnt ? "lzcnt_r9_r10" : "f3_bsr_r9_r10" });
     if (features.sse42) {
-        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Byte), 0, 0, "crc32_r32_r8" });
-        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Word), 0, 0, "crc32_r32_r16" });
-        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32WordF2Then66), 0, 0, "crc32_r32_r16_f2_66" });
-        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Dword), 0, 0, "crc32_r32_r32" });
-        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Qword), 0, 0, "crc32_r64_r64" });
-        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32MemByte), 0, 0, "crc32_r32_m8" });
-        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32MemWord), 0, 0, "crc32_r32_m16" });
-        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32MemDword), 0, 0, "crc32_r32_m32" });
-        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32MemQword), 0, 0, "crc32_r64_m64" });
+        for (const Crc32CaseSpec& crc32_case : kCrc32Cases) {
+            specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(crc32_case.op), 0, 0, crc32_case.name });
+        }
     }
     for (const CondSpec& condition : kConditions) {
         for (int expected = 0; expected < 2; ++expected) {
@@ -3081,12 +3023,9 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::XchgRegReg), 0, 0, "xchg_r8_r9" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::XchgRaxR8), 0, 0, "xchg_rax_r8" });
     if (features.movbe) {
-        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeLoad16), 0, 0, "movbe_r16_m16" });
-        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeLoad32), 0, 0, "movbe_r32_m32" });
-        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeLoad64), 0, 0, "movbe_r64_m64" });
-        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeStore16), 0, 0, "movbe_m16_r16" });
-        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeStore32), 0, 0, "movbe_m32_r32" });
-        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeStore64), 0, 0, "movbe_m64_r64" });
+        for (const MovbeCaseSpec& movbe_case : kMovbeCases) {
+            specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(movbe_case.op), 0, 0, movbe_case.name });
+        }
     }
     specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::MovRoundtrip), 0, 0, "mov_mem_roundtrip" });
     specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::AddMem), 0, kStatusMask, "add_mem" });
@@ -3270,7 +3209,12 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         break;
     }
     case Family::BitOps: {
-        switch (static_cast<BitOp>(spec.op)) {
+        const auto op = static_cast<BitOp>(spec.op);
+        if (const Crc32CaseSpec* crc32_case = find_crc32_case(op)) {
+            code.crc32_case(*crc32_case, slot0);
+            break;
+        }
+        switch (op) {
         case BitOp::BtImm:
             code.bt_reg_imm(Reg::RAX, static_cast<std::uint8_t>(seed % 63));
             break;
@@ -3338,33 +3282,6 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         case BitOp::Lzcnt:
             code.lzcnt(Reg::R9, Reg::R10);
             break;
-        case BitOp::Crc32Byte:
-            code.crc32_r32_r8(Reg::RAX, Reg::RBX);
-            break;
-        case BitOp::Crc32Word:
-            code.crc32_r32_r16(Reg::RAX, Reg::RBX);
-            break;
-        case BitOp::Crc32WordF2Then66:
-            code.crc32_r32_r16_f2_66(Reg::RAX, Reg::RBX);
-            break;
-        case BitOp::Crc32Dword:
-            code.crc32_r32_r32(Reg::R8, Reg::R9);
-            break;
-        case BitOp::Crc32Qword:
-            code.crc32_r64_r64(Reg::R10, Reg::R11);
-            break;
-        case BitOp::Crc32MemByte:
-            code.crc32_r32_m8(Reg::RAX, slot0);
-            break;
-        case BitOp::Crc32MemWord:
-            code.crc32_r32_m16(Reg::R8, slot0);
-            break;
-        case BitOp::Crc32MemDword:
-            code.crc32_r32_m32(Reg::R10, slot0);
-            break;
-        case BitOp::Crc32MemQword:
-            code.crc32_r64_m64(Reg::R11, slot0);
-            break;
         }
         break;
     }
@@ -3410,7 +3327,12 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         break;
     }
     case Family::MoveOps: {
-        switch (static_cast<MoveProgram>(spec.op)) {
+        const auto program = static_cast<MoveProgram>(spec.op);
+        if (const MovbeCaseSpec* movbe_case = find_movbe_case(program)) {
+            code.movbe_case(*movbe_case, slot0, buffer0);
+            break;
+        }
+        switch (program) {
         case MoveProgram::MovA:
             code.mov_reg_reg(Reg::RAX, Reg::R8);
             break;
@@ -3468,24 +3390,6 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             break;
         case MoveProgram::XchgRaxR8:
             code.xchg_rax_reg(Reg::R8);
-            break;
-        case MoveProgram::MovbeLoad16:
-            code.movbe_r16_m16(Reg::RAX, slot0);
-            break;
-        case MoveProgram::MovbeLoad32:
-            code.movbe_r32_m32(Reg::R8, slot0);
-            break;
-        case MoveProgram::MovbeLoad64:
-            code.movbe_r64_m64(Reg::R10, slot0);
-            break;
-        case MoveProgram::MovbeStore16:
-            code.movbe_m16_r16(buffer0, Reg::RAX);
-            break;
-        case MoveProgram::MovbeStore32:
-            code.movbe_m32_r32(buffer0, Reg::R8);
-            break;
-        case MoveProgram::MovbeStore64:
-            code.movbe_m64_r64(buffer0, Reg::R10);
             break;
         }
         break;
