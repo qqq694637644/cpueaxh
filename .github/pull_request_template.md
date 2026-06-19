@@ -28,7 +28,9 @@
 
   ```powershell
   .\x64\Release\test.exe --list-gates
+  .\x64\Release\test.exe --dump-specs generated-specs.json
   .\tools\validate-regression-contract.ps1
+  .\tools\validate-generated-spec-manifest.ps1 -ManifestPath generated-specs.json
   ```
 
 - [ ] Manual/unsafe-native coverage group replay was considered when relevant:

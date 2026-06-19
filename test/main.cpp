@@ -29,6 +29,7 @@ void print_usage(const char* exe) {
         << "  --generated-seeds <count>      Run count generated seeds per selected spec.\n"
         << "  --replay <path>                Replay a generated failure/regression JSON.\n"
         << "  --dump-features <path>         Write host feature JSON and exit.\n"
+        << "  --dump-specs <path>            Write generated spec manifest JSON and exit.\n"
         << "  --record-failure <path>        Write the first failure as JSON.\n"
         << "  --record-bundle <dir>          Write failure/features into a diagnostics dir.\n"
         << "  --no-manual                    Skip manual special/regression cases.\n"
@@ -163,6 +164,15 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
             options.dump_features_only = true;
             continue;
         }
+        if (arg == "--dump-specs") {
+            if (++index >= argc || !has_value(argv[index])) {
+                std::cerr << "missing value for --dump-specs\n";
+                return ParseResult::Error;
+            }
+            options.spec_manifest_path = argv[index];
+            options.dump_specs_only = true;
+            continue;
+        }
         if (arg == "--record-failure") {
             if (++index >= argc || !has_value(argv[index])) {
                 std::cerr << "missing value for --record-failure\n";
@@ -188,20 +198,29 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
         return ParseResult::Error;
     }
     if (options.dump_features_only) {
-        if (options.list_only || options.list_manual_only || options.list_gates_only || !options.manual_case.empty() || !options.exact_case.empty() || !options.filter.empty() ||
+        if (options.list_only || options.list_manual_only || options.list_gates_only || options.dump_specs_only || !options.manual_case.empty() || !options.exact_case.empty() || !options.filter.empty() ||
             options.has_seed_index || options.has_generated_seed_count || !options.failure_record_path.empty() ||
             !options.record_bundle_dir.empty() || !options.replay_path.empty() || !options.run_manual || !options.run_regression_corpus) {
             std::cerr << "--dump-features cannot be combined with other options\n";
             return ParseResult::Error;
         }
     }
+    if (options.dump_specs_only) {
+        if (options.list_only || options.list_manual_only || options.list_gates_only || options.dump_features_only || !options.manual_case.empty() || !options.exact_case.empty() || !options.filter.empty() ||
+            options.has_seed_index || options.has_generated_seed_count || !options.failure_record_path.empty() ||
+            !options.record_bundle_dir.empty() || !options.replay_path.empty() || !options.run_manual || !options.run_regression_corpus) {
+            std::cerr << "--dump-specs cannot be combined with other options\n";
+            return ParseResult::Error;
+        }
+    }
     if (!options.record_bundle_dir.empty()) {
-        if (!options.failure_record_path.empty() || !options.feature_record_path.empty()) {
-            std::cerr << "--record-bundle cannot be combined with --record-failure or --dump-features\n";
+        if (!options.failure_record_path.empty() || !options.feature_record_path.empty() || !options.spec_manifest_path.empty()) {
+            std::cerr << "--record-bundle cannot be combined with --record-failure, --dump-features, or --dump-specs\n";
             return ParseResult::Error;
         }
         options.failure_record_path = join_path(options.record_bundle_dir, "failure.json");
         options.feature_record_path = join_path(options.record_bundle_dir, "cpu-features.json");
+        options.spec_manifest_path = join_path(options.record_bundle_dir, "generated-specs.json");
     }
     if (!options.manual_case.empty()) {
         if (options.list_only || options.list_manual_only || options.list_gates_only || !options.exact_case.empty() || !options.filter.empty() ||
@@ -217,7 +236,7 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
     }
     if (options.list_manual_only) {
         if (options.list_only || options.list_gates_only || !options.manual_case.empty() || !options.exact_case.empty() || !options.filter.empty() || options.has_seed_index ||
-            options.has_generated_seed_count || !options.failure_record_path.empty() || !options.record_bundle_dir.empty() || !options.replay_path.empty() ||
+            options.has_generated_seed_count || !options.failure_record_path.empty() || !options.spec_manifest_path.empty() || !options.record_bundle_dir.empty() || !options.replay_path.empty() ||
             !options.run_manual || !options.run_regression_corpus) {
             std::cerr << "--list-manual cannot be combined with other options\n";
             return ParseResult::Error;
@@ -225,7 +244,7 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
     }
     if (options.list_gates_only) {
         if (options.list_only || options.list_manual_only || !options.manual_case.empty() || !options.exact_case.empty() || !options.filter.empty() || options.has_seed_index ||
-            options.has_generated_seed_count || !options.failure_record_path.empty() || !options.record_bundle_dir.empty() || !options.replay_path.empty() ||
+            options.has_generated_seed_count || !options.failure_record_path.empty() || !options.spec_manifest_path.empty() || !options.record_bundle_dir.empty() || !options.replay_path.empty() ||
             !options.run_manual || !options.run_regression_corpus) {
             std::cerr << "--list-gates cannot be combined with other options\n";
             return ParseResult::Error;
@@ -233,14 +252,14 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
     }
     if (options.list_only) {
         if (options.has_seed_index || options.has_generated_seed_count || !options.failure_record_path.empty() ||
-            !options.record_bundle_dir.empty() || !options.replay_path.empty() || !options.run_manual || !options.run_regression_corpus) {
+            !options.spec_manifest_path.empty() || !options.record_bundle_dir.empty() || !options.replay_path.empty() || !options.run_manual || !options.run_regression_corpus) {
             std::cerr << "--list can only be combined with --case/--filter-exact or --filter\n";
             return ParseResult::Error;
         }
     }
     if (!options.replay_path.empty()) {
         if (options.list_only || options.list_manual_only || options.list_gates_only || !options.manual_case.empty() || !options.exact_case.empty() || !options.filter.empty() ||
-            options.has_seed_index || options.has_generated_seed_count || options.dump_features_only ||
+            options.has_seed_index || options.has_generated_seed_count || options.dump_features_only || options.dump_specs_only ||
             !options.run_manual || !options.run_regression_corpus) {
             std::cerr << "--replay cannot be combined with list, selector, seed, generated-seeds, or skip options\n";
             return ParseResult::Error;
@@ -272,6 +291,10 @@ int main(int argc, char** argv) {
 
     if (options.dump_features_only) {
         return cpueaxh_test::dump_host_feature_record(options.feature_record_path) ? 0 : 1;
+    }
+
+    if (options.dump_specs_only) {
+        return cpueaxh_test::dump_generated_spec_manifest(options.spec_manifest_path) ? 0 : 1;
     }
 
     return cpueaxh_test::run_all_tests(options) ? 0 : 1;

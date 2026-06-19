@@ -23,6 +23,7 @@ Recommended commands:
 
 ```powershell
 .\x64\Release\test.exe --dump-features cpu-features.json
+.\x64\Release\test.exe --dump-specs generated-specs.json
 .\x64\Release\test.exe --record-bundle failure-bundle
 .\x64\Release\test.exe --generated-seeds 512 --record-bundle failure-bundle
 .\x64\Release\test.exe --list-manual
@@ -55,5 +56,6 @@ Self-hosted runs should preserve:
 - test command line;
 - failure JSON if any;
 - `cpu-features.json` from `test.exe --dump-features` or `--record-bundle`;
+- `generated-specs.json` from `test.exe --dump-specs` or `--record-bundle`;
 - full test log;
 - minimized replay or manual case identifier.

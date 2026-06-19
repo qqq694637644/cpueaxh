@@ -192,6 +192,9 @@ Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern '--list-gat
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'test\\manual\\exception_priority\.json' -Message 'required CI must replay a manual-index sample.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-regression-contract\.ps1' -Message 'required CI must run regression contract validation.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-stage3-gate-output\.ps1' -Message 'required CI must validate stage3 gate output consistency.'
+Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern '--dump-specs generated-specs\.json' -Message 'required CI must dump the generated spec manifest.'
+Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-generated-spec-manifest\.ps1' -Message 'required CI must validate the generated spec manifest.'
+Assert-FileContains -Path 'tools/validate-generated-spec-manifest.ps1' -Pattern 'cpueaxh\.generated-specs\.v1' -Message 'generated spec manifest validator must check schema.'
 
 Assert-Stage3GateManifest
 Assert-GeneratorTemplates

@@ -65,6 +65,31 @@ The default full suite fails if `test/regression/` is missing, not a directory, 
 
 The record is intentionally derived from `query_host_features()` rather than only from OS inventory APIs, so it reflects both CPUID and OS-enabled state where required.
 
+## Generated spec manifest
+
+`test.exe --dump-specs <path>` writes the generated differential spec manifest selected under the current host feature matrix:
+
+```json
+{
+  "schema": "cpueaxh.generated-specs.v1",
+  "spec_count": 123,
+  "features": {
+    "avx": true
+  },
+  "specs": [
+    {
+      "name": "add_rr_rax_rbx",
+      "family": "binary_reg_reg",
+      "op": 0,
+      "variant": 0,
+      "flag_mask": 2261
+    }
+  ]
+}
+```
+
+CI validates this manifest with `tools/validate-generated-spec-manifest.ps1`. The validator checks schema, count, unique spec names, required baseline specs, and that every generated replay corpus `case_selector` exists in the manifest.
+
 ## Failure bundle
 
 `test.exe --record-bundle <dir>` writes structured diagnostics into a directory. The current bundle contains:
@@ -106,6 +131,7 @@ On CI failure, the workflow uploads a diagnostics bundle containing:
 
 - `failure-bundle/**`, including `failure.json` when emitted and `cpu-features.json`.
 - `cpu-features.json` dumped before the full run.
+- `generated-specs.json` dumped before the full run.
 - `test-specs.log` from `test.exe --list`.
 - `manual-index.log` from `test.exe --list-manual`.
 - `test-run.log` from the full regression run.

@@ -64,6 +64,18 @@ jobs:
           Get-Content cpu-features.json
           if ($exitCode -ne 0) { exit $exitCode }
 
+      - name: Dump generated spec manifest
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --dump-specs generated-specs.json
+          $exitCode = $LASTEXITCODE
+          Get-Content generated-specs.json
+          if ($exitCode -ne 0) { exit $exitCode }
+
+      - name: Validate generated spec manifest
+        shell: pwsh
+        run: ./tools/validate-generated-spec-manifest.ps1 -ManifestPath generated-specs.json
+
       - name: List manual coverage index
         shell: pwsh
         run: |
@@ -111,4 +123,5 @@ jobs:
             manual-index.log
             stage3-gates.log
             cpu-features.json
+            generated-specs.json
             cpu-info.txt

@@ -432,9 +432,11 @@ struct TestOptions {
     std::string manual_case;
     std::string failure_record_path;
     std::string feature_record_path;
+    std::string spec_manifest_path;
     std::string record_bundle_dir;
     std::string replay_path;
     bool dump_features_only = false;
+    bool dump_specs_only = false;
     bool run_regression_corpus = true;
 };
 
@@ -994,6 +996,81 @@ inline bool write_host_feature_record(const std::string& path, const HostFeature
 
 inline bool dump_host_feature_record(const std::string& path) {
     return write_host_feature_record(path, query_host_features());
+}
+
+inline const char* family_name(Family family) {
+    switch (family) {
+    case Family::BinaryRegReg: return "binary_reg_reg";
+    case Family::BinaryRegImm: return "binary_reg_imm";
+    case Family::UnaryReg: return "unary_reg";
+    case Family::ShiftImm: return "shift_imm";
+    case Family::ShiftCl: return "shift_cl";
+    case Family::BitOps: return "bit_ops";
+    case Family::FlagOps: return "flag_ops";
+    case Family::MoveOps: return "move_ops";
+    case Family::MemoryOps: return "memory_ops";
+    case Family::StackOps: return "stack_ops";
+    case Family::StringOps: return "string_ops";
+    case Family::VectorOps: return "vector_ops";
+    case Family::ControlFlow: return "control_flow";
+    default: return "unknown";
+    }
+}
+
+inline bool write_generated_spec_manifest(const std::string& path, const std::vector<ProgramSpec>& specs, const HostFeatures& features) {
+    if (path.empty()) {
+        return true;
+    }
+    if (!ensure_parent_directory(path)) {
+        return false;
+    }
+
+    std::ofstream file(path, std::ios::out | std::ios::trunc);
+    if (!file) {
+        std::cerr << "failed to open generated spec manifest: " << path << std::endl;
+        return false;
+    }
+
+    file << "{\n";
+    file << "  \"schema\": \"cpueaxh.generated-specs.v1\",\n";
+    file << "  \"spec_count\": " << specs.size() << ",\n";
+    file << "  \"features\": {\n";
+    file << "    \"avx\": " << json_bool(features.avx) << ",\n";
+    file << "    \"avx2\": " << json_bool(features.avx2) << ",\n";
+    file << "    \"fma\": " << json_bool(features.fma) << ",\n";
+    file << "    \"sha\": " << json_bool(features.sha) << ",\n";
+    file << "    \"popcnt\": " << json_bool(features.popcnt) << ",\n";
+    file << "    \"ssse3\": " << json_bool(features.ssse3) << ",\n";
+    file << "    \"sse41\": " << json_bool(features.sse41) << ",\n";
+    file << "    \"sse42\": " << json_bool(features.sse42) << ",\n";
+    file << "    \"aes\": " << json_bool(features.aes) << ",\n";
+    file << "    \"rdpid\": " << json_bool(features.rdpid) << ",\n";
+    file << "    \"bmi1\": " << json_bool(features.bmi1) << ",\n";
+    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << "\n";
+    file << "  },\n";
+    file << "  \"specs\": [\n";
+    for (std::size_t index = 0; index < specs.size(); ++index) {
+        const ProgramSpec& spec = specs[index];
+        file << "    { \"name\": \"" << json_escape(spec.name) << "\", "
+             << "\"family\": \"" << family_name(spec.family) << "\", "
+             << "\"op\": " << spec.op << ", "
+             << "\"variant\": " << spec.variant << ", "
+             << "\"flag_mask\": " << spec.flag_mask << " }";
+        if (index + 1 != specs.size()) {
+            file << ",";
+        }
+        file << "\n";
+    }
+    file << "  ]\n";
+    file << "}\n";
+    return true;
+}
+
+inline std::vector<ProgramSpec> make_specs(const HostFeatures& features);
+
+inline bool dump_generated_spec_manifest(const std::string& path) {
+    const HostFeatures features = query_host_features();
+    return write_generated_spec_manifest(path, make_specs(features), features);
 }
 
 inline cpueaxh_x86_context make_initial_context(std::uint64_t seed) {
@@ -9853,6 +9930,9 @@ inline bool run_all_tests(const TestOptions& options) {
     }
 
     const std::vector<ProgramSpec> specs = make_specs(features);
+    if (!write_generated_spec_manifest(options.spec_manifest_path, specs, features)) {
+        return false;
+    }
 
     if (options.list_manual_only) {
         print_manual_case_index();
