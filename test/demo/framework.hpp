@@ -241,6 +241,8 @@ enum class UnaryOp : std::uint8_t {
     Dec,
     Neg,
     Not,
+    Mul,
+    Imul,
 };
 
 enum class ShiftOp : std::uint8_t {
@@ -1110,14 +1112,23 @@ inline constexpr std::array<RegSpec, 4> kUnaryRegs = {{
     { Reg::R13, "r13" },
 }};
 
-inline constexpr std::array<CondSpec, 7> kConditions = {{
+inline constexpr std::array<CondSpec, 16> kConditions = {{
     { 0x0, "o" },
+    { 0x1, "no" },
     { 0x2, "b" },
+    { 0x3, "ae" },
     { 0x4, "z" },
+    { 0x5, "nz" },
+    { 0x6, "be" },
+    { 0x7, "a" },
     { 0x8, "s" },
+    { 0x9, "ns" },
     { 0xA, "p" },
+    { 0xB, "np" },
     { 0xC, "l" },
+    { 0xD, "ge" },
     { 0xE, "le" },
+    { 0xF, "g" },
 }};
 
 inline const char* reg_name(Reg reg) {
@@ -1147,7 +1158,9 @@ inline const char* unary_name(UnaryOp op) {
     case UnaryOp::Inc: return "inc";
     case UnaryOp::Dec: return "dec";
     case UnaryOp::Neg: return "neg";
-    default: return "not";
+    case UnaryOp::Not: return "not";
+    case UnaryOp::Mul: return "mul";
+    default: return "imul";
     }
 }
 
@@ -1182,6 +1195,9 @@ inline std::uint64_t unary_flag_mask(UnaryOp op) {
         return kIncDecMask;
     case UnaryOp::Neg:
         return kStatusMask;
+    case UnaryOp::Mul:
+    case UnaryOp::Imul:
+        return kRotationMask;
     default:
         return 0;
     }
@@ -1841,6 +1857,8 @@ public:
         case UnaryOp::Dec: reg_field = 1; opcode = 0xFF; break;
         case UnaryOp::Not: reg_field = 2; opcode = 0xF7; break;
         case UnaryOp::Neg: reg_field = 3; opcode = 0xF7; break;
+        case UnaryOp::Mul: reg_field = 4; opcode = 0xF7; break;
+        case UnaryOp::Imul: reg_field = 5; opcode = 0xF7; break;
         }
         emit_rex(true, reg_field, 0, static_cast<std::uint8_t>(reg));
         emit8(opcode);
@@ -2892,7 +2910,7 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
         BinaryOp::Add, BinaryOp::Sub, BinaryOp::And, BinaryOp::Or,
         BinaryOp::Xor, BinaryOp::Cmp, BinaryOp::Test
     };
-    const UnaryOp unary_ops[] = { UnaryOp::Inc, UnaryOp::Dec, UnaryOp::Neg, UnaryOp::Not };
+    const UnaryOp unary_ops[] = { UnaryOp::Inc, UnaryOp::Dec, UnaryOp::Neg, UnaryOp::Not, UnaryOp::Mul, UnaryOp::Imul };
     const ShiftOp shift_ops[] = { ShiftOp::Rol, ShiftOp::Ror, ShiftOp::Rcl, ShiftOp::Rcr, ShiftOp::Shl, ShiftOp::Shr, ShiftOp::Sar };
     for (const BinaryOp op : binary_ops) {
         for (std::size_t index = 0; index < kBinaryPairs.size(); ++index) {

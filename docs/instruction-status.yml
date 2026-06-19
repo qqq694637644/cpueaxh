@@ -186,6 +186,106 @@ families:
               regression_replay: false
               manual: false
             unsafe_native_reason: null
+      - mnemonic: MUL
+        forms:
+          - name: mul_rax
+            encoding: "REX.W F7 /4"
+            operands: ["RDX:RAX", "RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: mul_r8
+            encoding: "REX.W F7 /4"
+            operands: ["RDX:RAX", "RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: mul_r10
+            encoding: "REX.W F7 /4"
+            operands: ["RDX:RAX", "RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: mul_r13
+            encoding: "REX.W F7 /4"
+            operands: ["RDX:RAX", "RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: IMUL
+        forms:
+          - name: imul_rax
+            encoding: "REX.W F7 /5"
+            operands: ["RDX:RAX", "RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: imul_r8
+            encoding: "REX.W F7 /5"
+            operands: ["RDX:RAX", "RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: imul_r10
+            encoding: "REX.W F7 /5"
+            operands: ["RDX:RAX", "RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: imul_r13
+            encoding: "REX.W F7 /5"
+            operands: ["RDX:RAX", "RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
       - mnemonic: CRC32
         forms:
           - name: crc32_r32_r8
