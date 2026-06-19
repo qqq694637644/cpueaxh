@@ -153,7 +153,8 @@ jobs:
         shell: pwsh
         run: ./tools/validate-strict-replay.ps1 -TestExe "$env:CPUEAXH_TEST_EXE"
 
-      - name: Run full regression suite        shell: pwsh
+      - name: Run full regression suite
+        shell: pwsh
         run: |
           & "$env:CPUEAXH_TEST_EXE" --record-bundle failure-bundle *> test-run.log
           $exitCode = $LASTEXITCODE
