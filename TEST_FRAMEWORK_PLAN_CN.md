@@ -403,7 +403,7 @@ GitHub Actions Windows x64 Release CI 已通过
 ```text
 1. manual/unsafe-native 已有 `cpueaxh.manual-index.v1` 结构化 replay 入口，并在 CI 中用 `test/manual/exception_priority.json` 验证
 2. `--record-bundle` 已上传最小 replay bundle：feature matrix + generated spec manifest + failure record + 日志
-3. 按真实硬件 runner 接入情况继续扩展自托管矩阵 workflow
+3. `.github/workflows/hardware-matrix-regression.yml` 已提供手动 `workflow_dispatch` 自托管硬件矩阵入口；真实 runner 接入后按 `runner_labels_json` 手动运行
 ```
 
 ## 12. 第三阶段建议 / 当前实现
@@ -420,6 +420,7 @@ GitHub Actions Windows x64 Release CI 已通过
 7. tools/validate-regression-contract.ps1 在 CI 中结构化校验状态表、replay corpus、stage3 gate 名称/必填字段和生成器模板 family/必填段契约
 8. tools/validate-stage3-gate-output.ps1 在 CI 中校验 `--list-gates` 输出与 docs/stage3-regression-gates.yml 的 gate 名称、category、command 一致
 9. --dump-specs 和 tools/validate-generated-spec-manifest.ps1 在 CI 中校验当前 generated spec manifest、唯一 selector，以及 regression corpus selector 均存在于 manifest 中
+10. hardware-matrix-regression.yml 提供手动 self-hosted hardware regression 入口，保留 runner labels、feature matrix、generated spec manifest、manual replay 和 long fuzz bundle 证据
 ```
 
 第三阶段仍未声称完成完整 AMD64 指令集覆盖。后续补具体指令时，必须继续按 instruction-status.yml form 粒度扩展状态表、测试生成器和 regression corpus。

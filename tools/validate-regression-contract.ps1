@@ -195,6 +195,12 @@ Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-s
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern '--dump-specs generated-specs\.json' -Message 'required CI must dump the generated spec manifest.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-generated-spec-manifest\.ps1' -Message 'required CI must validate the generated spec manifest.'
 Assert-FileContains -Path 'tools/validate-generated-spec-manifest.ps1' -Pattern 'cpueaxh\.generated-specs\.v1' -Message 'generated spec manifest validator must check schema.'
+Assert-FileContains -Path '.github/workflows/hardware-matrix-regression.yml' -Pattern 'workflow_dispatch' -Message 'hardware matrix workflow must be manually dispatchable.'
+Assert-FileContains -Path '.github/workflows/hardware-matrix-regression.yml' -Pattern 'runner_labels_json' -Message 'hardware matrix workflow must accept runner label input.'
+Assert-FileContains -Path '.github/workflows/hardware-matrix-regression.yml' -Pattern '--dump-features cpu-features\.json' -Message 'hardware matrix workflow must dump host feature records.'
+Assert-FileContains -Path '.github/workflows/hardware-matrix-regression.yml' -Pattern '--dump-specs generated-specs\.json' -Message 'hardware matrix workflow must dump generated spec manifests.'
+Assert-FileContains -Path '.github/workflows/hardware-matrix-regression.yml' -Pattern 'validate-generated-spec-manifest\.ps1' -Message 'hardware matrix workflow must validate generated spec manifests.'
+Assert-FileContains -Path '.github/workflows/hardware-matrix-regression.yml' -Pattern '--record-bundle' -Message 'hardware matrix workflow must preserve replay bundles.'
 
 Assert-Stage3GateManifest
 Assert-GeneratorTemplates

@@ -15,6 +15,21 @@ Use dedicated Windows x64 machines with stable labels:
 | `self-hosted-windows-intel-avx512` | AVX-512 and extended vector behavior |
 | `self-hosted-windows-controlled-system` | privileged/model/controlled-environment experiments only |
 
+## Manual workflow entry
+
+`.github/workflows/hardware-matrix-regression.yml` provides a manual `workflow_dispatch` entry point for self-hosted hardware runs. It is intentionally not scheduled and is not part of the default hosted PR gate.
+
+Dispatch inputs:
+
+| Input | Purpose |
+| --- | --- |
+| `runner_labels_json` | JSON `runs-on` label array, for example `["self-hosted","windows","x64","self-hosted-windows-intel-avx2"]` |
+| `generated_seeds` | generated seed count for long fuzz, default `512` |
+| `case_filter` | optional generated spec substring filter |
+| `include_manual_replay` | whether to replay `test/manual/exception_priority.json` |
+
+The workflow runs the same regression contract validators as hosted CI, then records CPU feature evidence, generated spec manifest, stage 3 gates, optional manual replay, and the long generated regression bundle.
+
 ## Test selection
 
 Every runner should query CPUID at runtime and only execute tests whose features are supported. Do not assume AES, SHA, AVX2, AVX-512, BMI, FMA, CET, RDRAND, RDSEED, XSAVE, or other optional features are present.
