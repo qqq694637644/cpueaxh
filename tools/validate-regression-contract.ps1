@@ -36,6 +36,21 @@ function Assert-FileContains {
     }
 }
 
+function Assert-TestFrameworkContains {
+    param(
+        [Parameter(Mandatory = $true)][string]$Pattern,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+    $paths = @('test/demo/framework.hpp')
+    if (Test-Path -LiteralPath 'test/framework' -PathType Container) {
+        $paths += @(Get-ChildItem -LiteralPath 'test/framework' -Filter '*.hpp' -File | ForEach-Object { $_.FullName })
+    }
+    $content = ($paths | ForEach-Object { Get-Content -LiteralPath $_ -Raw }) -join "`n"
+    if ($content -notmatch $Pattern) {
+        throw $Message
+    }
+}
+
 function Assert-SetEquals {
     param(
         [Parameter(Mandatory = $true)][string[]]$Actual,
@@ -196,10 +211,10 @@ Assert-FileContains -Path 'docs/replay-schema.md' -Pattern 'cpueaxh\.generated-i
 Assert-FileContains -Path 'docs/replay-schema.md' -Pattern 'cpueaxh\.generated-result-state\.v1' -Message 'replay schema must document generated result-state records.'
 Assert-FileContains -Path 'docs/replay-schema.md' -Pattern 'host_features' -Message 'replay schema must document host feature snapshots in failure records.'
 Assert-FileContains -Path 'docs/replay-schema.md' -Pattern 'family/model/stepping' -Message 'replay schema must document CPU family/model/stepping fields.'
-Assert-FileContains -Path 'test/demo/framework.hpp' -Pattern 'cpueaxh\.generated-initial-state\.v1' -Message 'failure recorder must emit generated initial-state records.'
-Assert-FileContains -Path 'test/demo/framework.hpp' -Pattern 'cpueaxh\.generated-result-state\.v1' -Message 'failure recorder must emit generated result-state records.'
-Assert-FileContains -Path 'test/demo/framework.hpp' -Pattern 'attach_host_features_to_failure' -Message 'failure recorder must attach host feature snapshots.'
-Assert-FileContains -Path 'test/demo/framework.hpp' -Pattern 'host_brand' -Message 'failure recorder must include host CPU brand strings.'
+Assert-TestFrameworkContains -Pattern 'cpueaxh\.generated-initial-state\.v1' -Message 'failure recorder must emit generated initial-state records.'
+Assert-TestFrameworkContains -Pattern 'cpueaxh\.generated-result-state\.v1' -Message 'failure recorder must emit generated result-state records.'
+Assert-TestFrameworkContains -Pattern 'attach_host_features_to_failure' -Message 'failure recorder must attach host feature snapshots.'
+Assert-TestFrameworkContains -Pattern 'host_brand' -Message 'failure recorder must include host CPU brand strings.'
 Assert-FileContains -Path 'TEST_FRAMEWORK_PLAN_CN.md' -Pattern '第三阶段' -Message 'Chinese plan must preserve stage 3 section.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern '--list-gates' -Message 'required CI must log stage3 regression gates.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'test\\manual\\exception_priority\.json' -Message 'required CI must replay a manual-index sample.'

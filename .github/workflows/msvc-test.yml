@@ -162,6 +162,10 @@ jobs:
             cpu-features.json
             generated-specs.json
             test-specs.log
+            manual-index.log
+            stage3-gates.log
+            manual-replay.log
+            test-run.log
             cpu-info.txt
 
       - name: Upload failure diagnostics
@@ -169,7 +173,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cpueaxh-failure-diagnostics
-          if-no-files-found: ignore
+          if-no-files-found: error
           path: |
             failure-bundle/**
             manual-replay-bundle/**
