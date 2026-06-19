@@ -130,6 +130,7 @@
 #include "instructions\pcmpistrm.hpp"
 #include "instructions\pcmpistri.hpp"
 #include "instructions/crc32.hpp"
+#include "instructions/movbe.hpp"
 #include "instructions/and.hpp"
 #include "instructions/jmp.hpp"
 #include "cpu/inst_cache.hpp"

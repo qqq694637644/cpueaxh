@@ -289,6 +289,12 @@ enum class MoveProgram : std::uint8_t {
     Movsxd,
     Lea2,
     Lea4,
+    MovbeLoad16,
+    MovbeLoad32,
+    MovbeLoad64,
+    MovbeStore16,
+    MovbeStore32,
+    MovbeStore64,
 };
 
 enum class MemoryProgram : std::uint8_t {
@@ -459,6 +465,7 @@ struct Failure {
     bool host_feature_rdpid = false;
     bool host_feature_bmi1 = false;
     bool host_feature_lzcnt = false;
+    bool host_feature_movbe = false;
     bool has_seed = false;
     bool has_seed_index = false;
     bool has_initial_state = false;
@@ -764,7 +771,8 @@ inline bool write_failure_record(const std::string& path, const Failure& failure
         file << "      \"aes\": " << json_bool(failure.host_feature_aes) << ",\n";
         file << "      \"rdpid\": " << json_bool(failure.host_feature_rdpid) << ",\n";
         file << "      \"bmi1\": " << json_bool(failure.host_feature_bmi1) << ",\n";
-        file << "      \"lzcnt\": " << json_bool(failure.host_feature_lzcnt) << "\n";
+        file << "      \"lzcnt\": " << json_bool(failure.host_feature_lzcnt) << ",\n";
+        file << "      \"movbe\": " << json_bool(failure.host_feature_movbe) << "\n";
         file << "    }\n";
         file << "  }";
     }
@@ -1043,6 +1051,7 @@ struct HostFeatures {
     bool rdpid = false;
     bool bmi1 = false;
     bool lzcnt = false;
+    bool movbe = false;
 };
 
 inline constexpr std::array<std::uint8_t, 4> kAesKeygenAssistImmediates = {{ 0x01, 0x1B, 0x36, 0x80 }};
@@ -1220,6 +1229,7 @@ inline HostFeatures query_host_features() {
         features.ssse3 = (cpu_info[2] & (1 << 9)) != 0;
         features.sse41 = (cpu_info[2] & (1 << 19)) != 0;
         features.sse42 = (cpu_info[2] & (1 << 20)) != 0;
+        features.movbe = (cpu_info[2] & (1 << 22)) != 0;
         features.aes = (cpu_info[2] & (1 << 25)) != 0;
     }
     if (max_leaf >= 7) {
@@ -1284,7 +1294,8 @@ inline bool write_host_feature_record(const std::string& path, const HostFeature
     file << "    \"aes\": " << json_bool(features.aes) << ",\n";
     file << "    \"rdpid\": " << json_bool(features.rdpid) << ",\n";
     file << "    \"bmi1\": " << json_bool(features.bmi1) << ",\n";
-    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << "\n";
+    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << ",\n";
+    file << "    \"movbe\": " << json_bool(features.movbe) << "\n";
     file << "  }\n";
     file << "}\n";
     return true;
@@ -1315,6 +1326,7 @@ inline void attach_host_features_to_failure(Failure& failure, const HostFeatures
     failure.host_feature_rdpid = features.rdpid;
     failure.host_feature_bmi1 = features.bmi1;
     failure.host_feature_lzcnt = features.lzcnt;
+    failure.host_feature_movbe = features.movbe;
     failure.has_host_features = true;
 }
 
@@ -1366,7 +1378,8 @@ inline bool write_generated_spec_manifest(const std::string& path, const std::ve
     file << "    \"aes\": " << json_bool(features.aes) << ",\n";
     file << "    \"rdpid\": " << json_bool(features.rdpid) << ",\n";
     file << "    \"bmi1\": " << json_bool(features.bmi1) << ",\n";
-    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << "\n";
+    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << ",\n";
+    file << "    \"movbe\": " << json_bool(features.movbe) << "\n";
     file << "  },\n";
     file << "  \"specs\": [\n";
     for (std::size_t index = 0; index < specs.size(); ++index) {
@@ -2011,6 +2024,62 @@ public:
         emit_rex(true, static_cast<std::uint8_t>(dst), 0, 5);
         emit8(0x8B);
         emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
+        rip_rel32(label);
+    }
+
+    void movbe_r16_m16(Reg dst, Label label) {
+        emit8(0x66);
+        emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF0);
+        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
+        rip_rel32(label);
+    }
+
+    void movbe_r32_m32(Reg dst, Label label) {
+        emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF0);
+        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
+        rip_rel32(label);
+    }
+
+    void movbe_r64_m64(Reg dst, Label label) {
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, 5);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF0);
+        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
+        rip_rel32(label);
+    }
+
+    void movbe_m16_r16(Label label, Reg src) {
+        emit8(0x66);
+        emit_rex(false, static_cast<std::uint8_t>(src), 0, 5);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF1);
+        emit_modrm(0, static_cast<std::uint8_t>(src), 5);
+        rip_rel32(label);
+    }
+
+    void movbe_m32_r32(Label label, Reg src) {
+        emit_rex(false, static_cast<std::uint8_t>(src), 0, 5);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF1);
+        emit_modrm(0, static_cast<std::uint8_t>(src), 5);
+        rip_rel32(label);
+    }
+
+    void movbe_m64_r64(Label label, Reg src) {
+        emit_rex(true, static_cast<std::uint8_t>(src), 0, 5);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF1);
+        emit_modrm(0, static_cast<std::uint8_t>(src), 5);
         rip_rel32(label);
     }
 
@@ -2725,6 +2794,14 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Movsxd), 0, 0, "movsxd_dword" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Lea2), 0, 0, "lea_scale2" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::Lea4), 0, 0, "lea_scale4" });
+    if (features.movbe) {
+        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeLoad16), 0, 0, "movbe_r16_m16" });
+        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeLoad32), 0, 0, "movbe_r32_m32" });
+        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeLoad64), 0, 0, "movbe_r64_m64" });
+        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeStore16), 0, 0, "movbe_m16_r16" });
+        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeStore32), 0, 0, "movbe_m32_r32" });
+        specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovbeStore64), 0, 0, "movbe_m64_r64" });
+    }
     specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::MovRoundtrip), 0, 0, "mov_mem_roundtrip" });
     specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::AddMem), 0, kStatusMask, "add_mem" });
     specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::SubMem), 0, kStatusMask, "sub_mem" });
@@ -3014,6 +3091,24 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             break;
         case MoveProgram::Lea4:
             code.lea_scaled(Reg::R15, Reg::R8, Reg::R9, 2, 0x18);
+            break;
+        case MoveProgram::MovbeLoad16:
+            code.movbe_r16_m16(Reg::RAX, slot0);
+            break;
+        case MoveProgram::MovbeLoad32:
+            code.movbe_r32_m32(Reg::R8, slot0);
+            break;
+        case MoveProgram::MovbeLoad64:
+            code.movbe_r64_m64(Reg::R10, slot0);
+            break;
+        case MoveProgram::MovbeStore16:
+            code.movbe_m16_r16(buffer0, Reg::RAX);
+            break;
+        case MoveProgram::MovbeStore32:
+            code.movbe_m32_r32(buffer0, Reg::R8);
+            break;
+        case MoveProgram::MovbeStore64:
+            code.movbe_m64_r64(buffer0, Reg::R10);
             break;
         }
         break;

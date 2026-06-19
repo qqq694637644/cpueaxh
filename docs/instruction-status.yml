@@ -285,6 +285,85 @@ families:
               manual: false
             unsafe_native_reason: null
 
+  data_movement:
+    status: in_progress
+    regression_gate: test.exe full suite
+    entries:
+      - mnemonic: MOVBE
+        forms:
+          - name: movbe_r16_m16
+            encoding: "66 0F 38 F0 /r"
+            operands: ["r16", "m16"]
+            operand_size: 16
+            mode: long64
+            feature_gate: movbe
+            status: feature_gated
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movbe_r32_m32
+            encoding: "0F 38 F0 /r"
+            operands: ["r32", "m32"]
+            operand_size: 32
+            mode: long64
+            feature_gate: movbe
+            status: feature_gated
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movbe_r64_m64
+            encoding: "REX.W 0F 38 F0 /r"
+            operands: ["r64", "m64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: movbe
+            status: feature_gated
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movbe_m16_r16
+            encoding: "66 0F 38 F1 /r"
+            operands: ["m16", "r16"]
+            operand_size: 16
+            mode: long64
+            feature_gate: movbe
+            status: feature_gated
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movbe_m32_r32
+            encoding: "0F 38 F1 /r"
+            operands: ["m32", "r32"]
+            operand_size: 32
+            mode: long64
+            feature_gate: movbe
+            status: feature_gated
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movbe_m64_r64
+            encoding: "REX.W 0F 38 F1 /r"
+            operands: ["m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: movbe
+            status: feature_gated
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+
   control_flow:
     status: in_progress
     regression_gate: test.exe full suite
