@@ -91,4 +91,6 @@ Failure records also include `host_features` so the selected generated specs can
 
 Manual/unsafe-native records with schema `cpueaxh.manual-index.v1` are replayable through `--replay`; the current implementation validates the manual index selector and runs the full manual special suite as a conservative coverage-group replay.
 
+Manual replay schema validation is strict at runtime: `category` must be `manual` or `unsafe-native`, it must match the manual index entry, and `replay` must contain `--manual-case <case_selector>`.
+
 List modes are intentionally strict. `--list-manual` must be used alone. `--list` may only be combined with `--case` / `--filter-exact` or `--filter` to narrow the generated spec list; it must not be combined with seed, replay, record, generated-seed-count, or skip options.

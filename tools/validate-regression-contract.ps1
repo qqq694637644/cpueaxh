@@ -171,13 +171,18 @@ function Assert-ManualIndexRecords {
         if ($json -notmatch '"schema"\s*:\s*"cpueaxh\.manual-index\.v1"') {
             throw "Manual replay record missing required schema: $($file.FullName)"
         }
-        if ($json -notmatch '"case_selector"\s*:\s*"[^"]+"') {
+        if ($json -notmatch '"case_selector"\s*:\s*"([^"]+)"') {
             throw "Manual replay record missing non-empty case_selector: $($file.FullName)"
         }
+        $caseSelector = $Matches[1]
         if ($json -notmatch '"category"\s*:\s*"(manual|unsafe-native)"') {
             throw "Manual replay record category must be manual or unsafe-native: $($file.FullName)"
         }
-        if ($json -notmatch '"replay"\s*:\s*"test\.exe --manual-case [^"]+"') {
+        if ($json -notmatch '"replay"\s*:\s*"([^"]+)"') {
+            throw "Manual replay record must include a replay command: $($file.FullName)"
+        }
+        $replayCommand = $Matches[1]
+        if ($replayCommand -notmatch "(^| )--manual-case\s+$([regex]::Escape($caseSelector))(\s|$)") {
             throw "Manual replay record must include a --manual-case replay command: $($file.FullName)"
         }
     }

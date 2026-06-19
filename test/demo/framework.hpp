@@ -865,6 +865,29 @@ inline bool json_extract_u64(const std::string& json, const std::string& key, st
     return true;
 }
 
+inline bool manual_replay_hint_matches_case(const std::string& replay_hint, const std::string& manual_case) {
+    const std::string option = "--manual-case";
+    const std::size_t option_pos = replay_hint.find(option);
+    if (option_pos == std::string::npos) {
+        return false;
+    }
+
+    std::size_t pos = option_pos + option.size();
+    if (pos >= replay_hint.size() || replay_hint[pos] != ' ') {
+        return false;
+    }
+    while (pos < replay_hint.size() && replay_hint[pos] == ' ') {
+        ++pos;
+    }
+    if (pos >= replay_hint.size()) {
+        return false;
+    }
+
+    const std::size_t end = replay_hint.find(' ', pos);
+    const std::string replay_case = replay_hint.substr(pos, end == std::string::npos ? std::string::npos : end - pos);
+    return replay_case == manual_case;
+}
+
 inline bool apply_replay_file(const std::string& path, TestOptions& options, std::string& error) {
     std::string json;
     if (!read_text_file(path, json)) {
@@ -884,8 +907,31 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
             error = "manual replay file has no non-empty case_selector: " + path;
             return false;
         }
-        if (!find_manual_case_index_entry(manual_case)) {
+        const ManualCaseIndexEntry* entry = find_manual_case_index_entry(manual_case);
+        if (!entry) {
             error = "manual replay case is not in the manual index: " + manual_case;
+            return false;
+        }
+        std::string category;
+        if (!json_extract_string(json, "category", category) || category.empty()) {
+            error = "manual replay file has no non-empty category: " + path;
+            return false;
+        }
+        if (category != "manual" && category != "unsafe-native") {
+            error = "manual replay file has unsupported category: " + category;
+            return false;
+        }
+        if (category != entry->category) {
+            error = "manual replay category does not match manual index: " + manual_case;
+            return false;
+        }
+        std::string replay_hint;
+        if (!json_extract_string(json, "replay", replay_hint) || replay_hint.empty()) {
+            error = "manual replay file has no non-empty replay command: " + path;
+            return false;
+        }
+        if (!manual_replay_hint_matches_case(replay_hint, manual_case)) {
+            error = "manual replay command does not match case_selector: " + manual_case;
             return false;
         }
         options.manual_case = manual_case;

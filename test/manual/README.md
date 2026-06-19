@@ -22,3 +22,5 @@ A manual replay record requires:
   "coverage": "memory, stack, canonical-address, and UD exception ordering"
 }
 ```
+
+The executable rejects malformed manual records at replay time. `category` must be `manual` or `unsafe-native`, it must match the category printed by `test.exe --list-manual` for the selected `case_selector`, and `replay` must contain `--manual-case <case_selector>`.

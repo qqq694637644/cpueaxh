@@ -203,6 +203,14 @@ Current record shape:
 
 Current manual replay is intentionally conservative: the runner validates that `case_selector` exists in the manual index and then executes the full manual special suite. This avoids false confidence while still giving CI and reviewers a structured replay entry point for manual or unsafe-native coverage groups.
 
+Manual replay records are rejected at runtime unless all of these conditions hold:
+
+- `category` exists and is either `manual` or `unsafe-native`;
+- `category` matches the category in `test.exe --list-manual` for the selected `case_selector`;
+- `replay` exists and contains `--manual-case <case_selector>`.
+
+This is intentionally strict: malformed manual replay records must be fixed rather than silently falling back to a broader mode.
+
 Equivalent command:
 
 ```powershell
