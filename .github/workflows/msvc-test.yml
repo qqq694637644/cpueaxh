@@ -237,6 +237,8 @@ jobs:
           Invoke-ReplayExpect strict-replay\manual-missing-coverage.json 2
           Invoke-ReplayExpect strict-replay\manual-wrong-coverage.json 2
           Invoke-ReplayExpect strict-replay\manual-unknown-field.json 2
+          $global:LASTEXITCODE = 0
+          exit 0
 
       - name: Run full regression suite
         shell: pwsh
