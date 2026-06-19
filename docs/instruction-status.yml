@@ -289,6 +289,44 @@ families:
     status: in_progress
     regression_gate: test.exe full suite
     entries:
+      - mnemonic: BT
+        forms:
+          - name: bt_imm_rax
+            encoding: "REX.W 0F BA /4 ib"
+            operands: ["r64", "imm8"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: bt_reg_r8_rcx
+            encoding: "REX.W 0F A3 /r"
+            operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: bt_imm_m64
+            encoding: "REX.W 0F BA /4 ib"
+            operands: ["m64", "imm8"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
       - mnemonic: BTS
         forms:
           - name: bts_imm_r10
@@ -306,6 +344,18 @@ families:
           - name: bts_reg_r11_rcx
             encoding: "REX.W 0F AB /r"
             operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: bts_imm_m64
+            encoding: "REX.W 0F BA /5 ib"
+            operands: ["m64", "imm8"]
             operand_size: 64
             mode: long64
             feature_gate: base
@@ -341,6 +391,18 @@ families:
               regression_replay: false
               manual: false
             unsafe_native_reason: null
+          - name: btr_imm_m64
+            encoding: "REX.W 0F BA /6 ib"
+            operands: ["m64", "imm8"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
       - mnemonic: BTC
         forms:
           - name: btc_imm_r14
@@ -358,6 +420,18 @@ families:
           - name: btc_reg_r15_rcx
             encoding: "REX.W 0F BB /r"
             operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: btc_imm_m64
+            encoding: "REX.W 0F BA /7 ib"
+            operands: ["m64", "imm8"]
             operand_size: 64
             mode: long64
             feature_gate: base
@@ -660,6 +734,56 @@ families:
               manual: false
             unsafe_native_reason: null
 
+  string:
+    status: in_progress
+    regression_gate: test.exe full suite
+    entries:
+      - mnemonic: XLAT
+        forms:
+          - name: xlat
+            encoding: "D7"
+            operands: ["AL", "RBX + AL"]
+            operand_size: 8
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+
+  stack:
+    status: in_progress
+    regression_gate: test.exe full suite
+    entries:
+      - mnemonic: PUSH/POP
+        forms:
+          - name: push_imm8_pop
+            encoding: "6A ib / 58+rd"
+            operands: ["imm8", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: push_imm32_pop
+            encoding: "68 id / 58+rd"
+            operands: ["imm32", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+
   control_flow:
     status: in_progress
     regression_gate: test.exe full suite
@@ -711,6 +835,44 @@ families:
           - name: jz
             encoding: "0F 84 rel32 / short Jcc family by condition"
             operands: ["rel"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: NOP/PAUSE
+        forms:
+          - name: nop
+            encoding: "90"
+            operands: []
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: nop_modrm
+            encoding: "0F 1F /0"
+            operands: ["r/m"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pause
+            encoding: "F3 90"
+            operands: []
             operand_size: 64
             mode: long64
             feature_gate: base

@@ -256,12 +256,16 @@ enum class ShiftOp : std::uint8_t {
 enum class BitOp : std::uint8_t {
     BtImm,
     BtReg,
+    BtMemImm,
     BtsImm,
     BtsReg,
+    BtsMemImm,
     BtrImm,
     BtrReg,
+    BtrMemImm,
     BtcImm,
     BtcReg,
+    BtcMemImm,
     Bsf,
     Bsr,
     Popcnt,
@@ -334,6 +338,8 @@ enum class StackProgram : std::uint8_t {
     PushPopFlags,
     EnterLeave,
     PushChain,
+    PushImm8Pop,
+    PushImm32Pop,
 };
 
 enum class StringProgram : std::uint8_t {
@@ -349,6 +355,7 @@ enum class StringProgram : std::uint8_t {
     Stosq,
     Cmpsb,
     Scasb,
+    Xlat,
 };
 
 enum class VectorProgram : std::uint8_t {
@@ -408,6 +415,9 @@ enum class ControlProgram : std::uint8_t {
     Loopnz,
     Loopz,
     Loop,
+    Nop,
+    NopModrm,
+    Pause,
 };
 
 struct PairSpec {
@@ -1728,6 +1738,21 @@ public:
         emit8(0xC3);
     }
 
+    void nop1() {
+        emit8(0x90);
+    }
+
+    void nop_modrm_reg() {
+        emit8(0x0F);
+        emit8(0x1F);
+        emit_modrm(3, 0, static_cast<std::uint8_t>(Reg::RAX));
+    }
+
+    void pause() {
+        emit8(0xF3);
+        emit8(0x90);
+    }
+
     void jmp32(Label label) {
         emit8(0xE9);
         rel32(label);
@@ -1868,6 +1893,15 @@ public:
         emit8(0x0F);
         emit8(0xBA);
         emit_modrm(3, group, static_cast<std::uint8_t>(reg));
+        emit8(bit);
+    }
+
+    void bit_mem_imm(std::uint8_t group, Label label, std::uint8_t bit) {
+        emit_rex(true, group, 0, 5);
+        emit8(0x0F);
+        emit8(0xBA);
+        emit_modrm(0, group, 5);
+        rip_rel32(label);
         emit8(bit);
     }
 
@@ -2180,6 +2214,16 @@ public:
         emit8(static_cast<std::uint8_t>(0x50u + (static_cast<std::uint8_t>(reg) & 7u)));
     }
 
+    void push_imm8(std::uint8_t imm) {
+        emit8(0x6A);
+        emit8(imm);
+    }
+
+    void push_imm32(std::uint32_t imm) {
+        emit8(0x68);
+        emit32(imm);
+    }
+
     void pop_reg(Reg reg) {
         emit_rex(false, 0, 0, static_cast<std::uint8_t>(reg));
         emit8(static_cast<std::uint8_t>(0x58u + (static_cast<std::uint8_t>(reg) & 7u)));
@@ -2281,6 +2325,7 @@ public:
     void stosq() { emit8(0x48); emit8(0xAB); }
     void cmpsb() { emit8(0xA6); }
     void scasb() { emit8(0xAE); }
+    void xlat() { emit8(0xD7); }
 
     void movdqu_load(Reg dst, Label label) {
         emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
@@ -2873,12 +2918,16 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     }
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtImm), 0, kBitTestMask, "bt_imm_rax" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtReg), 0, kBitTestMask, "bt_reg_r8_rcx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtMemImm), 0, kBitTestMask, "bt_imm_m64" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtsImm), 0, kBitTestMask, "bts_imm_r10" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtsReg), 0, kBitTestMask, "bts_reg_r11_rcx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtsMemImm), 0, kBitTestMask, "bts_imm_m64" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtrImm), 0, kBitTestMask, "btr_imm_r12" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtrReg), 0, kBitTestMask, "btr_reg_r13_rcx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtrMemImm), 0, kBitTestMask, "btr_imm_m64" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtcImm), 0, kBitTestMask, "btc_imm_r14" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtcReg), 0, kBitTestMask, "btc_reg_r15_rcx" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BtcMemImm), 0, kBitTestMask, "btc_imm_m64" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Bsf), 0, kBitScanMask, "bsf_rdx_rbx" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Bsr), 0, kBitScanMask, "bsr_r9_r10" });
     if (features.popcnt) {
@@ -2947,6 +2996,8 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::PushPopFlags), 0, 0, "pushf_pop_lahf" });
     specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::EnterLeave), 0, 0, "enter_leave" });
     specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::PushChain), 0, 0, "push_chain" });
+    specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::PushImm8Pop), 0, 0, "push_imm8_pop" });
+    specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::PushImm32Pop), 0, 0, "push_imm32_pop" });
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Movsb), 0, 0, "movsb" });
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Movsw), 0, 0, "movsw" });
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Movsd), 0, 0, "movsd" });
@@ -2959,6 +3010,7 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Stosq), 0, 0, "stosq" });
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Cmpsb), 0, kStatusMask, "cmpsb" });
     specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Scasb), 0, kStatusMask, "scasb" });
+    specs.push_back({ Family::StringOps, static_cast<std::uint32_t>(StringProgram::Xlat), 0, 0, "xlat" });
     specs.push_back({ Family::VectorOps, static_cast<std::uint32_t>(VectorProgram::Paddq), 0, 0, "paddq" });
     specs.push_back({ Family::VectorOps, static_cast<std::uint32_t>(VectorProgram::Pxor), 0, 0, "pxor" });
     specs.push_back({ Family::VectorOps, static_cast<std::uint32_t>(VectorProgram::Pand), 0, 0, "pand" });
@@ -3053,6 +3105,9 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Loopnz), 0, kStatusMask, "loopnz_taken" });
     specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Loopz), 0, kStatusMask, "loopz_taken" });
     specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Loop), 0, kStatusMask, "loop_taken" });
+    specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Nop), 0, 0, "nop" });
+    specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::NopModrm), 0, 0, "nop_modrm" });
+    specs.push_back({ Family::ControlFlow, static_cast<std::uint32_t>(ControlProgram::Pause), 0, 0, "pause" });
     return specs;
 }
 
@@ -3119,12 +3174,18 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
             code.bt_reg_reg(Reg::R8, Reg::RCX);
             break;
+        case BitOp::BtMemImm:
+            code.bit_mem_imm(4, buffer0, static_cast<std::uint8_t>(seed % 63));
+            break;
         case BitOp::BtsImm:
             code.bit_reg_imm(5, Reg::R10, static_cast<std::uint8_t>(seed % 63));
             break;
         case BitOp::BtsReg:
             built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
             code.bit_reg_reg(0xAB, Reg::R11, Reg::RCX);
+            break;
+        case BitOp::BtsMemImm:
+            code.bit_mem_imm(5, buffer0, static_cast<std::uint8_t>(seed % 63));
             break;
         case BitOp::BtrImm:
             code.bit_reg_imm(6, Reg::R12, static_cast<std::uint8_t>(seed % 63));
@@ -3133,12 +3194,18 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
             code.bit_reg_reg(0xB3, Reg::R13, Reg::RCX);
             break;
+        case BitOp::BtrMemImm:
+            code.bit_mem_imm(6, buffer0, static_cast<std::uint8_t>(seed % 63));
+            break;
         case BitOp::BtcImm:
             code.bit_reg_imm(7, Reg::R14, static_cast<std::uint8_t>(seed % 63));
             break;
         case BitOp::BtcReg:
             built.initial_context.regs[static_cast<std::size_t>(Reg::RCX)] = seed % 63;
             code.bit_reg_reg(0xBB, Reg::R15, Reg::RCX);
+            break;
+        case BitOp::BtcMemImm:
+            code.bit_mem_imm(7, buffer0, static_cast<std::uint8_t>(seed % 63));
             break;
         case BitOp::Bsf:
             built.initial_context.regs[static_cast<std::size_t>(Reg::RBX)] |= 1;
@@ -3377,6 +3444,14 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             code.pop_reg(Reg::R12);
             code.pop_reg(Reg::R13);
             break;
+        case StackProgram::PushImm8Pop:
+            code.push_imm8(narrow8(seeded(seed, 0x7A0)));
+            code.pop_reg(Reg::R14);
+            break;
+        case StackProgram::PushImm32Pop:
+            code.push_imm32(narrow32(seeded(seed, 0x7A1)));
+            code.pop_reg(Reg::R15);
+            break;
         }
         break;
     }
@@ -3427,6 +3502,11 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         case StringProgram::Scasb:
             code.mov_r8_imm(Reg::RAX, data[kSlotSize * 4 + 5]);
             code.scasb();
+            break;
+        case StringProgram::Xlat:
+            code.lea_rip(Reg::RBX, buffer0);
+            code.mov_r8_imm(Reg::RAX, 5);
+            code.xlat();
             break;
         }
         break;
@@ -3783,6 +3863,15 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             code.mark(label_true);
             code.mov_reg_reg(Reg::R12, Reg::R14);
             code.mark(label_end);
+            break;
+        case ControlProgram::Nop:
+            code.nop1();
+            break;
+        case ControlProgram::NopModrm:
+            code.nop_modrm_reg();
+            break;
+        case ControlProgram::Pause:
+            code.pause();
             break;
         }
         break;
