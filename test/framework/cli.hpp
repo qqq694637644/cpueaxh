@@ -16,7 +16,7 @@
 namespace cpueaxh_test {
 namespace cli_detail {
 
-void print_usage(const char* exe) {
+inline void print_usage(const char* exe) {
     std::cout
         << "usage: " << exe << " [options]\n"
         << "\n"
@@ -44,7 +44,7 @@ void print_usage(const char* exe) {
         << "exact-case, replay, or single-seed runs skip manual/corpus cases by design.\n";
 }
 
-bool parse_u64(const char* text, std::uint64_t& value) {
+inline bool parse_u64(const char* text, std::uint64_t& value) {
     if (!text || *text == '\0') {
         return false;
     }
@@ -63,11 +63,11 @@ bool parse_u64(const char* text, std::uint64_t& value) {
     return true;
 }
 
-bool has_value(const char* text) {
+inline bool has_value(const char* text) {
     return text && *text != '\0';
 }
 
-std::string join_path(const std::string& directory, const char* leaf) {
+inline std::string join_path(const std::string& directory, const char* leaf) {
     if (directory.empty()) {
         return leaf;
     }
@@ -84,7 +84,7 @@ enum class ParseResult {
     Error,
 };
 
-ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options) {
+inline ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options) {
     for (int index = 1; index < argc; ++index) {
         const std::string arg = argv[index];
         if (arg == "--help" || arg == "-h") {

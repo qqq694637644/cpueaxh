@@ -63,7 +63,12 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Build test project
-        run: msbuild cpueaxh.sln /m /p:Configuration=Release /p:Platform=x64 /t:test
+        shell: pwsh
+        run: |
+          msbuild cpueaxh.sln /m /p:Configuration=Release /p:Platform=x64 /t:test *> build.log
+          $exitCode = $LASTEXITCODE
+          Get-Content build.log
+          if ($exitCode -ne 0) { exit $exitCode }
 
       - name: Locate test executable
         shell: pwsh
@@ -249,6 +254,7 @@ jobs:
           if-no-files-found: error
           path: |
             cpu-features.json
+            build.log
             generated-specs.json
             test-specs.log
             manual-index.log
@@ -268,6 +274,7 @@ jobs:
             failure-bundle/**
             manual-replay-bundle/**
             cpu-features.json
+            build.log
             generated-specs.json
             test-specs.log
             manual-index.log
