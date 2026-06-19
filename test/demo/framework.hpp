@@ -263,8 +263,13 @@ enum class BitOp : std::uint8_t {
     Tzcnt,
     Lzcnt,
     Crc32Byte,
+    Crc32Word,
     Crc32Dword,
     Crc32Qword,
+    Crc32MemByte,
+    Crc32MemWord,
+    Crc32MemDword,
+    Crc32MemQword,
 };
 
 enum class FlagProgram : std::uint8_t {
@@ -1852,6 +1857,16 @@ public:
         emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
     }
 
+    void crc32_r32_r16(Reg dst, Reg src) {
+        emit8(0x66);
+        emit8(0xF2);
+        emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF1);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
     void crc32_r32_r32(Reg dst, Reg src) {
         emit8(0xF2);
         emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
@@ -1868,6 +1883,47 @@ public:
         emit8(0x38);
         emit8(0xF1);
         emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void crc32_r32_m8(Reg dst, Label label) {
+        emit8(0xF2);
+        emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF0);
+        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
+        rip_rel32(label);
+    }
+
+    void crc32_r32_m16(Reg dst, Label label) {
+        emit8(0x66);
+        emit8(0xF2);
+        emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF1);
+        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
+        rip_rel32(label);
+    }
+
+    void crc32_r32_m32(Reg dst, Label label) {
+        emit8(0xF2);
+        emit_rex(false, static_cast<std::uint8_t>(dst), 0, 5);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF1);
+        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
+        rip_rel32(label);
+    }
+
+    void crc32_r64_m64(Reg dst, Label label) {
+        emit8(0xF2);
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, 5);
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF1);
+        emit_modrm(0, static_cast<std::uint8_t>(dst), 5);
+        rip_rel32(label);
     }
 
     void bswap(Reg reg) {
@@ -2646,8 +2702,13 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Lzcnt), 0, features.lzcnt ? kBitCountMask : kBitScanMask, features.lzcnt ? "lzcnt_r9_r10" : "f3_bsr_r9_r10" });
     if (features.sse42) {
         specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Byte), 0, 0, "crc32_r32_r8" });
+        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Word), 0, 0, "crc32_r32_r16" });
         specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Dword), 0, 0, "crc32_r32_r32" });
         specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Qword), 0, 0, "crc32_r64_r64" });
+        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32MemByte), 0, 0, "crc32_r32_m8" });
+        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32MemWord), 0, 0, "crc32_r32_m16" });
+        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32MemDword), 0, 0, "crc32_r32_m32" });
+        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32MemQword), 0, 0, "crc32_r64_m64" });
     }
     for (const CondSpec& condition : kConditions) {
         specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Setcc), condition.code, kStatusMask, std::string("set") + condition.name });
@@ -2871,11 +2932,26 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         case BitOp::Crc32Byte:
             code.crc32_r32_r8(Reg::RAX, Reg::RBX);
             break;
+        case BitOp::Crc32Word:
+            code.crc32_r32_r16(Reg::RAX, Reg::RBX);
+            break;
         case BitOp::Crc32Dword:
             code.crc32_r32_r32(Reg::R8, Reg::R9);
             break;
         case BitOp::Crc32Qword:
             code.crc32_r64_r64(Reg::R10, Reg::R11);
+            break;
+        case BitOp::Crc32MemByte:
+            code.crc32_r32_m8(Reg::RAX, slot0);
+            break;
+        case BitOp::Crc32MemWord:
+            code.crc32_r32_m16(Reg::R8, slot0);
+            break;
+        case BitOp::Crc32MemDword:
+            code.crc32_r32_m32(Reg::R10, slot0);
+            break;
+        case BitOp::Crc32MemQword:
+            code.crc32_r64_m64(Reg::R11, slot0);
             break;
         }
         break;
