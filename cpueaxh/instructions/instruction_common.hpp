@@ -15,3 +15,4 @@
 #include "../cpu/calc.hpp"
 #include "../cpu/decoded.hpp"
 #include "../cpu/dispatch_helpers.hpp"
+#include "cpuid.hpp"
