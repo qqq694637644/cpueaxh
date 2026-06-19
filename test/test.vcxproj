@@ -151,6 +151,13 @@
     <ClCompile Include="main.cpp">
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
+    <ClCompile Include="framework\header_smoke_types.cpp" />
+    <ClCompile Include="framework\header_smoke_code_builder.cpp" />
+    <ClCompile Include="framework\header_smoke_generated_specs.cpp" />
+    <ClCompile Include="framework\header_smoke_manual_helpers.cpp" />
+    <ClCompile Include="framework\header_smoke_manual_registry.cpp" />
+    <ClCompile Include="framework\header_smoke_runner.cpp" />
+    <ClCompile Include="framework\header_smoke_cli.cpp" />
   </ItemGroup>
   <ItemGroup Condition="'$(Platform)'=='x64'">
     <MASM Include="demo\native_runner.asm" />

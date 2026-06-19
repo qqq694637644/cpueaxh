@@ -2,6 +2,10 @@
 // Split from test/demo/framework.hpp: generated spec catalog, case builder, and generated compare harness.
 // Included through test/framework/framework.hpp; keep include order there.
 
+#include "code_builder.hpp"
+
+namespace cpueaxh_test {
+
 inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     std::vector<ProgramSpec> specs;
     const BinaryOp binary_ops[] = {
@@ -1034,4 +1038,6 @@ inline bool write_engine_zmm(cpueaxh_engine* engine, int reg, const cpueaxh_x86_
 inline bool read_engine_zmm(cpueaxh_engine* engine, int reg, cpueaxh_x86_zmm& value) {
     return cpueaxh_reg_read(engine, reg, &value) == CPUEAXH_ERR_OK;
 }
+
+} // namespace cpueaxh_test
 

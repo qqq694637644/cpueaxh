@@ -144,6 +144,95 @@ jobs:
           Get-Content manual-replay.log
           if ($exitCode -ne 0) { exit $exitCode }
 
+      - name: Validate strict replay schema rejection
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force strict-replay | Out-Null
+          @'
+          {
+            "schema": "cpueaxh.failure.v1",
+            "case_selector": "add_rr_rax_rbx",
+            "seed_index": 0,
+            "image_hex": "00",
+            "replay_hint": "test.exe --case add_rr_rax_rbx --seed-index 0"
+          }
+          '@ | Set-Content strict-replay\valid-generated-image-hex.json
+          @'
+          {
+            "schema": "cpueaxh.failure.v1",
+            "case_selector": "add_rr_rax_rbx",
+            "seed_index": 0,
+            "unknown": true
+          }
+          '@ | Set-Content strict-replay\generated-unknown-field.json
+          @'
+          {
+            "schema": "cpueaxh.failure.v1",
+            "case_selector": "add_rr_rax_rbx",
+            "case_selector": "sub_rr_rax_rbx",
+            "seed_index": 0
+          }
+          '@ | Set-Content strict-replay\generated-duplicate-case-selector.json
+          @'
+          {
+            "schema": "cpueaxh.failure.v1",
+            "case_selector": "add_rr_rax_rbx"
+          }
+          '@ | Set-Content strict-replay\generated-missing-seed-index.json
+          @'
+          {
+            "schema": "cpueaxh.failure.v1",
+            "case_selector": "add_rr_rax_rbx",
+            "seed_index": 0,
+          }
+          '@ | Set-Content strict-replay\generated-trailing-comma.json
+          @'
+          {
+            "schema": "cpueaxh.manual-index.v1",
+            "case_selector": "exception_priority",
+            "category": "manual",
+            "replay": "test.exe --manual-case exception_priority --record-bundle failure-bundle"
+          }
+          '@ | Set-Content strict-replay\manual-missing-coverage.json
+          @'
+          {
+            "schema": "cpueaxh.manual-index.v1",
+            "case_selector": "exception_priority",
+            "category": "manual",
+            "coverage": "wrong coverage",
+            "replay": "test.exe --manual-case exception_priority --record-bundle failure-bundle"
+          }
+          '@ | Set-Content strict-replay\manual-wrong-coverage.json
+          @'
+          {
+            "schema": "cpueaxh.manual-index.v1",
+            "case_selector": "exception_priority",
+            "category": "manual",
+            "coverage": "memory, stack, canonical-address, and UD exception ordering",
+            "replay": "test.exe --manual-case exception_priority --record-bundle failure-bundle",
+            "unknown": true
+          }
+          '@ | Set-Content strict-replay\manual-unknown-field.json
+
+          function Invoke-ReplayExpect {
+            param([string]$Path, [int]$ExpectedExit)
+            "## $Path expected=$ExpectedExit" | Tee-Object -FilePath strict-replay.log -Append
+            & "$env:CPUEAXH_TEST_EXE" --replay $Path *> strict-replay-case.log
+            $exitCode = $LASTEXITCODE
+            Get-Content strict-replay-case.log | Tee-Object -FilePath strict-replay.log -Append
+            if ($ExpectedExit -eq 0 -and $exitCode -ne 0) { throw "Expected replay success for $Path, got $exitCode" }
+            if ($ExpectedExit -ne 0 -and $exitCode -eq 0) { throw "Expected replay failure for $Path, got success" }
+          }
+
+          Invoke-ReplayExpect strict-replay\valid-generated-image-hex.json 0
+          Invoke-ReplayExpect strict-replay\generated-unknown-field.json 2
+          Invoke-ReplayExpect strict-replay\generated-duplicate-case-selector.json 2
+          Invoke-ReplayExpect strict-replay\generated-missing-seed-index.json 2
+          Invoke-ReplayExpect strict-replay\generated-trailing-comma.json 2
+          Invoke-ReplayExpect strict-replay\manual-missing-coverage.json 2
+          Invoke-ReplayExpect strict-replay\manual-wrong-coverage.json 2
+          Invoke-ReplayExpect strict-replay\manual-unknown-field.json 2
+
       - name: Run full regression suite
         shell: pwsh
         run: |
@@ -165,6 +254,7 @@ jobs:
             manual-index.log
             stage3-gates.log
             manual-replay.log
+            strict-replay.log
             test-run.log
             cpu-info.txt
 
@@ -183,5 +273,6 @@ jobs:
             manual-index.log
             stage3-gates.log
             manual-replay.log
+            strict-replay.log
             test-run.log
             cpu-info.txt

@@ -2,6 +2,10 @@
 // Split from test/demo/framework.hpp: top-level generated/replay/test runner.
 // Included through test/framework/framework.hpp; keep include order there.
 
+#include "manual_registry.hpp"
+
+namespace cpueaxh_test {
+
 inline bool run_generated_case_by_name(
     Harness& harness,
     const std::vector<ProgramSpec>& specs,
@@ -241,4 +245,5 @@ inline bool run_all_tests() {
     return run_all_tests(TestOptions{});
 }
 
-}
+} // namespace cpueaxh_test
+

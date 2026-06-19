@@ -19,7 +19,8 @@ A manual replay record requires:
   "schema": "cpueaxh.manual-index.v1",
   "case_selector": "exception_priority",
   "category": "manual",
-  "coverage": "memory, stack, canonical-address, and UD exception ordering"
+  "coverage": "memory, stack, canonical-address, and UD exception ordering",
+  "replay": "test.exe --manual-case exception_priority --record-bundle failure-bundle"
 }
 ```
 

@@ -13,7 +13,8 @@
 #include <limits>
 #include <string>
 
-namespace {
+namespace cpueaxh_test {
+namespace cli_detail {
 
 void print_usage(const char* exe) {
     std::cout
@@ -271,35 +272,37 @@ ParseResult parse_args(int argc, char** argv, cpueaxh_test::TestOptions& options
     return ParseResult::Ok;
 }
 
-}
-
+} // namespace cli_detail
 
 inline int run_cli(int argc, char** argv) {
-    cpueaxh_test::TestOptions options;
-    const ParseResult parse_result = parse_args(argc, argv, options);
-    if (parse_result == ParseResult::Help) {
+    TestOptions options;
+    const cli_detail::ParseResult parse_result = cli_detail::parse_args(argc, argv, options);
+    if (parse_result == cli_detail::ParseResult::Help) {
         return 0;
     }
-    if (parse_result == ParseResult::Error) {
-        print_usage(argv[0]);
+    if (parse_result == cli_detail::ParseResult::Error) {
+        cli_detail::print_usage(argv[0]);
         return 2;
     }
 
     if (!options.replay_path.empty()) {
         std::string replay_error;
-        if (!cpueaxh_test::apply_replay_file(options.replay_path, options, replay_error)) {
+        if (!apply_replay_file(options.replay_path, options, replay_error)) {
             std::cerr << replay_error << "\n";
             return 2;
         }
     }
 
     if (options.dump_features_only) {
-        return cpueaxh_test::dump_host_feature_record(options.feature_record_path) ? 0 : 1;
+        return dump_host_feature_record(options.feature_record_path) ? 0 : 1;
     }
 
     if (options.dump_specs_only) {
-        return cpueaxh_test::dump_generated_spec_manifest(options.spec_manifest_path) ? 0 : 1;
+        return dump_generated_spec_manifest(options.spec_manifest_path) ? 0 : 1;
     }
 
-    return cpueaxh_test::run_all_tests(options) ? 0 : 1;
+    return run_all_tests(options) ? 0 : 1;
 }
+
+} // namespace cpueaxh_test
+

@@ -2,6 +2,10 @@
 // Split from test/demo/framework.hpp: manual helper runners and low-level scenario helpers.
 // Included through test/framework/framework.hpp; keep include order there.
 
+#include "generated_specs.hpp"
+
+namespace cpueaxh_test {
+
 inline bool run_context_api_case(const std::string& name, std::uint64_t seed, Failure& failure) {
     cpueaxh_engine* engine = nullptr;
     cpueaxh_err err = cpueaxh_open(CPUEAXH_ARCH_X86, CPUEAXH_MODE_64, &engine);
@@ -4554,4 +4558,6 @@ inline bool run_pop_memory_dest_exception_case(const std::string& name, std::uin
 inline bool run_pop_sreg_invalid_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
 inline bool run_noncanonical_control_transfer_exception_case(const std::string& name, const std::vector<std::uint8_t>& code, std::uint64_t seed, bool target_in_rax, Failure& failure);
 inline bool run_iret_invalid_selector_exception_case(const std::string& name, std::uint64_t seed, Failure& failure);
+
+} // namespace cpueaxh_test
 

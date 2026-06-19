@@ -1027,12 +1027,57 @@ inline bool json_skip_value_strict(const std::string& json, std::size_t& pos, st
     return true;
 }
 
-inline bool json_validate_top_level_object(
+struct StrictJsonObject {
+    std::map<std::string, std::string> string_values;
+    std::map<std::string, std::uint64_t> u64_values;
+
+    bool required_string(const std::string& key, std::string& value) const {
+        const auto iter = string_values.find(key);
+        if (iter == string_values.end() || iter->second.empty()) {
+            return false;
+        }
+        value = iter->second;
+        return true;
+    }
+
+    bool required_u64(const std::string& key, std::uint64_t& value) const {
+        const auto iter = u64_values.find(key);
+        if (iter == u64_values.end()) {
+            return false;
+        }
+        value = iter->second;
+        return true;
+    }
+};
+
+inline bool json_parse_u64_token(const std::string& token, std::uint64_t& value) {
+    if (token.empty()) {
+        return false;
+    }
+    std::uint64_t result = 0;
+    for (char ch : token) {
+        if (ch < '0' || ch > '9') {
+            return false;
+        }
+        const std::uint64_t digit = static_cast<std::uint64_t>(ch - '0');
+        if (result > (std::numeric_limits<std::uint64_t>::max() - digit) / 10u) {
+            return false;
+        }
+        result = result * 10u + digit;
+    }
+    value = result;
+    return true;
+}
+
+inline bool json_parse_top_level_object(
     const std::string& json,
     const std::vector<std::string>& required_keys,
     const std::vector<std::string>& optional_keys,
+    bool allow_unknown_keys,
+    StrictJsonObject& object,
     std::string& error) {
     std::size_t pos = 0;
+    object = StrictJsonObject{};
     json_skip_ws(json, pos);
     if (pos >= json.size() || json[pos++] != '{') {
         error = "JSON document must be a top-level object";
@@ -1056,7 +1101,7 @@ inline bool json_validate_top_level_object(
             if (!json_parse_string_token(json, pos, key, error)) {
                 return false;
             }
-            if (allowed.find(key) == allowed.end()) {
+            if (!allow_unknown_keys && allowed.find(key) == allowed.end()) {
                 error = "unknown top-level JSON field: " + key;
                 return false;
             }
@@ -1070,8 +1115,24 @@ inline bool json_validate_top_level_object(
                 error = "expected ':' after JSON key: " + key;
                 return false;
             }
-            if (!json_skip_value_strict(json, pos, error)) {
-                return false;
+            json_skip_ws(json, pos);
+            if (pos < json.size() && json[pos] == '"') {
+                std::string value;
+                if (!json_parse_string_token(json, pos, value, error)) {
+                    return false;
+                }
+                object.string_values[key] = value;
+            }
+            else {
+                const std::size_t value_start = pos;
+                if (!json_skip_value_strict(json, pos, error)) {
+                    return false;
+                }
+                const std::string token = json.substr(value_start, pos - value_start);
+                std::uint64_t u64 = 0;
+                if (json_parse_u64_token(token, u64)) {
+                    object.u64_values[key] = u64;
+                }
             }
             json_skip_ws(json, pos);
             if (pos < json.size() && json[pos] == ',') {
@@ -1105,6 +1166,15 @@ inline bool json_validate_top_level_object(
     return true;
 }
 
+inline bool json_validate_top_level_object(
+    const std::string& json,
+    const std::vector<std::string>& required_keys,
+    const std::vector<std::string>& optional_keys,
+    std::string& error) {
+    StrictJsonObject object;
+    return json_parse_top_level_object(json, required_keys, optional_keys, false, object, error);
+}
+
 inline bool manual_replay_hint_matches_case(const std::string& replay_hint, const std::string& manual_case) {
     const std::string option = "--manual-case";
     const std::size_t option_pos = replay_hint.find(option);
@@ -1135,21 +1205,27 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
         return false;
     }
 
+    StrictJsonObject schema_object;
+    if (!json_parse_top_level_object(json, { "schema" }, {}, true, schema_object, error)) {
+        error = "replay JSON schema validation failed: " + error;
+        return false;
+    }
     std::string schema;
-    if (!json_extract_string(json, "schema", schema)) {
-        error = "replay file has unsupported schema: " + path;
+    if (!schema_object.required_string("schema", schema)) {
+        error = "replay file has no non-empty schema: " + path;
         return false;
     }
 
     if (schema == "cpueaxh.manual-index.v1") {
-        if (!json_validate_top_level_object(json,
+        StrictJsonObject object;
+        if (!json_parse_top_level_object(json,
             { "schema", "case_selector", "category", "coverage", "replay" },
-            {}, error)) {
+            {}, false, object, error)) {
             error = "manual replay JSON schema validation failed: " + error;
             return false;
         }
         std::string manual_case;
-        if (!json_extract_string(json, "case_selector", manual_case) || manual_case.empty()) {
+        if (!object.required_string("case_selector", manual_case)) {
             error = "manual replay file has no non-empty case_selector: " + path;
             return false;
         }
@@ -1159,7 +1235,7 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
             return false;
         }
         std::string category;
-        if (!json_extract_string(json, "category", category) || category.empty()) {
+        if (!object.required_string("category", category)) {
             error = "manual replay file has no non-empty category: " + path;
             return false;
         }
@@ -1172,7 +1248,7 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
             return false;
         }
         std::string coverage;
-        if (!json_extract_string(json, "coverage", coverage) || coverage.empty()) {
+        if (!object.required_string("coverage", coverage)) {
             error = "manual replay file has no non-empty coverage: " + path;
             return false;
         }
@@ -1181,7 +1257,7 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
             return false;
         }
         std::string replay_hint;
-        if (!json_extract_string(json, "replay", replay_hint) || replay_hint.empty()) {
+        if (!object.required_string("replay", replay_hint)) {
             error = "manual replay file has no non-empty replay command: " + path;
             return false;
         }
@@ -1202,22 +1278,23 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
         error = "replay file has unsupported schema: " + path;
         return false;
     }
-    if (!json_validate_top_level_object(json,
+    StrictJsonObject object;
+    if (!json_parse_top_level_object(json,
         { "schema", "case_selector", "seed_index" },
-        { "case_name", "detail", "spec_name", "seed", "machine_code", "replay_hint", "initial_state", "result_state", "host_features" },
-        error)) {
+        { "case_name", "detail", "spec_name", "seed", "image_hex", "replay_hint", "initial_state", "result_state", "host_features" },
+        false, object, error)) {
         error = "generated replay JSON schema validation failed: " + error;
         return false;
     }
 
     std::string exact_case;
-    if (!json_extract_string(json, "case_selector", exact_case) || exact_case.empty()) {
+    if (!object.required_string("case_selector", exact_case)) {
         error = "replay file has no non-empty case_selector: " + path;
         return false;
     }
 
     std::uint64_t seed_index = 0;
-    if (!json_extract_u64(json, "seed_index", seed_index)) {
+    if (!object.required_u64("seed_index", seed_index)) {
         error = "replay file has no numeric seed_index: " + path;
         return false;
     }
@@ -1986,4 +2063,6 @@ inline std::array<std::uint8_t, kDataSize> make_initial_data(std::uint64_t seed)
     }
     return data;
 }
+
+} // namespace cpueaxh_test
 

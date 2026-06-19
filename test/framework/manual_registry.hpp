@@ -2,6 +2,10 @@
 // Split from test/demo/framework.hpp: manual case registry and manual-suite orchestration.
 // Included through test/framework/framework.hpp; keep include order there.
 
+#include "manual_helpers.hpp"
+
+namespace cpueaxh_test {
+
 inline std::uint64_t manual_special_case_count(const HostFeatures& features) {
     const std::uint64_t per_seed_special = (features.avx ? 57ull : 44ull) + (features.popcnt ? 3ull : 0ull) + 12ull + (features.rdpid ? 3ull : 0ull)
         + (features.aes ? 6ull : 0ull)
@@ -2246,4 +2250,6 @@ inline const ProgramSpec* find_spec_by_name(const std::vector<ProgramSpec>& spec
     }
     return nullptr;
 }
+
+} // namespace cpueaxh_test
 

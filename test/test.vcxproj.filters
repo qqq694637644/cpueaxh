@@ -18,6 +18,27 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="framework\header_smoke_types.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="framework\header_smoke_code_builder.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="framework\header_smoke_generated_specs.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="framework\header_smoke_manual_helpers.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="framework\header_smoke_manual_registry.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="framework\header_smoke_runner.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="framework\header_smoke_cli.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="demo\framework.hpp">

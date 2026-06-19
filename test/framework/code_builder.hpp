@@ -2,6 +2,10 @@
 // Split from test/demo/framework.hpp: machine-code builder and emitter helpers.
 // Included through test/framework/framework.hpp; keep include order there.
 
+#include "types.hpp"
+
+namespace cpueaxh_test {
+
 class CodeBuilder {
 public:
     struct Label {
@@ -1155,4 +1159,6 @@ private:
     std::vector<std::size_t> labels_;
     std::vector<Patch> patches_;
 };
+
+} // namespace cpueaxh_test
 
