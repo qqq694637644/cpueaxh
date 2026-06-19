@@ -450,6 +450,29 @@ struct ProgramSpec {
     std::string name;
 };
 
+struct FlagComparePolicy {
+    std::uint64_t defined_output_mask = 0;
+    std::uint64_t must_preserve_mask = 0;
+    bool compare_all_defined = false;
+    const char* reason_if_not_compared = "no architecturally defined RFLAGS outputs are compared for this generated case";
+};
+
+struct ComparePolicy {
+    bool compare_gprs = true;
+    bool compare_rip = false;
+    bool compare_rsp_normalized = false;
+    bool compare_mxcsr = false;
+    bool compare_xmm = false;
+    bool compare_ymm = false;
+    bool compare_x87 = false;
+    const char* rip_reason_if_not_compared = "native final RIP is not captured as a pass/fail signal";
+    const char* mxcsr_reason_if_not_compared = "MXCSR is diagnostic-only unless a generated case stores the effect into compared state";
+    const char* xmm_reason_if_not_compared = "vector effects are compared through generated data regions unless explicitly enabled";
+    const char* ymm_reason_if_not_compared = "YMM upper state is diagnostic-only unless a generated case stores the effect into compared state";
+    const char* x87_reason_if_not_compared = "x87 state is covered by manual cases, not generated differential specs";
+    std::array<const char*, 1> memory_regions = {{ "main_data" }};
+};
+
 struct BuiltCase {
     ProgramSpec spec;
     std::uint64_t seed;
@@ -1798,6 +1821,93 @@ inline const char* family_name(Family family) {
     }
 }
 
+inline std::string generated_instruction_form(const ProgramSpec& spec) {
+    return spec.name;
+}
+
+inline std::string generated_operation_name(const ProgramSpec& spec) {
+    const std::size_t separator = spec.name.find('_');
+    if (separator == std::string::npos || separator == 0) {
+        return spec.name;
+    }
+    return spec.name.substr(0, separator);
+}
+
+inline const char* generated_feature_gate(const ProgramSpec& spec) {
+    const std::string& name = spec.name;
+    if (name.find("crc32") != std::string::npos) return "sse42";
+    if (name.find("movbe") != std::string::npos) return "movbe";
+    if (name.find("popcnt") != std::string::npos) return "popcnt";
+    if (name.find("rdpid") != std::string::npos) return "rdpid";
+    if (name.find("lzcnt") != std::string::npos) return "lzcnt";
+    if (name.find("tzcnt") != std::string::npos) return "bmi1";
+    if (name.find("aes") != std::string::npos || name.find("sha") != std::string::npos) return "aes/sha";
+    if (!name.empty() && name[0] == 'v') return "avx_or_later";
+    return "base";
+}
+
+inline const char* generated_native_safety(const ProgramSpec&) {
+    return "safe_user_mode";
+}
+
+inline FlagComparePolicy generated_flag_policy(const ProgramSpec& spec) {
+    FlagComparePolicy policy{};
+    policy.defined_output_mask = spec.flag_mask;
+    policy.must_preserve_mask = 0;
+    policy.compare_all_defined = spec.flag_mask != 0;
+    policy.reason_if_not_compared = spec.flag_mask == 0
+        ? "this generated case has no defined RFLAGS outputs to compare or validates effects through other compared state"
+        : "";
+    return policy;
+}
+
+inline void write_flag_name_array(std::ostream& file, std::uint64_t mask) {
+    struct FlagName { std::uint64_t bit; const char* name; };
+    const FlagName flags[] = {
+        { kFlagCF, "CF" }, { kFlagPF, "PF" }, { kFlagAF, "AF" }, { kFlagZF, "ZF" },
+        { kFlagSF, "SF" }, { kFlagDF, "DF" }, { kFlagOF, "OF" }
+    };
+    file << "[";
+    bool first = true;
+    for (const FlagName& flag : flags) {
+        if ((mask & flag.bit) == 0) {
+            continue;
+        }
+        if (!first) {
+            file << ", ";
+        }
+        first = false;
+        file << "\"" << flag.name << "\"";
+    }
+    file << "]";
+}
+
+inline void write_compare_policy(std::ostream& file, const ProgramSpec& spec) {
+    const ComparePolicy compare{};
+    const FlagComparePolicy flags = generated_flag_policy(spec);
+    file << "\"compare\": { ";
+    file << "\"gprs\": " << json_bool(compare.compare_gprs) << ", ";
+    file << "\"rip\": { \"enabled\": " << json_bool(compare.compare_rip)
+         << ", \"reason_if_disabled\": \"" << json_escape(compare.rip_reason_if_not_compared) << "\" }, ";
+    file << "\"rsp_normalized\": " << json_bool(compare.compare_rsp_normalized) << ", ";
+    file << "\"mxcsr\": { \"enabled\": " << json_bool(compare.compare_mxcsr)
+         << ", \"reason_if_disabled\": \"" << json_escape(compare.mxcsr_reason_if_not_compared) << "\" }, ";
+    file << "\"xmm\": { \"enabled\": " << json_bool(compare.compare_xmm)
+         << ", \"reason_if_disabled\": \"" << json_escape(compare.xmm_reason_if_not_compared) << "\" }, ";
+    file << "\"ymm\": { \"enabled\": " << json_bool(compare.compare_ymm)
+         << ", \"reason_if_disabled\": \"" << json_escape(compare.ymm_reason_if_not_compared) << "\" }, ";
+    file << "\"x87\": { \"enabled\": " << json_bool(compare.compare_x87)
+         << ", \"reason_if_disabled\": \"" << json_escape(compare.x87_reason_if_not_compared) << "\" }, ";
+    file << "\"memory_regions\": [\"" << compare.memory_regions[0] << "\"], ";
+    file << "\"flags\": { \"defined\": ";
+    write_flag_name_array(file, flags.defined_output_mask);
+    file << ", \"defined_output_mask\": " << flags.defined_output_mask
+         << ", \"must_preserve_mask\": " << flags.must_preserve_mask
+         << ", \"compare_all_defined\": " << json_bool(flags.compare_all_defined)
+         << ", \"reason_if_not_compared\": \"" << json_escape(flags.reason_if_not_compared) << "\" }";
+    file << " }";
+}
+
 inline bool write_generated_spec_manifest(const std::string& path, const std::vector<ProgramSpec>& specs, const HostFeatures& features) {
     if (path.empty()) {
         return true;
@@ -1834,10 +1944,18 @@ inline bool write_generated_spec_manifest(const std::string& path, const std::ve
     for (std::size_t index = 0; index < specs.size(); ++index) {
         const ProgramSpec& spec = specs[index];
         file << "    { \"name\": \"" << json_escape(spec.name) << "\", "
+             << "\"instruction_form\": \"" << json_escape(generated_instruction_form(spec)) << "\", "
              << "\"family\": \"" << family_name(spec.family) << "\", "
+             << "\"operation\": \"" << json_escape(generated_operation_name(spec)) << "\", "
+             << "\"encoding\": \"generated_by_case_builder\", "
+             << "\"operand_shape\": \"" << json_escape(spec.name) << "\", "
+             << "\"feature_gate\": \"" << generated_feature_gate(spec) << "\", "
+             << "\"native_safety\": \"" << generated_native_safety(spec) << "\", "
              << "\"op\": " << spec.op << ", "
              << "\"variant\": " << spec.variant << ", "
-             << "\"flag_mask\": " << spec.flag_mask << " }";
+             << "\"flag_mask\": " << spec.flag_mask << ", ";
+        write_compare_policy(file, spec);
+        file << " }";
         if (index + 1 != specs.size()) {
             file << ",";
         }

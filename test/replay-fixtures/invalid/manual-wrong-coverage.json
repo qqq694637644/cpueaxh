@@ -1,0 +1,7 @@
+{
+  "schema": "cpueaxh.manual-index.v1",
+  "case_selector": "exception_priority",
+  "category": "manual",
+  "coverage": "wrong coverage",
+  "replay": "test.exe --manual-case exception_priority --record-bundle failure-bundle"
+}

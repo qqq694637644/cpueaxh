@@ -98,6 +98,28 @@ function Assert-CpueaxhInternalUsesInstructionModules {
     }
 }
 
+function Assert-StrictReplayFixtures {
+    foreach ($path in @('test/replay-fixtures/valid', 'test/replay-fixtures/invalid')) {
+        if (-not (Test-Path -LiteralPath $path -PathType Container)) {
+            throw "Missing strict replay fixture directory: $path"
+        }
+        $fixtures = @(Get-ChildItem -LiteralPath $path -Filter '*.json' -File)
+        if ($fixtures.Count -eq 0) {
+            throw "Strict replay fixture directory has no JSON fixtures: $path"
+        }
+    }
+    Assert-FileContains -Path 'tools/validate-strict-replay.ps1' -Pattern 'test/replay-fixtures' -Message 'strict replay validator must consume checked-in fixtures.'
+    Assert-FileContains -Path 'tools/validate-strict-replay.ps1' -Pattern 'Get-ChildItem' -Message 'strict replay validator must enumerate checked-in fixtures.'
+}
+
+function Assert-GeneratedManifestPolicyFields {
+    Assert-FileContains -Path 'test/framework/types.hpp' -Pattern 'instruction_form' -Message 'generated manifest must emit instruction_form.'
+    Assert-FileContains -Path 'test/framework/types.hpp' -Pattern 'native_safety' -Message 'generated manifest must emit native_safety.'
+    Assert-FileContains -Path 'test/framework/types.hpp' -Pattern 'write_compare_policy' -Message 'generated manifest must emit explicit compare policy.'
+    Assert-FileContains -Path 'tools/validate-generated-spec-manifest.ps1' -Pattern 'reason_if_disabled' -Message 'manifest validator must require disabled-compare reasons.'
+    Assert-FileContains -Path 'tools/validate-generated-spec-manifest.ps1' -Pattern 'reason_if_not_compared' -Message 'manifest validator must require flag non-compare reasons.'
+}
+
 function Assert-NoLegacyFrameworkJsonExtractors {
     $content = Get-ChildItem -LiteralPath 'test/framework' -Filter '*.hpp' -File |
         ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }
@@ -310,6 +332,8 @@ Assert-ManualIndexRecords
 Assert-CoreHeadersHavePragmaOnce
 Assert-CoreHeaderSmokeTranslationUnits
 Assert-CpueaxhInternalUsesInstructionModules
+Assert-StrictReplayFixtures
+Assert-GeneratedManifestPolicyFields
 Assert-NoLegacyFrameworkJsonExtractors
 Assert-FrameworkHeadersDoNotRequireUmbrellaOrder
 

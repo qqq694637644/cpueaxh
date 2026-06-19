@@ -31,10 +31,34 @@ if ($duplicateNames.Count -ne 0) {
 }
 
 foreach ($spec in $manifest.specs) {
-    foreach ($field in @('name', 'family', 'op', 'variant', 'flag_mask')) {
+    foreach ($field in @('name', 'instruction_form', 'family', 'operation', 'encoding', 'operand_shape', 'feature_gate', 'native_safety', 'op', 'variant', 'flag_mask', 'compare')) {
         if ($null -eq $spec.$field) {
             throw "Generated spec '$($spec.name)' is missing field '$field'."
         }
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$spec.instruction_form)) {
+        throw "Generated spec '$($spec.name)' has an empty instruction_form."
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$spec.operation)) {
+        throw "Generated spec '$($spec.name)' has an empty operation."
+    }
+    foreach ($compareField in @('gprs', 'rip', 'rsp_normalized', 'mxcsr', 'xmm', 'ymm', 'x87', 'memory_regions', 'flags')) {
+        if ($null -eq $spec.compare.$compareField) {
+            throw "Generated spec '$($spec.name)' compare policy is missing '$compareField'."
+        }
+    }
+    foreach ($disabledState in @('rip', 'mxcsr', 'xmm', 'ymm', 'x87')) {
+        if ($false -eq [bool]$spec.compare.$disabledState.enabled -and [string]::IsNullOrWhiteSpace([string]$spec.compare.$disabledState.reason_if_disabled)) {
+            throw "Generated spec '$($spec.name)' compare policy disables '$disabledState' without a reason."
+        }
+    }
+    foreach ($flagField in @('defined', 'defined_output_mask', 'must_preserve_mask', 'compare_all_defined', 'reason_if_not_compared')) {
+        if ($null -eq $spec.compare.flags.$flagField) {
+            throw "Generated spec '$($spec.name)' flag compare policy is missing '$flagField'."
+        }
+    }
+    if ([uint64]$spec.compare.flags.defined_output_mask -eq 0 -and [string]::IsNullOrWhiteSpace([string]$spec.compare.flags.reason_if_not_compared)) {
+        throw "Generated spec '$($spec.name)' does not compare flags and has no reason_if_not_compared."
     }
 }
 

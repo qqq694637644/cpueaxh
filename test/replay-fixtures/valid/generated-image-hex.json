@@ -1,0 +1,7 @@
+{
+  "schema": "cpueaxh.failure.v1",
+  "case_selector": "add_rr_rax_rbx",
+  "seed_index": 0,
+  "image_hex": "00",
+  "replay_hint": "test.exe --case add_rr_rax_rbx --seed-index 0"
+}
