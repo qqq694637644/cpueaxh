@@ -66,6 +66,30 @@ Write-Fixture 'generated-trailing-comma.json' @'
 }
 '@
 
+Write-Fixture 'generated-duplicate-nested-field.json' @'
+{
+  "schema": "cpueaxh.failure.v1",
+  "case_selector": "add_rr_rax_rbx",
+  "seed_index": 0,
+  "initial_state": {
+    "schema": "cpueaxh.generated-initial-state.v1",
+    "schema": "duplicate"
+  }
+}
+'@
+
+Write-Fixture 'generated-malformed-nested-object.json' @'
+{
+  "schema": "cpueaxh.failure.v1",
+  "case_selector": "add_rr_rax_rbx",
+  "seed_index": 0,
+  "result_state": {
+    "schema": "cpueaxh.generated-result-state.v1",
+    "native_result": { "rip" "0x0" }
+  }
+}
+'@
+
 Write-Fixture 'manual-missing-coverage.json' @'
 {
   "schema": "cpueaxh.manual-index.v1",
@@ -119,6 +143,8 @@ Invoke-ReplayExpect 'generated-unknown-field.json' 2
 Invoke-ReplayExpect 'generated-duplicate-case-selector.json' 2
 Invoke-ReplayExpect 'generated-missing-seed-index.json' 2
 Invoke-ReplayExpect 'generated-trailing-comma.json' 2
+Invoke-ReplayExpect 'generated-duplicate-nested-field.json' 2
+Invoke-ReplayExpect 'generated-malformed-nested-object.json' 2
 Invoke-ReplayExpect 'manual-missing-coverage.json' 2
 Invoke-ReplayExpect 'manual-wrong-coverage.json' 2
 Invoke-ReplayExpect 'manual-unknown-field.json' 2

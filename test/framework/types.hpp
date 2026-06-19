@@ -883,7 +883,94 @@ inline bool json_parse_string_token(const std::string& json, std::size_t& pos, s
     return false;
 }
 
-inline bool json_skip_value_strict(const std::string& json, std::size_t& pos, std::string& error) {
+inline bool json_parse_value_syntax_strict(const std::string& json, std::size_t& pos, std::string& error);
+
+inline bool json_parse_array_syntax_strict(const std::string& json, std::size_t& pos, std::string& error) {
+    if (pos >= json.size() || json[pos++] != '[') {
+        error = "expected JSON array";
+        return false;
+    }
+    json_skip_ws(json, pos);
+    if (pos < json.size() && json[pos] == ']') {
+        ++pos;
+        return true;
+    }
+    while (pos < json.size()) {
+        if (!json_parse_value_syntax_strict(json, pos, error)) {
+            return false;
+        }
+        json_skip_ws(json, pos);
+        if (pos < json.size() && json[pos] == ',') {
+            ++pos;
+            json_skip_ws(json, pos);
+            if (pos < json.size() && json[pos] == ']') {
+                error = "trailing comma in JSON array";
+                return false;
+            }
+            continue;
+        }
+        if (pos < json.size() && json[pos] == ']') {
+            ++pos;
+            return true;
+        }
+        error = "expected ',' or ']' in JSON array";
+        return false;
+    }
+    error = "unterminated JSON array";
+    return false;
+}
+
+inline bool json_parse_object_syntax_strict(const std::string& json, std::size_t& pos, std::string& error) {
+    if (pos >= json.size() || json[pos++] != '{') {
+        error = "expected JSON object";
+        return false;
+    }
+    std::map<std::string, bool> seen;
+    json_skip_ws(json, pos);
+    if (pos < json.size() && json[pos] == '}') {
+        ++pos;
+        return true;
+    }
+    while (pos < json.size()) {
+        std::string key;
+        if (!json_parse_string_token(json, pos, key, error)) {
+            return false;
+        }
+        if (seen[key]) {
+            error = "duplicate nested JSON field: " + key;
+            return false;
+        }
+        seen[key] = true;
+        json_skip_ws(json, pos);
+        if (pos >= json.size() || json[pos++] != ':') {
+            error = "expected ':' after nested JSON key: " + key;
+            return false;
+        }
+        if (!json_parse_value_syntax_strict(json, pos, error)) {
+            return false;
+        }
+        json_skip_ws(json, pos);
+        if (pos < json.size() && json[pos] == ',') {
+            ++pos;
+            json_skip_ws(json, pos);
+            if (pos < json.size() && json[pos] == '}') {
+                error = "trailing comma in JSON object";
+                return false;
+            }
+            continue;
+        }
+        if (pos < json.size() && json[pos] == '}') {
+            ++pos;
+            return true;
+        }
+        error = "expected ',' or '}' in JSON object";
+        return false;
+    }
+    error = "unterminated JSON object";
+    return false;
+}
+
+inline bool json_parse_value_syntax_strict(const std::string& json, std::size_t& pos, std::string& error) {
     json_skip_ws(json, pos);
     if (pos >= json.size()) {
         error = "missing JSON value";
@@ -893,31 +980,11 @@ inline bool json_skip_value_strict(const std::string& json, std::size_t& pos, st
         std::string ignored;
         return json_parse_string_token(json, pos, ignored, error);
     }
-    if (json[pos] == '{' || json[pos] == '[') {
-        const char open = json[pos++];
-        const char close = (open == '{') ? '}' : ']';
-        int depth = 1;
-        while (pos < json.size() && depth > 0) {
-            if (json[pos] == '"') {
-                std::string ignored;
-                if (!json_parse_string_token(json, pos, ignored, error)) {
-                    return false;
-                }
-                continue;
-            }
-            if (json[pos] == open) {
-                ++depth;
-            }
-            else if (json[pos] == close) {
-                --depth;
-            }
-            ++pos;
-        }
-        if (depth != 0) {
-            error = "unterminated JSON container";
-            return false;
-        }
-        return true;
+    if (json[pos] == '{') {
+        return json_parse_object_syntax_strict(json, pos, error);
+    }
+    if (json[pos] == '[') {
+        return json_parse_array_syntax_strict(json, pos, error);
     }
     const std::size_t start = pos;
     while (pos < json.size() && json[pos] != ',' && json[pos] != '}' && json[pos] != ']' &&
@@ -938,6 +1005,10 @@ inline bool json_skip_value_strict(const std::string& json, std::size_t& pos, st
         return false;
     }
     return true;
+}
+
+inline bool json_skip_value_strict(const std::string& json, std::size_t& pos, std::string& error) {
+    return json_parse_value_syntax_strict(json, pos, error);
 }
 
 struct StrictJsonObject {

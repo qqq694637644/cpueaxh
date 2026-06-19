@@ -419,6 +419,66 @@ inline uint64_t read_memory_qword(CPU_CONTEXT* ctx, uint64_t address) {
     return value;
 }
 
+struct CpuReadResult8 {
+    bool ok;
+    uint8_t value;
+};
+
+struct CpuReadResult16 {
+    bool ok;
+    uint16_t value;
+};
+
+struct CpuReadResult32 {
+    bool ok;
+    uint32_t value;
+};
+
+struct CpuReadResult64 {
+    bool ok;
+    uint64_t value;
+};
+
+inline CpuReadResult8 read_memory_byte_checked(CPU_CONTEXT* ctx, uint64_t address) {
+    CpuReadResult8 result = { false, 0 };
+    if (!ctx || cpu_has_exception(ctx)) {
+        return result;
+    }
+    result.value = read_memory_byte(ctx, address);
+    result.ok = !cpu_has_exception(ctx);
+    return result;
+}
+
+inline CpuReadResult16 read_memory_word_checked(CPU_CONTEXT* ctx, uint64_t address) {
+    CpuReadResult16 result = { false, 0 };
+    if (!ctx || cpu_has_exception(ctx)) {
+        return result;
+    }
+    result.value = read_memory_word(ctx, address);
+    result.ok = !cpu_has_exception(ctx);
+    return result;
+}
+
+inline CpuReadResult32 read_memory_dword_checked(CPU_CONTEXT* ctx, uint64_t address) {
+    CpuReadResult32 result = { false, 0 };
+    if (!ctx || cpu_has_exception(ctx)) {
+        return result;
+    }
+    result.value = read_memory_dword(ctx, address);
+    result.ok = !cpu_has_exception(ctx);
+    return result;
+}
+
+inline CpuReadResult64 read_memory_qword_checked(CPU_CONTEXT* ctx, uint64_t address) {
+    CpuReadResult64 result = { false, 0 };
+    if (!ctx || cpu_has_exception(ctx)) {
+        return result;
+    }
+    result.value = read_memory_qword(ctx, address);
+    result.ok = !cpu_has_exception(ctx);
+    return result;
+}
+
 inline void write_memory_qword(CPU_CONTEXT* ctx, uint64_t address, uint64_t value) {
     if (cpu_has_exception(ctx)) {
         return;
