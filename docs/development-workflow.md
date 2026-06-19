@@ -85,6 +85,8 @@ Generated failure records include `initial_state` with GPRs, RIP, RFLAGS, MXCSR,
 
 Generated differential mismatches also include `result_state` with native and emulated GPRs, RIP, RFLAGS, MXCSR, and data bytes after execution. Native code/stack pointers are normalized to guest addresses before recording. This is diagnostic evidence only.
 
+Failure records also include `host_features` so the selected generated specs can be interpreted even when `failure.json` is copied without the rest of the bundle. The standalone `cpu-features.json` artifact remains the primary run-level feature evidence.
+
 `test.exe --dump-specs generated-specs.json` records the generated differential spec names selected under the current CPU feature matrix. `tools/validate-generated-spec-manifest.ps1` checks the manifest and verifies that regression replay records still point to existing generated specs.
 
 Manual/unsafe-native records with schema `cpueaxh.manual-index.v1` are replayable through `--replay`; the current implementation validates the manual index selector and runs the full manual special suite as a conservative coverage-group replay.

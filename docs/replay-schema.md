@@ -26,6 +26,7 @@ Accepted diagnostic fields:
 - `image_hex`: diagnostic only; replay regenerates the case image from the current generator.
 - `initial_state`: diagnostic only; replay regenerates the case state from `case_selector` and `seed_index`.
 - `result_state`: diagnostic only; replay recomputes native/emu results from `case_selector` and `seed_index`.
+- `host_features`: diagnostic only; the run-time feature matrix is also written separately to `cpu-features.json` when `--record-bundle` is used.
 - `detail`: diagnostic only.
 - `case_name`: diagnostic only.
 - `replay_hint`: diagnostic only.
@@ -78,6 +79,24 @@ Generated differential mismatches also include a `result_state` object after bot
 ```
 
 Native code and stack pointers are normalized to guest addresses before they are written. This result snapshot is diagnostic evidence for the observed mismatch and is not a replay source of truth.
+
+Failure records also include `host_features` when the runner can attach the same feature matrix used for generated test selection:
+
+```json
+{
+  "schema": "cpueaxh.host-features.v1",
+  "vendor": "GenuineIntel",
+  "max_leaf": 32,
+  "max_leaf7": 2,
+  "features": {
+    "avx": true,
+    "avx2": true,
+    "aes": true
+  }
+}
+```
+
+This is a copy of the feature-gate evidence needed to interpret `generated-specs.json` and the selected generated tests. It is not a claim that unlisted optional CPU features were tested.
 
 Replay command:
 

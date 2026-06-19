@@ -431,10 +431,26 @@ struct Failure {
     std::uint64_t emu_result_rip = 0;
     std::uint64_t emu_result_rflags = 0;
     std::uint32_t emu_result_mxcsr = 0;
+    std::string host_vendor;
+    std::uint32_t host_max_leaf = 0;
+    std::uint32_t host_max_leaf7 = 0;
+    bool host_feature_avx = false;
+    bool host_feature_avx2 = false;
+    bool host_feature_fma = false;
+    bool host_feature_sha = false;
+    bool host_feature_popcnt = false;
+    bool host_feature_ssse3 = false;
+    bool host_feature_sse41 = false;
+    bool host_feature_sse42 = false;
+    bool host_feature_aes = false;
+    bool host_feature_rdpid = false;
+    bool host_feature_bmi1 = false;
+    bool host_feature_lzcnt = false;
     bool has_seed = false;
     bool has_seed_index = false;
     bool has_initial_state = false;
     bool has_result_state = false;
+    bool has_host_features = false;
 };
 
 struct TestOptions {
@@ -618,6 +634,10 @@ inline bool ensure_parent_directory(const std::string& path) {
     return true;
 }
 
+inline const char* json_bool(bool value) {
+    return value ? "true" : "false";
+}
+
 inline bool write_failure_record(const std::string& path, const Failure& failure) {
     if (path.empty()) {
         return true;
@@ -705,6 +725,28 @@ inline bool write_failure_record(const std::string& path, const Failure& failure
         file << "      \"rflags\": \"" << hex64(failure.emu_result_rflags) << "\",\n";
         file << "      \"mxcsr\": \"" << hex64(static_cast<std::uint64_t>(failure.emu_result_mxcsr)) << "\",\n";
         file << "      \"data_hex\": \"" << json_escape(failure.emu_result_data_hex) << "\"\n";
+        file << "    }\n";
+        file << "  }";
+    }
+    if (failure.has_host_features) {
+        file << ",\n  \"host_features\": {\n";
+        file << "    \"schema\": \"cpueaxh.host-features.v1\",\n";
+        file << "    \"vendor\": \"" << json_escape(failure.host_vendor) << "\",\n";
+        file << "    \"max_leaf\": " << failure.host_max_leaf << ",\n";
+        file << "    \"max_leaf7\": " << failure.host_max_leaf7 << ",\n";
+        file << "    \"features\": {\n";
+        file << "      \"avx\": " << json_bool(failure.host_feature_avx) << ",\n";
+        file << "      \"avx2\": " << json_bool(failure.host_feature_avx2) << ",\n";
+        file << "      \"fma\": " << json_bool(failure.host_feature_fma) << ",\n";
+        file << "      \"sha\": " << json_bool(failure.host_feature_sha) << ",\n";
+        file << "      \"popcnt\": " << json_bool(failure.host_feature_popcnt) << ",\n";
+        file << "      \"ssse3\": " << json_bool(failure.host_feature_ssse3) << ",\n";
+        file << "      \"sse41\": " << json_bool(failure.host_feature_sse41) << ",\n";
+        file << "      \"sse42\": " << json_bool(failure.host_feature_sse42) << ",\n";
+        file << "      \"aes\": " << json_bool(failure.host_feature_aes) << ",\n";
+        file << "      \"rdpid\": " << json_bool(failure.host_feature_rdpid) << ",\n";
+        file << "      \"bmi1\": " << json_bool(failure.host_feature_bmi1) << ",\n";
+        file << "      \"lzcnt\": " << json_bool(failure.host_feature_lzcnt) << "\n";
         file << "    }\n";
         file << "  }";
     }
@@ -917,6 +959,9 @@ inline bool list_regression_replay_files(std::vector<std::string>& files, std::s
 }
 
 struct HostFeatures {
+    std::string vendor;
+    std::uint32_t max_leaf = 0;
+    std::uint32_t max_leaf7 = 0;
     bool avx = false;
     bool avx2 = false;
     bool fma = false;
@@ -1062,6 +1107,12 @@ inline HostFeatures query_host_features() {
     int cpu_info[4] = {};
     __cpuid(cpu_info, 0);
     const int max_leaf = cpu_info[0];
+    features.max_leaf = static_cast<std::uint32_t>(max_leaf);
+    char vendor[13] = {};
+    std::memcpy(vendor + 0, &cpu_info[1], sizeof(cpu_info[1]));
+    std::memcpy(vendor + 4, &cpu_info[3], sizeof(cpu_info[3]));
+    std::memcpy(vendor + 8, &cpu_info[2], sizeof(cpu_info[2]));
+    features.vendor = vendor;
     if (max_leaf >= 1) {
         __cpuidex(cpu_info, 1, 0);
         const bool has_fma = (cpu_info[2] & (1 << 12)) != 0;
@@ -1081,6 +1132,7 @@ inline HostFeatures query_host_features() {
     }
     if (max_leaf >= 7) {
         __cpuidex(cpu_info, 7, 0);
+        features.max_leaf7 = static_cast<std::uint32_t>(cpu_info[0]);
         features.avx2 = features.avx && (cpu_info[1] & (1 << 5)) != 0;
         features.bmi1 = (cpu_info[1] & (1 << 3)) != 0;
         features.sha = (cpu_info[1] & (1 << 29)) != 0;
@@ -1093,10 +1145,6 @@ inline HostFeatures query_host_features() {
         features.lzcnt = (cpu_info[2] & (1 << 5)) != 0;
     }
     return features;
-}
-
-inline const char* json_bool(bool value) {
-    return value ? "true" : "false";
 }
 
 inline bool write_host_feature_record(const std::string& path, const HostFeatures& features) {
@@ -1115,6 +1163,9 @@ inline bool write_host_feature_record(const std::string& path, const HostFeature
 
     file << "{\n";
     file << "  \"schema\": \"cpueaxh.host-features.v1\",\n";
+    file << "  \"vendor\": \"" << json_escape(features.vendor) << "\",\n";
+    file << "  \"max_leaf\": " << features.max_leaf << ",\n";
+    file << "  \"max_leaf7\": " << features.max_leaf7 << ",\n";
     file << "  \"features\": {\n";
     file << "    \"avx\": " << json_bool(features.avx) << ",\n";
     file << "    \"avx2\": " << json_bool(features.avx2) << ",\n";
@@ -1135,6 +1186,25 @@ inline bool write_host_feature_record(const std::string& path, const HostFeature
 
 inline bool dump_host_feature_record(const std::string& path) {
     return write_host_feature_record(path, query_host_features());
+}
+
+inline void attach_host_features_to_failure(Failure& failure, const HostFeatures& features) {
+    failure.host_vendor = features.vendor;
+    failure.host_max_leaf = features.max_leaf;
+    failure.host_max_leaf7 = features.max_leaf7;
+    failure.host_feature_avx = features.avx;
+    failure.host_feature_avx2 = features.avx2;
+    failure.host_feature_fma = features.fma;
+    failure.host_feature_sha = features.sha;
+    failure.host_feature_popcnt = features.popcnt;
+    failure.host_feature_ssse3 = features.ssse3;
+    failure.host_feature_sse41 = features.sse41;
+    failure.host_feature_sse42 = features.sse42;
+    failure.host_feature_aes = features.aes;
+    failure.host_feature_rdpid = features.rdpid;
+    failure.host_feature_bmi1 = features.bmi1;
+    failure.host_feature_lzcnt = features.lzcnt;
+    failure.has_host_features = true;
 }
 
 inline const char* family_name(Family family) {
@@ -10098,6 +10168,11 @@ inline bool run_generated_case_by_name(
 
 inline bool run_all_tests(const TestOptions& options) {
     const HostFeatures features = query_host_features();
+    auto record_failure = [&](Failure& failure) -> bool {
+        attach_host_features_to_failure(failure, features);
+        return write_failure_record(options.failure_record_path, failure);
+    };
+
     if (!write_host_feature_record(options.feature_record_path, features)) {
         return false;
     }
@@ -10135,7 +10210,7 @@ inline bool run_all_tests(const TestOptions& options) {
         std::cout << "cpueaxh test cases: " << total << std::endl;
         Failure failure;
         if (!run_manual_special_tests(features, executed, total, &failure)) {
-            write_failure_record(options.failure_record_path, failure);
+            record_failure(failure);
             return false;
         }
         std::cout << "PASS " << executed << "/" << total << std::endl;
@@ -10181,7 +10256,7 @@ inline bool run_all_tests(const TestOptions& options) {
             failure.case_name = "regression_corpus";
             failure.detail = regression_error;
             std::cerr << regression_error << std::endl;
-            write_failure_record(options.failure_record_path, failure);
+            record_failure(failure);
             return false;
         }
     }
@@ -10219,7 +10294,7 @@ inline bool run_all_tests(const TestOptions& options) {
         failure.case_name = "harness_init";
         failure.detail = harness.init_error();
         std::cerr << failure.detail << std::endl;
-        write_failure_record(options.failure_record_path, failure);
+        record_failure(failure);
         return false;
     }
 
@@ -10232,7 +10307,7 @@ inline bool run_all_tests(const TestOptions& options) {
             attach_built_case_to_failure(failure, built, seed_index);
             std::cerr << "FAIL " << failure.case_name << std::endl;
             std::cerr << failure.detail << std::endl;
-            write_failure_record(options.failure_record_path, failure);
+            record_failure(failure);
             return false;
         }
         ++executed;
@@ -10263,7 +10338,7 @@ inline bool run_all_tests(const TestOptions& options) {
     if (run_manual) {
         Failure failure;
         if (!run_manual_special_tests(features, executed, total, &failure)) {
-            write_failure_record(options.failure_record_path, failure);
+            record_failure(failure);
             return false;
         }
     }
@@ -10277,7 +10352,7 @@ inline bool run_all_tests(const TestOptions& options) {
             failure.detail = replay_error;
             std::cerr << "FAIL regression " << regression_file << std::endl;
             std::cerr << replay_error << std::endl;
-            write_failure_record(options.failure_record_path, failure);
+            record_failure(failure);
             return false;
         }
 
@@ -10286,7 +10361,7 @@ inline bool run_all_tests(const TestOptions& options) {
             std::cerr << "FAIL regression " << regression_file << std::endl;
             std::cerr << failure.case_name << std::endl;
             std::cerr << failure.detail << std::endl;
-            write_failure_record(options.failure_record_path, failure);
+            record_failure(failure);
             return false;
         }
         ++executed;
