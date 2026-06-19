@@ -412,10 +412,18 @@ struct Failure {
     std::string detail;
     std::string spec_name;
     std::string image_hex;
+    std::array<std::uint64_t, 16> initial_regs{};
+    std::array<std::string, 16> initial_xmm_hex{};
+    std::string initial_data_hex;
     std::uint64_t seed = 0;
     std::uint64_t seed_index = 0;
+    std::uint64_t initial_rip = 0;
+    std::uint64_t initial_rflags = 0;
+    std::uint32_t initial_mxcsr = 0;
+    std::uint32_t initial_data_offset = 0;
     bool has_seed = false;
     bool has_seed_index = false;
+    bool has_initial_state = false;
 };
 
 struct TestOptions {
@@ -511,6 +519,29 @@ inline bool selected_by_filter(const ProgramSpec& spec, const TestOptions& optio
     return selected_by_filter(spec.name, options);
 }
 
+inline const char* gpr_name_by_index(std::size_t index) {
+    static constexpr const char* names[] = {
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
+        "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"
+    };
+    return index < (sizeof(names) / sizeof(names[0])) ? names[index] : "unknown";
+}
+
+inline std::string xmm_hex(const cpueaxh_x86_xmm& value) {
+    return hex64(value.high) + hex64(value.low).substr(2);
+}
+
+inline std::vector<std::uint8_t> generated_case_initial_data(const BuiltCase& built) {
+    if (built.data_offset > built.image.size()) {
+        return {};
+    }
+    const std::size_t offset = static_cast<std::size_t>(built.data_offset);
+    if (offset + kDataSize > built.image.size()) {
+        return {};
+    }
+    return std::vector<std::uint8_t>(built.image.begin() + offset, built.image.begin() + offset + kDataSize);
+}
+
 inline void attach_built_case_to_failure(Failure& failure, const BuiltCase& built, std::uint64_t seed_index) {
     if (failure.case_name.empty()) {
         failure.case_name = built.spec.name + ":" + std::to_string(built.seed);
@@ -519,8 +550,21 @@ inline void attach_built_case_to_failure(Failure& failure, const BuiltCase& buil
     failure.image_hex = bytes_hex(built.image);
     failure.seed = built.seed;
     failure.seed_index = seed_index;
+    for (std::size_t index = 0; index < failure.initial_regs.size(); ++index) {
+        failure.initial_regs[index] = built.initial_context.regs[index];
+    }
+    for (std::size_t index = 0; index < failure.initial_xmm_hex.size(); ++index) {
+        failure.initial_xmm_hex[index] = xmm_hex(built.initial_context.xmm[index]);
+    }
+    const std::vector<std::uint8_t> initial_data = generated_case_initial_data(built);
+    failure.initial_data_hex = bytes_hex(initial_data);
+    failure.initial_rip = built.initial_context.rip;
+    failure.initial_rflags = built.initial_context.rflags;
+    failure.initial_mxcsr = built.initial_context.mxcsr;
+    failure.initial_data_offset = built.data_offset;
     failure.has_seed = true;
     failure.has_seed_index = true;
+    failure.has_initial_state = true;
 }
 
 inline bool ensure_parent_directory(const std::string& path) {
@@ -568,6 +612,32 @@ inline bool write_failure_record(const std::string& path, const Failure& failure
     }
     if (!failure.image_hex.empty()) {
         file << ",\n  \"image_hex\": \"" << json_escape(failure.image_hex) << "\"";
+    }
+    if (failure.has_initial_state) {
+        file << ",\n  \"initial_state\": {\n";
+        file << "    \"schema\": \"cpueaxh.generated-initial-state.v1\",\n";
+        file << "    \"gprs\": {";
+        for (std::size_t index = 0; index < failure.initial_regs.size(); ++index) {
+            if (index != 0) {
+                file << ",";
+            }
+            file << "\n      \"" << gpr_name_by_index(index) << "\": \"" << hex64(failure.initial_regs[index]) << "\"";
+        }
+        file << "\n    },\n";
+        file << "    \"rip\": \"" << hex64(failure.initial_rip) << "\",\n";
+        file << "    \"rflags\": \"" << hex64(failure.initial_rflags) << "\",\n";
+        file << "    \"mxcsr\": \"" << hex64(static_cast<std::uint64_t>(failure.initial_mxcsr)) << "\",\n";
+        file << "    \"xmm\": [";
+        for (std::size_t index = 0; index < failure.initial_xmm_hex.size(); ++index) {
+            if (index != 0) {
+                file << ",";
+            }
+            file << "\n      \"" << json_escape(failure.initial_xmm_hex[index]) << "\"";
+        }
+        file << "\n    ],\n";
+        file << "    \"data_offset\": " << failure.initial_data_offset << ",\n";
+        file << "    \"data_hex\": \"" << json_escape(failure.initial_data_hex) << "\"\n";
+        file << "  }";
     }
     if (!failure.spec_name.empty() && failure.has_seed_index) {
         file << ",\n  \"case_selector\": \"" << json_escape(failure.spec_name) << "\"";

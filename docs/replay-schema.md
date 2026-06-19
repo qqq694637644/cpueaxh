@@ -24,9 +24,31 @@ Accepted diagnostic fields:
 
 - `seed`: diagnostic only; replay derives the deterministic seed from `case_selector` and `seed_index`.
 - `image_hex`: diagnostic only; replay regenerates the case image from the current generator.
+- `initial_state`: diagnostic only; replay regenerates the case state from `case_selector` and `seed_index`.
 - `detail`: diagnostic only.
 - `case_name`: diagnostic only.
 - `replay_hint`: diagnostic only.
+
+Generated failures emitted by `--record-failure` / `--record-bundle` include an `initial_state` object when the runner can attach generated case metadata:
+
+```json
+{
+  "schema": "cpueaxh.generated-initial-state.v1",
+  "gprs": {
+    "rax": "0x0000000000000000"
+  },
+  "rip": "0x0000000000000000",
+  "rflags": "0x0000000000000246",
+  "mxcsr": "0x0000000000001f80",
+  "xmm": [
+    "0x00000000000000000000000000000000"
+  ],
+  "data_offset": 64,
+  "data_hex": "01 02 03"
+}
+```
+
+This snapshot is for debugging and minimization. It must not replace deterministic replay from `case_selector + seed_index`.
 
 Replay command:
 
@@ -95,6 +117,7 @@ CI validates this manifest with `tools/validate-generated-spec-manifest.ps1`. Th
 `test.exe --record-bundle <dir>` writes structured diagnostics into a directory. The current bundle contains:
 
 - `cpu-features.json`: written at test start with schema `cpueaxh.host-features.v1`.
+- `generated-specs.json`: written at test start with schema `cpueaxh.generated-specs.v1`.
 - `failure.json`: written only when the runner can identify a failing case.
 
 This option is useful for CI artifacts because it keeps failure data and feature-gate evidence together. `--record-bundle` can be used with normal full runs, generated long fuzz, and `--replay`.
@@ -137,4 +160,4 @@ On CI failure, the workflow uploads a diagnostics bundle containing:
 - `test-run.log` from the full regression run.
 - `cpu-info.txt` from the Windows runner.
 
-These files are enough to identify the failing generated case and reproduce it locally when the failure is generated-case based. Future work may add machine-state snapshots or minimized replay bundles.
+These files are enough to identify the failing generated case and reproduce it locally when the failure is generated-case based. Generated failures also include an initial scalar/vector/data snapshot for debugging and minimization.
