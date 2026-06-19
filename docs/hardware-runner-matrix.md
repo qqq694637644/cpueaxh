@@ -1,30 +1,36 @@
-# Hardware runner matrix
+# GitHub hosted runner feature matrix
 
-The default PR gate uses GitHub-hosted `windows-2022` and should remain the required baseline. It cannot prove full AMD64 feature coverage because runner CPU features vary and some instructions are unsafe to execute in ordinary user mode.
+The validation framework currently uses GitHub-hosted `windows-2022` as the required baseline. The test executable queries CPUID and OS-enabled state at runtime, then selects only generated specs whose feature gates are available on that runner.
 
-## Recommended self-hosted labels
+This project does not require self-hosted hardware for the current regression gate. Optional CPU features vary across GitHub-hosted runners, so every run must preserve the observed feature matrix and generated spec manifest as evidence.
 
-Use dedicated Windows x64 machines with stable labels:
+## Required hosted-runner evidence
 
-| Label | Purpose |
-| --- | --- |
-| `self-hosted-windows-intel-sse2-baseline` | baseline integer/SSE2 coverage |
-| `self-hosted-windows-intel-avx2` | AVX/AVX2/FMA/BMI coverage |
-| `self-hosted-windows-amd-zen3` | AMD long-mode and feature behavior comparison |
-| `self-hosted-windows-amd-zen4` | newer AMD feature behavior comparison |
-| `self-hosted-windows-intel-avx512` | AVX-512 and extended vector behavior |
-| `self-hosted-windows-controlled-system` | privileged/model/controlled-environment experiments only |
+The required `msvc-test` workflow records:
+
+- `cpu-info.txt` from Windows runner inventory;
+- `cpu-features.json` from `test.exe --dump-features`;
+- `generated-specs.json` from `test.exe --dump-specs`;
+- `test-specs.log` from `test.exe --list`;
+- `manual-index.log` from `test.exe --list-manual`;
+- `stage3-gates.log` from `test.exe --list-gates`;
+- `manual-replay.log` from the manual coverage sample;
+- `test-run.log` from the full regression suite;
+- replay bundles when a recordable failure occurs.
 
 ## Test selection
 
-Every runner should query CPUID at runtime and only execute tests whose features are supported. Do not assume AES, SHA, AVX2, AVX-512, BMI, FMA, CET, RDRAND, RDSEED, XSAVE, or other optional features are present.
-
-Recommended commands:
+The generated tests are feature-gated at runtime. Do not assume AES, SHA, AVX2, AVX-512, BMI, FMA, CET, RDRAND, RDSEED, XSAVE, or other optional features are present. The correct source of truth for a CI run is the pair of files:
 
 ```powershell
-.\x64\Release\test.exe --record-failure failure.json
-.\x64\Release\test.exe --generated-seeds 512 --record-failure failure.json
-.\x64\Release\test.exe --list-manual
+.\x64\Release\test.exe --dump-features cpu-features.json
+.\x64\Release\test.exe --dump-specs generated-specs.json
+```
+
+For longer hosted fuzz, use the scheduled/manual `extended-regression.yml` workflow or run:
+
+```powershell
+.\x64\Release\test.exe --generated-seeds 512 --record-bundle failure-bundle
 ```
 
 ## Unsafe-native policy
@@ -42,16 +48,6 @@ They require one of these strategies:
 1. software/model tests;
 2. escape callback tests;
 3. manual special tests;
-4. controlled self-hosted machine tests;
-5. explicit `unsafe_for_native` status in `docs/instruction-status.yml`.
+4. explicit `unsafe_for_native` status in `docs/instruction-status.yml`.
 
-## Required evidence
-
-Self-hosted runs should preserve:
-
-- runner label and machine class;
-- CPU vendor/model/features;
-- test command line;
-- failure JSON if any;
-- full test log;
-- minimized replay or manual case identifier.
+The current PR gate is intentionally hosted-runner-only and should not introduce self-hosted hardware requirements.

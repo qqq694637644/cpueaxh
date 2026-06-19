@@ -14,6 +14,9 @@ on:
       - "docs/replay-schema.md"
       - "docs/instruction-test-generator-template.md"
       - "docs/hardware-runner-matrix.md"
+      - "docs/stage3-regression-gates.yml"
+      - "docs/generator-templates.yml"
+      - "tools/**"
       - "cpueaxh.sln"
       - "**/*.vcxproj"
       - "**/*.props"
@@ -31,6 +34,9 @@ on:
       - "docs/replay-schema.md"
       - "docs/instruction-test-generator-template.md"
       - "docs/hardware-runner-matrix.md"
+      - "docs/stage3-regression-gates.yml"
+      - "docs/generator-templates.yml"
+      - "tools/**"
       - "cpueaxh.sln"
       - "**/*.vcxproj"
       - "**/*.props"
@@ -48,6 +54,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate regression contract
+        shell: pwsh
+        run: ./tools/validate-regression-contract.ps1
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -74,6 +84,14 @@ jobs:
             Format-List |
             Out-File -FilePath cpu-info.txt -Encoding utf8
 
+      - name: Dump test feature matrix
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --dump-features cpu-features.json
+          $exitCode = $LASTEXITCODE
+          Get-Content cpu-features.json
+          if ($exitCode -ne 0) { exit $exitCode }
+
       - name: List generated differential specs
         shell: pwsh
         run: |
@@ -81,6 +99,22 @@ jobs:
           $exitCode = $LASTEXITCODE
           Get-Content test-specs.log
           if ($exitCode -ne 0) { exit $exitCode }
+
+      - name: Dump generated spec manifest
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --dump-specs generated-specs.json
+          $exitCode = $LASTEXITCODE
+          Get-Content generated-specs.json
+          if ($exitCode -ne 0) { exit $exitCode }
+
+      - name: Validate generated spec manifest
+        shell: pwsh
+        run: ./tools/validate-generated-spec-manifest.ps1 -ManifestPath generated-specs.json
+
+      - name: Validate instruction status coverage
+        shell: pwsh
+        run: ./tools/validate-instruction-status.ps1 -ManifestPath generated-specs.json
 
       - name: List manual coverage index
         shell: pwsh
@@ -90,10 +124,30 @@ jobs:
           Get-Content manual-index.log
           if ($exitCode -ne 0) { exit $exitCode }
 
+      - name: List stage3 regression gates
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --list-gates *> stage3-gates.log
+          $exitCode = $LASTEXITCODE
+          Get-Content stage3-gates.log
+          if ($exitCode -ne 0) { exit $exitCode }
+
+      - name: Validate stage3 gate output
+        shell: pwsh
+        run: ./tools/validate-stage3-gate-output.ps1 -OutputPath stage3-gates.log
+
+      - name: Replay manual coverage sample
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --replay test\manual\exception_priority.json --record-bundle manual-replay-bundle *> manual-replay.log
+          $exitCode = $LASTEXITCODE
+          Get-Content manual-replay.log
+          if ($exitCode -ne 0) { exit $exitCode }
+
       - name: Run full regression suite
         shell: pwsh
         run: |
-          & "$env:CPUEAXH_TEST_EXE" --record-failure failure.json *> test-run.log
+          & "$env:CPUEAXH_TEST_EXE" --record-bundle failure-bundle *> test-run.log
           $exitCode = $LASTEXITCODE
           Get-Content test-run.log
           if ($exitCode -ne 0) { exit $exitCode }
@@ -105,8 +159,13 @@ jobs:
           name: cpueaxh-failure-diagnostics
           if-no-files-found: ignore
           path: |
-            failure.json
+            failure-bundle/**
+            manual-replay-bundle/**
+            cpu-features.json
+            generated-specs.json
             test-specs.log
             manual-index.log
+            stage3-gates.log
+            manual-replay.log
             test-run.log
             cpu-info.txt

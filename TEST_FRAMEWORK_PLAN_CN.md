@@ -162,11 +162,11 @@ Windows x64 Release build
 
 第一阶段 workflow 使用 `paths` 过滤触发范围：`.github/workflows/**`、`.github/pull_request_template.md`、`cpueaxh/**`、`test/**`、`TEST_FRAMEWORK_PLAN_CN.md`、开发契约文档、`docs/instruction-status.yml`、`cpueaxh.sln`、`*.vcxproj`、`*.props`、`*.targets` 相关改动才触发。
 
-Nightly 或自托管真机可扩展：
+GitHub hosted runner 可扩展：
 
 ```text
 更多 seed
-更多 CPU feature 矩阵
+记录实际 CPU feature 矩阵
 更长时间 fuzz
 AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 ```
@@ -178,13 +178,18 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 ```powershell
 .\x64\Release\test.exe --list
 .\x64\Release\test.exe --list-manual
+.\x64\Release\test.exe --list-gates
+.\x64\Release\test.exe --manual-case exception_priority
 .\x64\Release\test.exe --case add_rr_rax_rbx
 .\x64\Release\test.exe --filter-exact add_rr_rax_rbx
 .\x64\Release\test.exe --filter add_rr_rax_rbx
 .\x64\Release\test.exe --filter add_rr_rax_rbx --seed-index 0
-.\x64\Release\test.exe --generated-seeds 512 --record-failure failure.json
+.\x64\Release\test.exe --generated-seeds 512 --record-bundle failure-bundle
 .\x64\Release\test.exe --replay test\regression\add_rr_rax_rbx_seed0.json
-.\x64\Release\test.exe --record-failure failure.json
+.\x64\Release\test.exe --replay test\manual\exception_priority.json --record-bundle failure-bundle
+.\x64\Release\test.exe --dump-features cpu-features.json
+.\x64\Release\test.exe --dump-specs generated-specs.json
+.\x64\Release\test.exe --record-bundle failure-bundle
 .\x64\Release\test.exe --no-manual
 .\x64\Release\test.exe --no-regression-corpus
 ```
@@ -195,19 +200,24 @@ AVX2 / AVX-512 / AES / SHA / BMI / FMA / CET 等特性专项
 | --- | --- |
 | `--list` | 列出当前生成式差分测试 spec，便于审查和定位 |
 | `--list-manual` | 列出 manual/unsafe-native 覆盖索引 |
+| `--list-gates` | 列出第三阶段 regression gate 索引 |
+| `--manual-case <name>` | 复现一个 manual/unsafe-native 覆盖组；当前会运行完整 manual special suite 以避免误报 |
 | `--case <exact-name>` | 精确选择一个生成式差分测试 spec |
 | `--filter-exact <exact-name>` | `--case` 的别名 |
 | `--filter <substring>` | 只运行名称包含该 substring 的 spec，用于新指令定向开发；不是精确单 case selector |
 | `--seed-index <index>` | 只运行一个 deterministic seed，便于复现；默认完整回归使用 0..127，`--generated-seeds` 可扩大范围 |
 | `--generated-seeds <count>` | 控制每个生成式 spec 运行的 seed 数，供 long fuzz / nightly 使用 |
 | `--replay <path>` | 从 failure/regression JSON 中读取 `case_selector` 和 `seed_index` 并复现 |
+| `--dump-features <path>` | 输出测试程序自身识别到的 feature-gated 测试矩阵，schema 为 `cpueaxh.host-features.v1` |
+| `--dump-specs <path>` | 输出当前硬件 feature gate 下实际生成的 spec manifest，schema 为 `cpueaxh.generated-specs.v1` |
 | `--record-failure <path>` | 将第一个失败写成 JSON |
+| `--record-bundle <dir>` | 将 `cpu-features.json` 和失败时的 `failure.json` 写入诊断目录 |
 | `--no-manual` | 跳过手写特殊用例，主要用于快速定向调试 |
 | `--no-regression-corpus` | 跳过 `test/regression/*.json` replay corpus |
 
 默认无参数时必须运行完整回归：生成式差分、manual special cases，以及 `test/regression/*.json` replay corpus，不应默认进入精简模式。
 
-list 模式不允许吞掉运行参数：`--list-manual` 必须单独使用；`--list` 只能和 `--case` / `--filter-exact` / `--filter` 组合用于筛选列表，不能和 `--seed-index`、`--generated-seeds`、`--record-failure`、`--replay` 或 skip 选项组合。
+list 模式不允许吞掉运行参数：`--list-manual` 和 `--list-gates` 必须单独使用；`--list` 只能和 `--case` / `--filter-exact` / `--filter` 组合用于筛选列表，不能和 `--manual-case`、`--seed-index`、`--generated-seeds`、`--record-failure`、`--record-bundle`、`--replay` 或 skip 选项组合。
 
 ## 5. 失败记录格式
 
@@ -227,19 +237,35 @@ list 模式不允许吞掉运行参数：`--list-manual` 必须单独使用；`-
 }
 ```
 
-第二阶段已经将生成式用例 replay 从 substring `--filter` 提升为精确 selector：`failure.json` 使用必填 `case_selector`，要求 `schema` 为 `cpueaxh.failure.v1`，要求 `seed_index` 为未加引号的 JSON number，`replay_hint` 使用 `--case <exact-name> --seed-index <n>`，并支持 `test.exe --replay <path>`。`--seed-index` 不再受默认 seed 总数限制，因此 long fuzz 中失败的单个 seed 可以直接用 replay hint 复现。默认完整回归会在 `test/regression/` 缺失、不可枚举或没有 replay JSON 时失败，避免 corpus 静默消失。当前 replay 范围仍限定在生成式差分用例；manual 或 unsafe-native 用例仍需要显式 C++ 测试覆盖。
+第二阶段已经将生成式用例 replay 从 substring `--filter` 提升为精确 selector：`failure.json` 使用必填 `case_selector`，要求 `schema` 为 `cpueaxh.failure.v1`，要求 `seed_index` 为未加引号的 JSON number，`replay_hint` 使用 `--case <exact-name> --seed-index <n>`，并支持 `test.exe --replay <path>`。`--seed-index` 不再受默认 seed 总数限制，因此 long fuzz 中失败的单个 seed 可以直接用 replay hint 复现。`cpueaxh.manual-index.v1` 记录提供 manual/unsafe-native 覆盖组的结构化 replay 入口；当前 manual replay 会严格验证 `case_selector`、`category`、manual index category 和 `replay` 中的 `--manual-case <name>` 一致，并运行完整 manual special suite，而不是误称可以精确执行尚未拆分的单条 manual case。`--dump-features`、`--dump-specs` 和 `--record-bundle` 提供最小结构化证据包，记录测试程序自身识别的 feature matrix、当前实际 generated spec manifest 与失败 replay 记录。默认完整回归会在 `test/regression/` 缺失、不可枚举或没有 replay JSON 时失败，避免 corpus 静默消失。
 
-后续可扩展字段：
+当前 generated failure 已落地的结构化初始状态字段：
 
 ```text
 initial_regs
 initial_rflags
-initial_xmm/ymm/zmm
+initial_xmm
 initial_mxcsr
 initial_memory
+```
+
+这些字段写入 `initial_state`，schema 为 `cpueaxh.generated-initial-state.v1`，用于 debugging 和最小化。实际 replay 仍必须以 `case_selector + seed_index` 为准，不能把快照当作替代生成器。
+
+当前 generated differential mismatch 已落地的结果快照字段：
+
+```text
 native_result
 emu_result
-host_cpu_vendor/model/features
+```
+
+这些字段写入 `result_state`，schema 为 `cpueaxh.generated-result-state.v1`，包含 native/emu 的 GPR、RIP、RFLAGS、MXCSR 和数据区快照。native 指针值会先规范化为 guest 地址。该快照只用于分析差异，replay 仍以 deterministic selector/seed 机制为准。
+
+当前 failure record 也会内嵌 `host_features`，schema 为 `cpueaxh.host-features.v1`，包含 CPUID vendor、brand string、family/model/stepping、max leaf、extended max leaf、leaf7 max subleaf 和测试程序用于 feature gate 的布尔矩阵。它和 `cpu-features.json` 一致，用于解释当前 runner 实际执行了哪些 generated specs。
+
+后续可继续扩展字段：
+
+```text
+initial_ymm/zmm/k/x87
 ```
 
 ## 6. 指令状态表
@@ -252,7 +278,7 @@ docs/instruction-status.yml
 
 记录指令实现状态、测试覆盖状态、feature gate、已知风险。
 
-状态表必须保守解释：`implemented` 只代表状态表中列明的 form/encoding 已实现并受回归保护；未列明的 operand-size、addressing form、prefix/VEX/EVEX encoding、feature-gated form 不能因为同 mnemonic 标为 `implemented` 就推断为已支持。
+状态表必须保守解释：`implemented` 只代表状态表中列明的 form/encoding 已实现并受回归保护；未列明的 operand-size、addressing form、prefix/VEX/EVEX encoding、feature-gated form 不能因为同 mnemonic 标为 `implemented` 就推断为已支持。CI 通过 `tools/validate-instruction-status.ps1` 交叉检查状态表、`generated-specs.json` 和 regression corpus，避免 coverage 声明漂移。
 
 建议状态包括：
 
@@ -297,21 +323,23 @@ AI 不允许做以下事情：
 声称未运行过的测试已经通过
 ```
 
-## 8. 真机验证矩阵
+## 8. GitHub runner 验证矩阵
 
-GitHub hosted runner 可以作为基础门禁，但不适合覆盖完整 AMD64 硬件特性。
+GitHub hosted runner 是当前验证门禁目标。测试程序会在运行时通过 CPUID 和 OS-enabled state 检测 feature，并只运行当前 runner 支持的 generated specs。因此不需要引入自托管硬件作为当前 PR 门禁。
 
-建议后续准备自托管真机 runner：
+每次 hosted CI 都必须保留：
 
 ```text
-windows-2022-intel-sse2-baseline
-windows-2022-intel-avx2
-windows-2022-amd-zen3
-windows-2022-amd-zen4
-windows-2022-intel-avx512
+cpu-info.txt
+cpu-features.json
+generated-specs.json
+test-specs.log
+manual-index.log
+stage3-gates.log
+test-run.log
 ```
 
-每台机器运行前通过 CPUID 检测 feature，只运行硬件支持的测试。
+每次运行前通过 CPUID 检测 feature，只运行当前 GitHub runner 支持的测试。
 
 可选 feature 包括：
 
@@ -347,7 +375,7 @@ VMX/SVM 虚拟化指令
 ```text
 1. 纯软件建模：按手册实现，不直接真机执行。
 2. escape：由 host callback 或已有 escape 机制处理。
-3. 内核/虚拟化专用测试：只在受控自托管机器运行。
+3. 内核/虚拟化专用测试：不纳入当前 GitHub hosted runner 门禁，必须通过 model/escape/manual 方式覆盖。
 4. 标记 unsafe_for_native：在状态表中明确不能普通真机差分。
 ```
 
@@ -391,23 +419,30 @@ GitHub Actions Windows x64 Release CI 已通过
 第二阶段仍建议后续继续补：
 
 ```text
-1. 支持 manual/unsafe-native 用例的结构化 replay，而不只是索引
-2. 必要时上传最小 replay bundle
-3. 按真实硬件 runner 接入情况扩展自托管矩阵 workflow
+1. manual/unsafe-native 已有 `cpueaxh.manual-index.v1` 结构化 replay 入口，运行时严格校验 category/replay 字段，并在 CI 中用 `test/manual/exception_priority.json` 验证
+2. `--record-bundle` 已上传最小 replay bundle：feature matrix + generated spec manifest + failure record + host_features + generated initial_state/result_state + 日志
+3. 不引入自托管硬件 workflow；当前以 GitHub hosted runner 的 feature-gated 测试和证据 artifact 为准
 ```
 
-## 12. 第三阶段建议
+## 12. 第三阶段建议 / 当前实现
 
-第三阶段开始为后续全量 AMD64 指令补全服务：
+第三阶段开始为后续全量 AMD64 指令补全服务。当前已实现验证框架层面的第三阶段门禁，不等同于已经补完整 AMD64 指令集：
 
 ```text
-1. 完善 instruction-status.yml 到 mnemonic + form + encoding + operand-size + feature gate 粒度
-2. 为每个指令族建立生成器模板
-3. 引入 nightly / workflow_dispatch long fuzz
-4. 文档化自托管硬件矩阵和 unsafe-native 策略
-5. 对 decoder/executor 公共改动增加专项回归
-6. 对 undefined flags、异常优先级、内存访问顺序建立专项测试
+1. instruction-status.yml 已采用 mnemonic + form + encoding + operand-size + feature gate 粒度结构
+2. docs/generator-templates.yml 定义每个主要指令族的生成器模板和安全约束
+3. extended-regression.yml 提供 nightly / workflow_dispatch long fuzz 入口
+4. docs/hardware-runner-matrix.md 文档化 GitHub hosted runner feature matrix 和 unsafe-native 策略
+5. docs/stage3-regression-gates.yml 定义 decoder/executor/public helper 专项 gate
+6. --list-gates 和 CI stage3-gates.log 暴露 undefined flags、异常优先级、内存访问顺序等 gate
+7. tools/validate-regression-contract.ps1 在 CI 中结构化校验状态表、replay corpus、stage3 gate 名称/必填字段和生成器模板 family/必填段契约
+8. tools/validate-stage3-gate-output.ps1 在 CI 中校验 `--list-gates` 输出与 docs/stage3-regression-gates.yml 的 gate 名称、category、command 一致
+9. --dump-specs 和 tools/validate-generated-spec-manifest.ps1 在 CI 中校验当前 generated spec manifest、唯一 selector，以及 regression corpus selector 均存在于 manifest 中
+10. tools/validate-instruction-status.ps1 在 CI 中校验 instruction-status form 必填字段、coverage 声明、generated selector、regression replay 和 unsafe-native 标注
+11. 当前不使用自托管硬件；GitHub hosted runner 保留 feature matrix、generated spec manifest、manual replay 和 full regression 证据
 ```
+
+第三阶段仍未声称完成完整 AMD64 指令集覆盖。后续补具体指令时，必须继续按 instruction-status.yml form 粒度扩展状态表、测试生成器和 regression corpus。
 
 ## 13. 合并前审查清单
 

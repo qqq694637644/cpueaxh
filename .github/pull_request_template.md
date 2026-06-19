@@ -14,16 +14,32 @@
 - [ ] Targeted test run:
 
   ```powershell
-  .\x64\Release\test.exe --case <exact-name> --seed-index <n> --record-failure failure.json
+  .\x64\Release\test.exe --case <exact-name> --seed-index <n> --record-bundle failure-bundle
   ```
 
 - [ ] Full regression run:
 
   ```powershell
-  .\x64\Release\test.exe --record-failure failure.json
+  .\x64\Release\test.exe --record-bundle failure-bundle
   ```
 
 - [ ] Relevant `test/regression/*.json` replay records were added or updated for fixed bugs.
+- [ ] Stage 3 gates were reviewed for shared decoder/executor/memory/flags/helper changes:
+
+  ```powershell
+  .\x64\Release\test.exe --list-gates
+  .\x64\Release\test.exe --dump-specs generated-specs.json
+  .\tools\validate-regression-contract.ps1
+  .\tools\validate-generated-spec-manifest.ps1 -ManifestPath generated-specs.json
+  .\tools\validate-instruction-status.ps1 -ManifestPath generated-specs.json
+  ```
+
+- [ ] Manual/unsafe-native coverage group replay was considered when relevant:
+
+  ```powershell
+  .\x64\Release\test.exe --replay test\manual\exception_priority.json --record-bundle failure-bundle
+  ```
+
 - [ ] CI passed on the latest commit.
 
 ## Risk notes

@@ -412,15 +412,56 @@ struct Failure {
     std::string detail;
     std::string spec_name;
     std::string image_hex;
+    std::array<std::uint64_t, 16> initial_regs{};
+    std::array<std::string, 16> initial_xmm_hex{};
+    std::string initial_data_hex;
+    std::array<std::uint64_t, 16> native_result_regs{};
+    std::array<std::uint64_t, 16> emu_result_regs{};
+    std::string native_result_data_hex;
+    std::string emu_result_data_hex;
     std::uint64_t seed = 0;
     std::uint64_t seed_index = 0;
+    std::uint64_t initial_rip = 0;
+    std::uint64_t initial_rflags = 0;
+    std::uint32_t initial_mxcsr = 0;
+    std::uint32_t initial_data_offset = 0;
+    std::uint64_t native_result_rip = 0;
+    std::uint64_t native_result_rflags = 0;
+    std::uint32_t native_result_mxcsr = 0;
+    std::uint64_t emu_result_rip = 0;
+    std::uint64_t emu_result_rflags = 0;
+    std::uint32_t emu_result_mxcsr = 0;
+    std::string host_vendor;
+    std::string host_brand;
+    std::uint32_t host_max_leaf = 0;
+    std::uint32_t host_max_leaf7 = 0;
+    std::uint32_t host_max_extended_leaf = 0;
+    std::uint32_t host_family = 0;
+    std::uint32_t host_model = 0;
+    std::uint32_t host_stepping = 0;
+    bool host_feature_avx = false;
+    bool host_feature_avx2 = false;
+    bool host_feature_fma = false;
+    bool host_feature_sha = false;
+    bool host_feature_popcnt = false;
+    bool host_feature_ssse3 = false;
+    bool host_feature_sse41 = false;
+    bool host_feature_sse42 = false;
+    bool host_feature_aes = false;
+    bool host_feature_rdpid = false;
+    bool host_feature_bmi1 = false;
+    bool host_feature_lzcnt = false;
     bool has_seed = false;
     bool has_seed_index = false;
+    bool has_initial_state = false;
+    bool has_result_state = false;
+    bool has_host_features = false;
 };
 
 struct TestOptions {
     bool list_only = false;
     bool list_manual_only = false;
+    bool list_gates_only = false;
     bool run_manual = true;
     bool has_seed_index = false;
     std::uint64_t seed_index = 0;
@@ -428,8 +469,14 @@ struct TestOptions {
     bool has_generated_seed_count = false;
     std::string filter;
     std::string exact_case;
+    std::string manual_case;
     std::string failure_record_path;
+    std::string feature_record_path;
+    std::string spec_manifest_path;
+    std::string record_bundle_dir;
     std::string replay_path;
+    bool dump_features_only = false;
+    bool dump_specs_only = false;
     bool run_regression_corpus = true;
 };
 
@@ -437,6 +484,13 @@ struct ManualCaseIndexEntry {
     const char* name;
     const char* category;
     const char* coverage;
+};
+
+struct Stage3GateIndexEntry {
+    const char* name;
+    const char* category;
+    const char* coverage;
+    const char* command_hint;
 };
 
 inline constexpr std::array<ManualCaseIndexEntry, 10> kManualCaseIndex = {{
@@ -459,6 +513,33 @@ inline void print_manual_case_index() {
     }
 }
 
+inline const ManualCaseIndexEntry* find_manual_case_index_entry(const std::string& name) {
+    for (const ManualCaseIndexEntry& entry : kManualCaseIndex) {
+        if (name == entry.name) {
+            return &entry;
+        }
+    }
+    return nullptr;
+}
+
+inline constexpr std::array<Stage3GateIndexEntry, 7> kStage3GateIndex = {{
+    { "public_helper_full_regression", "required", "decoder/executor/dispatch/memory/flags helper changes must run the full regression suite", "test.exe --record-bundle failure-bundle" },
+    { "generated_long_fuzz", "extended", "broader generated differential fuzz for changed instruction families", "test.exe --generated-seeds 512 --record-bundle failure-bundle" },
+    { "undefined_flags", "targeted", "defined RFLAGS masks must remain explicit; undefined flags must not be compared", "test.exe --filter _rr_ --generated-seeds 256 --record-bundle failure-bundle" },
+    { "exception_priority", "manual", "manual exception ordering and split-access cases guard decoder/executor rollback behavior", "test.exe --list-manual" },
+    { "memory_access_order", "targeted", "memory/RMW/string cases guard guest memory ordering and writeback semantics", "test.exe --filter mem --generated-seeds 256 --record-bundle failure-bundle" },
+    { "simd_state_boundary", "feature-gated", "SIMD tests currently compare data-area effects and selected public register-state paths", "test.exe --filter xmm --generated-seeds 256 --record-bundle failure-bundle" },
+    { "hardware_feature_matrix", "evidence", "feature evidence must be preserved with CPUID/OS-enabled matrix records", "test.exe --dump-features cpu-features.json" },
+}};
+
+inline void print_stage3_gate_index() {
+    std::cout << "cpueaxh stage3 regression gates: " << kStage3GateIndex.size() << std::endl;
+    for (const Stage3GateIndexEntry& entry : kStage3GateIndex) {
+        std::cout << entry.name << " [" << entry.category << "] " << entry.coverage
+                  << " | " << entry.command_hint << std::endl;
+    }
+}
+
 inline bool selected_by_filter(const std::string& name, const TestOptions& options) {
     if (!options.exact_case.empty()) {
         return name == options.exact_case;
@@ -470,6 +551,54 @@ inline bool selected_by_filter(const ProgramSpec& spec, const TestOptions& optio
     return selected_by_filter(spec.name, options);
 }
 
+inline const char* gpr_name_by_index(std::size_t index) {
+    static constexpr const char* names[] = {
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
+        "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"
+    };
+    return index < (sizeof(names) / sizeof(names[0])) ? names[index] : "unknown";
+}
+
+inline std::string xmm_hex(const cpueaxh_x86_xmm& value) {
+    return hex64(value.high) + hex64(value.low).substr(2);
+}
+
+inline std::vector<std::uint8_t> generated_case_initial_data(const BuiltCase& built) {
+    if (built.data_offset > built.image.size()) {
+        return {};
+    }
+    const std::size_t offset = static_cast<std::size_t>(built.data_offset);
+    if (offset + kDataSize > built.image.size()) {
+        return {};
+    }
+    return std::vector<std::uint8_t>(built.image.begin() + offset, built.image.begin() + offset + kDataSize);
+}
+
+inline void attach_generated_result_state(
+    Failure& failure,
+    const std::array<std::uint64_t, 16>& native_regs,
+    std::uint64_t native_rip,
+    std::uint64_t native_rflags,
+    std::uint32_t native_mxcsr,
+    const std::vector<std::uint8_t>& native_data,
+    const std::array<std::uint64_t, 16>& emu_regs,
+    std::uint64_t emu_rip,
+    std::uint64_t emu_rflags,
+    std::uint32_t emu_mxcsr,
+    const std::vector<std::uint8_t>& emu_data) {
+    failure.native_result_regs = native_regs;
+    failure.native_result_rip = native_rip;
+    failure.native_result_rflags = native_rflags;
+    failure.native_result_mxcsr = native_mxcsr;
+    failure.native_result_data_hex = bytes_hex(native_data);
+    failure.emu_result_regs = emu_regs;
+    failure.emu_result_rip = emu_rip;
+    failure.emu_result_rflags = emu_rflags;
+    failure.emu_result_mxcsr = emu_mxcsr;
+    failure.emu_result_data_hex = bytes_hex(emu_data);
+    failure.has_result_state = true;
+}
+
 inline void attach_built_case_to_failure(Failure& failure, const BuiltCase& built, std::uint64_t seed_index) {
     if (failure.case_name.empty()) {
         failure.case_name = built.spec.name + ":" + std::to_string(built.seed);
@@ -478,13 +607,49 @@ inline void attach_built_case_to_failure(Failure& failure, const BuiltCase& buil
     failure.image_hex = bytes_hex(built.image);
     failure.seed = built.seed;
     failure.seed_index = seed_index;
+    for (std::size_t index = 0; index < failure.initial_regs.size(); ++index) {
+        failure.initial_regs[index] = built.initial_context.regs[index];
+    }
+    for (std::size_t index = 0; index < failure.initial_xmm_hex.size(); ++index) {
+        failure.initial_xmm_hex[index] = xmm_hex(built.initial_context.xmm[index]);
+    }
+    const std::vector<std::uint8_t> initial_data = generated_case_initial_data(built);
+    failure.initial_data_hex = bytes_hex(initial_data);
+    failure.initial_rip = built.initial_context.rip;
+    failure.initial_rflags = built.initial_context.rflags;
+    failure.initial_mxcsr = built.initial_context.mxcsr;
+    failure.initial_data_offset = built.data_offset;
     failure.has_seed = true;
     failure.has_seed_index = true;
+    failure.has_initial_state = true;
+}
+
+inline bool ensure_parent_directory(const std::string& path) {
+    const std::filesystem::path file_path(path);
+    const std::filesystem::path parent = file_path.parent_path();
+    if (parent.empty()) {
+        return true;
+    }
+    std::error_code ec;
+    std::filesystem::create_directories(parent, ec);
+    if (ec) {
+        std::cerr << "failed to create directory: " << parent.string() << ": " << ec.message() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+inline const char* json_bool(bool value) {
+    return value ? "true" : "false";
 }
 
 inline bool write_failure_record(const std::string& path, const Failure& failure) {
     if (path.empty()) {
         return true;
+    }
+
+    if (!ensure_parent_directory(path)) {
+        return false;
     }
 
     std::ofstream file(path, std::ios::out | std::ios::trunc);
@@ -508,6 +673,92 @@ inline bool write_failure_record(const std::string& path, const Failure& failure
     }
     if (!failure.image_hex.empty()) {
         file << ",\n  \"image_hex\": \"" << json_escape(failure.image_hex) << "\"";
+    }
+    if (failure.has_initial_state) {
+        file << ",\n  \"initial_state\": {\n";
+        file << "    \"schema\": \"cpueaxh.generated-initial-state.v1\",\n";
+        file << "    \"gprs\": {";
+        for (std::size_t index = 0; index < failure.initial_regs.size(); ++index) {
+            if (index != 0) {
+                file << ",";
+            }
+            file << "\n      \"" << gpr_name_by_index(index) << "\": \"" << hex64(failure.initial_regs[index]) << "\"";
+        }
+        file << "\n    },\n";
+        file << "    \"rip\": \"" << hex64(failure.initial_rip) << "\",\n";
+        file << "    \"rflags\": \"" << hex64(failure.initial_rflags) << "\",\n";
+        file << "    \"mxcsr\": \"" << hex64(static_cast<std::uint64_t>(failure.initial_mxcsr)) << "\",\n";
+        file << "    \"xmm\": [";
+        for (std::size_t index = 0; index < failure.initial_xmm_hex.size(); ++index) {
+            if (index != 0) {
+                file << ",";
+            }
+            file << "\n      \"" << json_escape(failure.initial_xmm_hex[index]) << "\"";
+        }
+        file << "\n    ],\n";
+        file << "    \"data_offset\": " << failure.initial_data_offset << ",\n";
+        file << "    \"data_hex\": \"" << json_escape(failure.initial_data_hex) << "\"\n";
+        file << "  }";
+    }
+    if (failure.has_result_state) {
+        file << ",\n  \"result_state\": {\n";
+        file << "    \"schema\": \"cpueaxh.generated-result-state.v1\",\n";
+        file << "    \"native_result\": {\n";
+        file << "      \"gprs\": {";
+        for (std::size_t index = 0; index < failure.native_result_regs.size(); ++index) {
+            if (index != 0) {
+                file << ",";
+            }
+            file << "\n        \"" << gpr_name_by_index(index) << "\": \"" << hex64(failure.native_result_regs[index]) << "\"";
+        }
+        file << "\n      },\n";
+        file << "      \"rip\": \"" << hex64(failure.native_result_rip) << "\",\n";
+        file << "      \"rflags\": \"" << hex64(failure.native_result_rflags) << "\",\n";
+        file << "      \"mxcsr\": \"" << hex64(static_cast<std::uint64_t>(failure.native_result_mxcsr)) << "\",\n";
+        file << "      \"data_hex\": \"" << json_escape(failure.native_result_data_hex) << "\"\n";
+        file << "    },\n";
+        file << "    \"emu_result\": {\n";
+        file << "      \"gprs\": {";
+        for (std::size_t index = 0; index < failure.emu_result_regs.size(); ++index) {
+            if (index != 0) {
+                file << ",";
+            }
+            file << "\n        \"" << gpr_name_by_index(index) << "\": \"" << hex64(failure.emu_result_regs[index]) << "\"";
+        }
+        file << "\n      },\n";
+        file << "      \"rip\": \"" << hex64(failure.emu_result_rip) << "\",\n";
+        file << "      \"rflags\": \"" << hex64(failure.emu_result_rflags) << "\",\n";
+        file << "      \"mxcsr\": \"" << hex64(static_cast<std::uint64_t>(failure.emu_result_mxcsr)) << "\",\n";
+        file << "      \"data_hex\": \"" << json_escape(failure.emu_result_data_hex) << "\"\n";
+        file << "    }\n";
+        file << "  }";
+    }
+    if (failure.has_host_features) {
+        file << ",\n  \"host_features\": {\n";
+        file << "    \"schema\": \"cpueaxh.host-features.v1\",\n";
+        file << "    \"vendor\": \"" << json_escape(failure.host_vendor) << "\",\n";
+        file << "    \"brand\": \"" << json_escape(failure.host_brand) << "\",\n";
+        file << "    \"max_leaf\": " << failure.host_max_leaf << ",\n";
+        file << "    \"max_leaf7\": " << failure.host_max_leaf7 << ",\n";
+        file << "    \"max_extended_leaf\": " << failure.host_max_extended_leaf << ",\n";
+        file << "    \"family\": " << failure.host_family << ",\n";
+        file << "    \"model\": " << failure.host_model << ",\n";
+        file << "    \"stepping\": " << failure.host_stepping << ",\n";
+        file << "    \"features\": {\n";
+        file << "      \"avx\": " << json_bool(failure.host_feature_avx) << ",\n";
+        file << "      \"avx2\": " << json_bool(failure.host_feature_avx2) << ",\n";
+        file << "      \"fma\": " << json_bool(failure.host_feature_fma) << ",\n";
+        file << "      \"sha\": " << json_bool(failure.host_feature_sha) << ",\n";
+        file << "      \"popcnt\": " << json_bool(failure.host_feature_popcnt) << ",\n";
+        file << "      \"ssse3\": " << json_bool(failure.host_feature_ssse3) << ",\n";
+        file << "      \"sse41\": " << json_bool(failure.host_feature_sse41) << ",\n";
+        file << "      \"sse42\": " << json_bool(failure.host_feature_sse42) << ",\n";
+        file << "      \"aes\": " << json_bool(failure.host_feature_aes) << ",\n";
+        file << "      \"rdpid\": " << json_bool(failure.host_feature_rdpid) << ",\n";
+        file << "      \"bmi1\": " << json_bool(failure.host_feature_bmi1) << ",\n";
+        file << "      \"lzcnt\": " << json_bool(failure.host_feature_lzcnt) << "\n";
+        file << "    }\n";
+        file << "  }";
     }
     if (!failure.spec_name.empty() && failure.has_seed_index) {
         file << ",\n  \"case_selector\": \"" << json_escape(failure.spec_name) << "\"";
@@ -614,6 +865,29 @@ inline bool json_extract_u64(const std::string& json, const std::string& key, st
     return true;
 }
 
+inline bool manual_replay_hint_matches_case(const std::string& replay_hint, const std::string& manual_case) {
+    const std::string option = "--manual-case";
+    const std::size_t option_pos = replay_hint.find(option);
+    if (option_pos == std::string::npos) {
+        return false;
+    }
+
+    std::size_t pos = option_pos + option.size();
+    if (pos >= replay_hint.size() || replay_hint[pos] != ' ') {
+        return false;
+    }
+    while (pos < replay_hint.size() && replay_hint[pos] == ' ') {
+        ++pos;
+    }
+    if (pos >= replay_hint.size()) {
+        return false;
+    }
+
+    const std::size_t end = replay_hint.find(' ', pos);
+    const std::string replay_case = replay_hint.substr(pos, end == std::string::npos ? std::string::npos : end - pos);
+    return replay_case == manual_case;
+}
+
 inline bool apply_replay_file(const std::string& path, TestOptions& options, std::string& error) {
     std::string json;
     if (!read_text_file(path, json)) {
@@ -622,7 +896,54 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
     }
 
     std::string schema;
-    if (!json_extract_string(json, "schema", schema) || schema != "cpueaxh.failure.v1") {
+    if (!json_extract_string(json, "schema", schema)) {
+        error = "replay file has unsupported schema: " + path;
+        return false;
+    }
+
+    if (schema == "cpueaxh.manual-index.v1") {
+        std::string manual_case;
+        if (!json_extract_string(json, "case_selector", manual_case) || manual_case.empty()) {
+            error = "manual replay file has no non-empty case_selector: " + path;
+            return false;
+        }
+        const ManualCaseIndexEntry* entry = find_manual_case_index_entry(manual_case);
+        if (!entry) {
+            error = "manual replay case is not in the manual index: " + manual_case;
+            return false;
+        }
+        std::string category;
+        if (!json_extract_string(json, "category", category) || category.empty()) {
+            error = "manual replay file has no non-empty category: " + path;
+            return false;
+        }
+        if (category != "manual" && category != "unsafe-native") {
+            error = "manual replay file has unsupported category: " + category;
+            return false;
+        }
+        if (category != entry->category) {
+            error = "manual replay category does not match manual index: " + manual_case;
+            return false;
+        }
+        std::string replay_hint;
+        if (!json_extract_string(json, "replay", replay_hint) || replay_hint.empty()) {
+            error = "manual replay file has no non-empty replay command: " + path;
+            return false;
+        }
+        if (!manual_replay_hint_matches_case(replay_hint, manual_case)) {
+            error = "manual replay command does not match case_selector: " + manual_case;
+            return false;
+        }
+        options.manual_case = manual_case;
+        options.filter.clear();
+        options.exact_case.clear();
+        options.has_seed_index = false;
+        options.run_manual = true;
+        options.run_regression_corpus = false;
+        return true;
+    }
+
+    if (schema != "cpueaxh.failure.v1") {
         error = "replay file has unsupported schema: " + path;
         return false;
     }
@@ -641,6 +962,7 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
 
     options.exact_case = exact_case;
     options.filter.clear();
+    options.manual_case.clear();
     options.seed_index = seed_index;
     options.has_seed_index = true;
     options.run_manual = false;
@@ -693,6 +1015,14 @@ inline bool list_regression_replay_files(std::vector<std::string>& files, std::s
 }
 
 struct HostFeatures {
+    std::string vendor;
+    std::string brand;
+    std::uint32_t max_leaf = 0;
+    std::uint32_t max_leaf7 = 0;
+    std::uint32_t max_extended_leaf = 0;
+    std::uint32_t family = 0;
+    std::uint32_t model = 0;
+    std::uint32_t stepping = 0;
     bool avx = false;
     bool avx2 = false;
     bool fma = false;
@@ -833,13 +1163,42 @@ inline std::uint64_t make_initial_flags(std::uint64_t seed) {
     return flags;
 }
 
+inline std::string trim_cpu_brand_string(const char* text) {
+    std::string value(text ? text : "");
+    while (!value.empty() && (value.back() == ' ' || value.back() == '\0')) {
+        value.pop_back();
+    }
+    std::size_t start = 0;
+    while (start < value.size() && value[start] == ' ') {
+        ++start;
+    }
+    return start == 0 ? value : value.substr(start);
+}
+
 inline HostFeatures query_host_features() {
     HostFeatures features;
     int cpu_info[4] = {};
     __cpuid(cpu_info, 0);
     const int max_leaf = cpu_info[0];
+    features.max_leaf = static_cast<std::uint32_t>(max_leaf);
+    char vendor[13] = {};
+    std::memcpy(vendor + 0, &cpu_info[1], sizeof(cpu_info[1]));
+    std::memcpy(vendor + 4, &cpu_info[3], sizeof(cpu_info[3]));
+    std::memcpy(vendor + 8, &cpu_info[2], sizeof(cpu_info[2]));
+    features.vendor = vendor;
     if (max_leaf >= 1) {
         __cpuidex(cpu_info, 1, 0);
+        const std::uint32_t signature = static_cast<std::uint32_t>(cpu_info[0]);
+        const std::uint32_t base_stepping = signature & 0xFu;
+        const std::uint32_t base_model = (signature >> 4) & 0xFu;
+        const std::uint32_t base_family = (signature >> 8) & 0xFu;
+        const std::uint32_t extended_model = (signature >> 16) & 0xFu;
+        const std::uint32_t extended_family = (signature >> 20) & 0xFFu;
+        features.stepping = base_stepping;
+        features.family = base_family == 0xFu ? base_family + extended_family : base_family;
+        features.model = (base_family == 0x6u || base_family == 0xFu)
+            ? base_model + (extended_model << 4)
+            : base_model;
         const bool has_fma = (cpu_info[2] & (1 << 12)) != 0;
         features.popcnt = (cpu_info[2] & (1 << 23)) != 0;
         const bool has_xsave = (cpu_info[2] & (1 << 26)) != 0;
@@ -857,6 +1216,7 @@ inline HostFeatures query_host_features() {
     }
     if (max_leaf >= 7) {
         __cpuidex(cpu_info, 7, 0);
+        features.max_leaf7 = static_cast<std::uint32_t>(cpu_info[0]);
         features.avx2 = features.avx && (cpu_info[1] & (1 << 5)) != 0;
         features.bmi1 = (cpu_info[1] & (1 << 3)) != 0;
         features.sha = (cpu_info[1] & (1 << 29)) != 0;
@@ -864,11 +1224,165 @@ inline HostFeatures query_host_features() {
     }
     __cpuid(cpu_info, 0x80000000);
     const std::uint32_t max_extended_leaf = static_cast<std::uint32_t>(cpu_info[0]);
+    features.max_extended_leaf = max_extended_leaf;
     if (max_extended_leaf >= 0x80000001u) {
         __cpuidex(cpu_info, 0x80000001, 0);
         features.lzcnt = (cpu_info[2] & (1 << 5)) != 0;
     }
+    if (max_extended_leaf >= 0x80000004u) {
+        char brand[49] = {};
+        for (std::uint32_t leaf = 0; leaf < 3; ++leaf) {
+            __cpuid(cpu_info, static_cast<int>(0x80000002u + leaf));
+            std::memcpy(brand + leaf * 16u, cpu_info, sizeof(cpu_info));
+        }
+        features.brand = trim_cpu_brand_string(brand);
+    }
     return features;
+}
+
+inline bool write_host_feature_record(const std::string& path, const HostFeatures& features) {
+    if (path.empty()) {
+        return true;
+    }
+    if (!ensure_parent_directory(path)) {
+        return false;
+    }
+
+    std::ofstream file(path, std::ios::out | std::ios::trunc);
+    if (!file) {
+        std::cerr << "failed to open feature record: " << path << std::endl;
+        return false;
+    }
+
+    file << "{\n";
+    file << "  \"schema\": \"cpueaxh.host-features.v1\",\n";
+    file << "  \"vendor\": \"" << json_escape(features.vendor) << "\",\n";
+    file << "  \"brand\": \"" << json_escape(features.brand) << "\",\n";
+    file << "  \"max_leaf\": " << features.max_leaf << ",\n";
+    file << "  \"max_leaf7\": " << features.max_leaf7 << ",\n";
+    file << "  \"max_extended_leaf\": " << features.max_extended_leaf << ",\n";
+    file << "  \"family\": " << features.family << ",\n";
+    file << "  \"model\": " << features.model << ",\n";
+    file << "  \"stepping\": " << features.stepping << ",\n";
+    file << "  \"features\": {\n";
+    file << "    \"avx\": " << json_bool(features.avx) << ",\n";
+    file << "    \"avx2\": " << json_bool(features.avx2) << ",\n";
+    file << "    \"fma\": " << json_bool(features.fma) << ",\n";
+    file << "    \"sha\": " << json_bool(features.sha) << ",\n";
+    file << "    \"popcnt\": " << json_bool(features.popcnt) << ",\n";
+    file << "    \"ssse3\": " << json_bool(features.ssse3) << ",\n";
+    file << "    \"sse41\": " << json_bool(features.sse41) << ",\n";
+    file << "    \"sse42\": " << json_bool(features.sse42) << ",\n";
+    file << "    \"aes\": " << json_bool(features.aes) << ",\n";
+    file << "    \"rdpid\": " << json_bool(features.rdpid) << ",\n";
+    file << "    \"bmi1\": " << json_bool(features.bmi1) << ",\n";
+    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << "\n";
+    file << "  }\n";
+    file << "}\n";
+    return true;
+}
+
+inline bool dump_host_feature_record(const std::string& path) {
+    return write_host_feature_record(path, query_host_features());
+}
+
+inline void attach_host_features_to_failure(Failure& failure, const HostFeatures& features) {
+    failure.host_vendor = features.vendor;
+    failure.host_brand = features.brand;
+    failure.host_max_leaf = features.max_leaf;
+    failure.host_max_leaf7 = features.max_leaf7;
+    failure.host_max_extended_leaf = features.max_extended_leaf;
+    failure.host_family = features.family;
+    failure.host_model = features.model;
+    failure.host_stepping = features.stepping;
+    failure.host_feature_avx = features.avx;
+    failure.host_feature_avx2 = features.avx2;
+    failure.host_feature_fma = features.fma;
+    failure.host_feature_sha = features.sha;
+    failure.host_feature_popcnt = features.popcnt;
+    failure.host_feature_ssse3 = features.ssse3;
+    failure.host_feature_sse41 = features.sse41;
+    failure.host_feature_sse42 = features.sse42;
+    failure.host_feature_aes = features.aes;
+    failure.host_feature_rdpid = features.rdpid;
+    failure.host_feature_bmi1 = features.bmi1;
+    failure.host_feature_lzcnt = features.lzcnt;
+    failure.has_host_features = true;
+}
+
+inline const char* family_name(Family family) {
+    switch (family) {
+    case Family::BinaryRegReg: return "binary_reg_reg";
+    case Family::BinaryRegImm: return "binary_reg_imm";
+    case Family::UnaryReg: return "unary_reg";
+    case Family::ShiftImm: return "shift_imm";
+    case Family::ShiftCl: return "shift_cl";
+    case Family::BitOps: return "bit_ops";
+    case Family::FlagOps: return "flag_ops";
+    case Family::MoveOps: return "move_ops";
+    case Family::MemoryOps: return "memory_ops";
+    case Family::StackOps: return "stack_ops";
+    case Family::StringOps: return "string_ops";
+    case Family::VectorOps: return "vector_ops";
+    case Family::ControlFlow: return "control_flow";
+    default: return "unknown";
+    }
+}
+
+inline bool write_generated_spec_manifest(const std::string& path, const std::vector<ProgramSpec>& specs, const HostFeatures& features) {
+    if (path.empty()) {
+        return true;
+    }
+    if (!ensure_parent_directory(path)) {
+        return false;
+    }
+
+    std::ofstream file(path, std::ios::out | std::ios::trunc);
+    if (!file) {
+        std::cerr << "failed to open generated spec manifest: " << path << std::endl;
+        return false;
+    }
+
+    file << "{\n";
+    file << "  \"schema\": \"cpueaxh.generated-specs.v1\",\n";
+    file << "  \"spec_count\": " << specs.size() << ",\n";
+    file << "  \"features\": {\n";
+    file << "    \"avx\": " << json_bool(features.avx) << ",\n";
+    file << "    \"avx2\": " << json_bool(features.avx2) << ",\n";
+    file << "    \"fma\": " << json_bool(features.fma) << ",\n";
+    file << "    \"sha\": " << json_bool(features.sha) << ",\n";
+    file << "    \"popcnt\": " << json_bool(features.popcnt) << ",\n";
+    file << "    \"ssse3\": " << json_bool(features.ssse3) << ",\n";
+    file << "    \"sse41\": " << json_bool(features.sse41) << ",\n";
+    file << "    \"sse42\": " << json_bool(features.sse42) << ",\n";
+    file << "    \"aes\": " << json_bool(features.aes) << ",\n";
+    file << "    \"rdpid\": " << json_bool(features.rdpid) << ",\n";
+    file << "    \"bmi1\": " << json_bool(features.bmi1) << ",\n";
+    file << "    \"lzcnt\": " << json_bool(features.lzcnt) << "\n";
+    file << "  },\n";
+    file << "  \"specs\": [\n";
+    for (std::size_t index = 0; index < specs.size(); ++index) {
+        const ProgramSpec& spec = specs[index];
+        file << "    { \"name\": \"" << json_escape(spec.name) << "\", "
+             << "\"family\": \"" << family_name(spec.family) << "\", "
+             << "\"op\": " << spec.op << ", "
+             << "\"variant\": " << spec.variant << ", "
+             << "\"flag_mask\": " << spec.flag_mask << " }";
+        if (index + 1 != specs.size()) {
+            file << ",";
+        }
+        file << "\n";
+    }
+    file << "  ]\n";
+    file << "}\n";
+    return true;
+}
+
+inline std::vector<ProgramSpec> make_specs(const HostFeatures& features);
+
+inline bool dump_generated_spec_manifest(const std::string& path) {
+    const HostFeatures features = query_host_features();
+    return write_generated_spec_manifest(path, make_specs(features), features);
 }
 
 inline cpueaxh_x86_context make_initial_context(std::uint64_t seed) {
@@ -9607,6 +10121,18 @@ public:
             failure.detail = "guest read flags failed";
             return false;
         }
+        std::uint64_t guest_rip = 0;
+        if (!read_reg(CPUEAXH_X86_REG_RIP, guest_rip)) {
+            failure.case_name = built.spec.name + ":" + std::to_string(built.seed);
+            failure.detail = "guest read rip failed";
+            return false;
+        }
+        std::uint32_t guest_mxcsr = 0;
+        if (!read_reg32(CPUEAXH_X86_REG_MXCSR, guest_mxcsr)) {
+            failure.case_name = built.spec.name + ":" + std::to_string(built.seed);
+            failure.detail = "guest read mxcsr failed";
+            return false;
+        }
 
         std::vector<std::uint8_t> guest_data(kDataSize);
         err = cpueaxh_mem_read(engine_, kGuestCodeBase + built.data_offset, guest_data.data(), guest_data.size());
@@ -9617,9 +10143,27 @@ public:
         }
 
         const std::uint8_t* native_data = native_code_ + built.data_offset;
+        const std::vector<std::uint8_t> native_data_snapshot(native_data, native_data + kDataSize);
+        std::array<std::uint64_t, 16> normalized_native_regs{};
+        for (std::size_t index = 0; index < normalized_native_regs.size(); ++index) {
+            normalized_native_regs[index] = normalize_native_value(native_context.regs[index], built);
+        }
+        const std::uint64_t normalized_native_rip = normalize_native_value(native_context.rip, built);
+        attach_generated_result_state(
+            failure,
+            normalized_native_regs,
+            normalized_native_rip,
+            native_context.rflags,
+            native_context.mxcsr,
+            native_data_snapshot,
+            guest_regs,
+            guest_rip,
+            guest_flags,
+            guest_mxcsr,
+            guest_data);
         for (std::size_t index = 0; index < 16; ++index) {
             const std::uint64_t guest_value = guest_regs[index];
-            const std::uint64_t native_value = normalize_native_value(native_context.regs[index], built);
+            const std::uint64_t native_value = normalized_native_regs[index];
             if (guest_value != native_value) {
                 failure.case_name = built.spec.name + ":" + std::to_string(built.seed);
                 failure.detail = std::string(reg_name(static_cast<Reg>(index))) + " guest=" + hex64(guest_value) + " native=" + hex64(native_value);
@@ -9669,6 +10213,10 @@ private:
     }
 
     bool read_reg(int reg, std::uint64_t& value) {
+        return cpueaxh_reg_read(engine_, reg, &value) == CPUEAXH_ERR_OK;
+    }
+
+    bool read_reg32(int reg, std::uint32_t& value) {
         return cpueaxh_reg_read(engine_, reg, &value) == CPUEAXH_ERR_OK;
     }
 
@@ -9723,16 +10271,53 @@ inline bool run_generated_case_by_name(
 
 inline bool run_all_tests(const TestOptions& options) {
     const HostFeatures features = query_host_features();
+    auto record_failure = [&](Failure& failure) -> bool {
+        attach_host_features_to_failure(failure, features);
+        return write_failure_record(options.failure_record_path, failure);
+    };
+
+    if (!write_host_feature_record(options.feature_record_path, features)) {
+        return false;
+    }
+
     const std::vector<ProgramSpec> specs = make_specs(features);
+    if (!write_generated_spec_manifest(options.spec_manifest_path, specs, features)) {
+        return false;
+    }
 
     if (options.list_manual_only) {
         print_manual_case_index();
+        return true;
+    }
+    if (options.list_gates_only) {
+        print_stage3_gate_index();
         return true;
     }
 
     if (options.generated_seed_count == 0) {
         std::cerr << "generated seed count must be greater than zero" << std::endl;
         return false;
+    }
+
+    if (!options.manual_case.empty()) {
+        const ManualCaseIndexEntry* entry = find_manual_case_index_entry(options.manual_case);
+        if (!entry) {
+            std::cerr << "manual replay case is not in the manual index: " << options.manual_case << std::endl;
+            return false;
+        }
+        std::uint64_t executed = 0;
+        const std::uint64_t total = manual_special_case_count(features);
+        std::cout << "cpueaxh manual replay case: " << entry->name << " [" << entry->category << "]" << std::endl;
+        std::cout << "coverage: " << entry->coverage << std::endl;
+        std::cout << "manual replay mode: full manual special suite" << std::endl;
+        std::cout << "cpueaxh test cases: " << total << std::endl;
+        Failure failure;
+        if (!run_manual_special_tests(features, executed, total, &failure)) {
+            record_failure(failure);
+            return false;
+        }
+        std::cout << "PASS " << executed << "/" << total << std::endl;
+        return true;
     }
 
     std::uint64_t selected_specs = 0;
@@ -9774,7 +10359,7 @@ inline bool run_all_tests(const TestOptions& options) {
             failure.case_name = "regression_corpus";
             failure.detail = regression_error;
             std::cerr << regression_error << std::endl;
-            write_failure_record(options.failure_record_path, failure);
+            record_failure(failure);
             return false;
         }
     }
@@ -9812,7 +10397,7 @@ inline bool run_all_tests(const TestOptions& options) {
         failure.case_name = "harness_init";
         failure.detail = harness.init_error();
         std::cerr << failure.detail << std::endl;
-        write_failure_record(options.failure_record_path, failure);
+        record_failure(failure);
         return false;
     }
 
@@ -9825,7 +10410,7 @@ inline bool run_all_tests(const TestOptions& options) {
             attach_built_case_to_failure(failure, built, seed_index);
             std::cerr << "FAIL " << failure.case_name << std::endl;
             std::cerr << failure.detail << std::endl;
-            write_failure_record(options.failure_record_path, failure);
+            record_failure(failure);
             return false;
         }
         ++executed;
@@ -9856,7 +10441,7 @@ inline bool run_all_tests(const TestOptions& options) {
     if (run_manual) {
         Failure failure;
         if (!run_manual_special_tests(features, executed, total, &failure)) {
-            write_failure_record(options.failure_record_path, failure);
+            record_failure(failure);
             return false;
         }
     }
@@ -9870,7 +10455,7 @@ inline bool run_all_tests(const TestOptions& options) {
             failure.detail = replay_error;
             std::cerr << "FAIL regression " << regression_file << std::endl;
             std::cerr << replay_error << std::endl;
-            write_failure_record(options.failure_record_path, failure);
+            record_failure(failure);
             return false;
         }
 
@@ -9879,7 +10464,7 @@ inline bool run_all_tests(const TestOptions& options) {
             std::cerr << "FAIL regression " << regression_file << std::endl;
             std::cerr << failure.case_name << std::endl;
             std::cerr << failure.detail << std::endl;
-            write_failure_record(options.failure_record_path, failure);
+            record_failure(failure);
             return false;
         }
         ++executed;

@@ -28,6 +28,11 @@ policy:
     - small_reviewable_change
     - instruction_status_update
 
+stage3_contracts:
+  regression_gates: docs/stage3-regression-gates.yml
+  generator_templates: docs/generator-templates.yml
+  replay_schema: docs/replay-schema.md
+
 status_values:
   - todo
   - implemented
@@ -224,7 +229,7 @@ families:
             feature_gate: base
             status: implemented
             coverage:
-              generated_differential: true
+              generated_differential: false
               regression_replay: false
               manual: true
             unsafe_native_reason: null

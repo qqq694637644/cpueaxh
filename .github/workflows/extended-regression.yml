@@ -27,6 +27,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate regression contract
+        shell: pwsh
+        run: ./tools/validate-regression-contract.ps1
+
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
 
@@ -52,6 +56,30 @@ jobs:
             Format-List |
             Out-File -FilePath cpu-info.txt -Encoding utf8
 
+      - name: Dump test feature matrix
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --dump-features cpu-features.json
+          $exitCode = $LASTEXITCODE
+          Get-Content cpu-features.json
+          if ($exitCode -ne 0) { exit $exitCode }
+
+      - name: Dump generated spec manifest
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --dump-specs generated-specs.json
+          $exitCode = $LASTEXITCODE
+          Get-Content generated-specs.json
+          if ($exitCode -ne 0) { exit $exitCode }
+
+      - name: Validate generated spec manifest
+        shell: pwsh
+        run: ./tools/validate-generated-spec-manifest.ps1 -ManifestPath generated-specs.json
+
+      - name: Validate instruction status coverage
+        shell: pwsh
+        run: ./tools/validate-instruction-status.ps1 -ManifestPath generated-specs.json
+
       - name: List manual coverage index
         shell: pwsh
         run: |
@@ -60,13 +88,25 @@ jobs:
           Get-Content manual-index.log
           if ($exitCode -ne 0) { exit $exitCode }
 
+      - name: List stage3 regression gates
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --list-gates *> stage3-gates.log
+          $exitCode = $LASTEXITCODE
+          Get-Content stage3-gates.log
+          if ($exitCode -ne 0) { exit $exitCode }
+
+      - name: Validate stage3 gate output
+        shell: pwsh
+        run: ./tools/validate-stage3-gate-output.ps1 -OutputPath stage3-gates.log
+
       - name: Run long generated regression
         shell: pwsh
         run: |
           $seedCount = '${{ inputs.generated_seeds }}'
           if ([string]::IsNullOrWhiteSpace($seedCount)) { $seedCount = '512' }
           $filter = '${{ inputs.case_filter }}'
-          $args = @('--generated-seeds', $seedCount, '--record-failure', 'failure.json')
+          $args = @('--generated-seeds', $seedCount, '--record-bundle', 'failure-bundle')
           if (-not [string]::IsNullOrWhiteSpace($filter)) {
             $args += @('--filter', $filter)
           }
@@ -82,7 +122,10 @@ jobs:
           name: cpueaxh-extended-regression-diagnostics
           if-no-files-found: ignore
           path: |
-            failure.json
+            failure-bundle/**
             extended-test-run.log
             manual-index.log
+            stage3-gates.log
+            cpu-features.json
+            generated-specs.json
             cpu-info.txt
