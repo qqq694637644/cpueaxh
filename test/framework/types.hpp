@@ -550,6 +550,9 @@ struct TestOptions {
     std::string spec_manifest_path;
     std::string record_bundle_dir;
     std::string replay_path;
+    std::vector<std::string> required_features;
+    std::vector<std::string> required_specs;
+    std::vector<std::string> required_families;
     bool dump_features_only = false;
     bool dump_specs_only = false;
     bool run_regression_corpus = true;

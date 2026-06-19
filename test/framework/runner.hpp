@@ -6,6 +6,65 @@
 
 namespace cpueaxh_test {
 
+inline bool host_feature_available(const HostFeatures& features, const std::string& name) {
+    if (name == "base") return true;
+    if (name == "avx") return features.avx;
+    if (name == "avx2") return features.avx2;
+    if (name == "fma") return features.fma;
+    if (name == "sha") return features.sha;
+    if (name == "popcnt") return features.popcnt;
+    if (name == "ssse3") return features.ssse3;
+    if (name == "sse41" || name == "sse4.1") return features.sse41;
+    if (name == "sse42" || name == "sse4.2") return features.sse42;
+    if (name == "aes") return features.aes;
+    if (name == "rdpid") return features.rdpid;
+    if (name == "bmi1") return features.bmi1;
+    if (name == "lzcnt") return features.lzcnt;
+    if (name == "movbe") return features.movbe;
+    return false;
+}
+
+inline bool validate_required_generated_coverage(
+    const TestOptions& options,
+    const HostFeatures& features,
+    const std::vector<ProgramSpec>& specs)
+{
+    for (const std::string& feature : options.required_features) {
+        if (!host_feature_available(features, feature)) {
+            std::cerr << "required feature " << feature << " is not available on this runner" << std::endl;
+            return false;
+        }
+    }
+
+    for (const std::string& required_spec : options.required_specs) {
+        const ProgramSpec* spec = find_spec_by_name(specs, required_spec);
+        if (!spec) {
+            std::cerr << "required generated spec " << required_spec << " is not available on this runner" << std::endl;
+            return false;
+        }
+        if (!selected_by_filter(*spec, options)) {
+            std::cerr << "required generated spec " << required_spec << " is not selected by the current filter" << std::endl;
+            return false;
+        }
+    }
+
+    for (const std::string& required_family : options.required_families) {
+        bool found = false;
+        for (const ProgramSpec& spec : specs) {
+            if (required_family == family_name(spec.family) && selected_by_filter(spec, options)) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            std::cerr << "required generated family " << required_family << " is not selected on this runner" << std::endl;
+            return false;
+        }
+    }
+
+    return true;
+}
+
 inline bool run_generated_case_by_name(
     Harness& harness,
     const std::vector<ProgramSpec>& specs,
@@ -45,6 +104,9 @@ inline bool run_all_tests(const TestOptions& options) {
     }
 
     const std::vector<ProgramSpec> specs = make_specs(features);
+    if (!validate_required_generated_coverage(options, features, specs)) {
+        return false;
+    }
     if (!write_generated_spec_manifest(options.spec_manifest_path, specs, features)) {
         return false;
     }

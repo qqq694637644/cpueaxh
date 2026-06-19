@@ -153,6 +153,31 @@ jobs:
         shell: pwsh
         run: ./tools/validate-strict-replay.ps1 -TestExe "$env:CPUEAXH_TEST_EXE"
 
+      - name: Validate required coverage gates
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --list --require-feature base --require-spec add_rr_rax_rbx --require-family binary_reg_reg *> require-coverage.log
+          $exitCode = $LASTEXITCODE
+          Get-Content require-coverage.log
+          if ($exitCode -ne 0) { exit $exitCode }
+
+          & "$env:CPUEAXH_TEST_EXE" --list --require-feature definitely_missing *> require-coverage-negative.log
+          $negativeFeatureExit = $LASTEXITCODE
+          Get-Content require-coverage-negative.log | Tee-Object -FilePath require-coverage.log -Append
+          if ($negativeFeatureExit -eq 0) { throw "missing required feature unexpectedly succeeded" }
+
+          & "$env:CPUEAXH_TEST_EXE" --list --require-spec definitely_missing *> require-coverage-negative.log
+          $negativeSpecExit = $LASTEXITCODE
+          Get-Content require-coverage-negative.log | Tee-Object -FilePath require-coverage.log -Append
+          if ($negativeSpecExit -eq 0) { throw "missing required spec unexpectedly succeeded" }
+
+          & "$env:CPUEAXH_TEST_EXE" --list --require-family definitely_missing *> require-coverage-negative.log
+          $negativeFamilyExit = $LASTEXITCODE
+          Get-Content require-coverage-negative.log | Tee-Object -FilePath require-coverage.log -Append
+          if ($negativeFamilyExit -eq 0) { throw "missing required family unexpectedly succeeded" }
+          $global:LASTEXITCODE = 0
+          exit 0
+
       - name: Run full regression suite
         shell: pwsh
         run: |
@@ -176,6 +201,7 @@ jobs:
             stage3-gates.log
             manual-replay.log
             strict-replay.log
+            require-coverage.log
             test-run.log
             cpu-info.txt
 
@@ -196,5 +222,6 @@ jobs:
             stage3-gates.log
             manual-replay.log
             strict-replay.log
+            require-coverage.log
             test-run.log
             cpu-info.txt

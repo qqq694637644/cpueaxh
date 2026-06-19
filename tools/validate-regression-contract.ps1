@@ -120,6 +120,16 @@ function Assert-GeneratedManifestPolicyFields {
     Assert-FileContains -Path 'tools/validate-generated-spec-manifest.ps1' -Pattern 'reason_if_not_compared' -Message 'manifest validator must require flag non-compare reasons.'
 }
 
+function Assert-RequiredCoverageGates {
+    Assert-TestFrameworkContains -Pattern '--require-feature' -Message 'CLI must support --require-feature.'
+    Assert-TestFrameworkContains -Pattern '--require-spec' -Message 'CLI must support --require-spec.'
+    Assert-TestFrameworkContains -Pattern '--require-family' -Message 'CLI must support --require-family.'
+    Assert-TestFrameworkContains -Pattern 'validate_required_generated_coverage' -Message 'runner must enforce required generated coverage gates.'
+    Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'Validate required coverage gates' -Message 'CI must validate required coverage gates.'
+    Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'require-coverage\.log' -Message 'CI must preserve required coverage gate logs.'
+    Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'Validate required coverage gates' -Message 'extended regression must validate required coverage gates.'
+}
+
 function Assert-NoLegacyFrameworkJsonExtractors {
     $content = Get-ChildItem -LiteralPath 'test/framework' -Filter '*.hpp' -File |
         ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }
@@ -334,6 +344,7 @@ Assert-CoreHeaderSmokeTranslationUnits
 Assert-CpueaxhInternalUsesInstructionModules
 Assert-StrictReplayFixtures
 Assert-GeneratedManifestPolicyFields
+Assert-RequiredCoverageGates
 Assert-NoLegacyFrameworkJsonExtractors
 Assert-FrameworkHeadersDoNotRequireUmbrellaOrder
 
