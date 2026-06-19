@@ -229,7 +229,7 @@ families:
             feature_gate: base
             status: implemented
             coverage:
-              generated_differential: true
+              generated_differential: false
               regression_replay: false
               manual: true
             unsafe_native_reason: null

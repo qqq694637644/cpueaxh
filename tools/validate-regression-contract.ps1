@@ -194,7 +194,9 @@ Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-r
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-stage3-gate-output\.ps1' -Message 'required CI must validate stage3 gate output consistency.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern '--dump-specs generated-specs\.json' -Message 'required CI must dump the generated spec manifest.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-generated-spec-manifest\.ps1' -Message 'required CI must validate the generated spec manifest.'
+Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-instruction-status\.ps1' -Message 'required CI must validate instruction-status coverage.'
 Assert-FileContains -Path 'tools/validate-generated-spec-manifest.ps1' -Pattern 'cpueaxh\.generated-specs\.v1' -Message 'generated spec manifest validator must check schema.'
+Assert-FileContains -Path 'tools/validate-instruction-status.ps1' -Pattern 'instruction-status\.yml has an invalid or missing schema' -Message 'instruction status validator must check schema.'
 Assert-FileContains -Path 'docs/hardware-runner-matrix.md' -Pattern 'GitHub hosted runner feature matrix' -Message 'runner matrix doc must describe hosted-runner validation.'
 Assert-FileContains -Path 'docs/hardware-runner-matrix.md' -Pattern 'hosted-runner-only' -Message 'runner matrix doc must avoid self-hosted hardware requirements.'
 

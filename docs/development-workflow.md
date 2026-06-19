@@ -31,6 +31,7 @@ This project treats every implemented instruction as regression-sensitive. New i
    .\x64\Release\test.exe --list-manual
    .\x64\Release\test.exe --list-gates
    .\x64\Release\test.exe --dump-specs generated-specs.json
+   .\tools\validate-instruction-status.ps1 -ManifestPath generated-specs.json
    ```
 
    To replay a manual/unsafe-native coverage group record:
@@ -61,6 +62,8 @@ A PR that changes instruction behavior must satisfy all of these conditions:
 The required PR CI workflow is path-scoped to instruction, test, build, workflow, PR template, and test-contract documentation changes, including `TEST_FRAMEWORK_PLAN_CN.md`, `docs/development-workflow.md`, `docs/instruction-status.yml`, `docs/replay-schema.md`, `docs/instruction-test-generator-template.md`, and `docs/hardware-runner-matrix.md`. General README or unrelated explanatory documentation changes should not trigger the full regression job by default. Extended long regression is available through `extended-regression.yml` on schedule or manual dispatch.
 
 Stage 3 regression gates are defined in `docs/stage3-regression-gates.yml` and exposed by `test.exe --list-gates`. The required CI runs `tools/validate-regression-contract.ps1` before the MSVC build so that gate, corpus, replay-schema, and generator-template drift fails early. After `--list-gates`, CI also runs `tools/validate-stage3-gate-output.ps1` to ensure the executable gate output still matches the documented gate names, categories, and commands. CI also writes `generated-specs.json` with `test.exe --dump-specs` and validates it with `tools/validate-generated-spec-manifest.ps1`, including regression corpus selector coverage.
+
+Instruction status coverage is checked with `tools/validate-instruction-status.ps1`. Forms that claim generated differential coverage must exist in `generated-specs.json` when their feature gate is enabled; forms that claim regression replay must be selected by a `test/regression/*.json` record; unsafe-native forms must not claim generated differential coverage.
 
 Current validation is GitHub-hosted-runner based. The runner feature matrix is captured with `--dump-features` and `--dump-specs`, so optional CPU coverage is proven by the artifacts from that CI run rather than by a self-hosted hardware requirement.
 

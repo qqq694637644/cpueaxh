@@ -262,7 +262,7 @@ docs/instruction-status.yml
 
 记录指令实现状态、测试覆盖状态、feature gate、已知风险。
 
-状态表必须保守解释：`implemented` 只代表状态表中列明的 form/encoding 已实现并受回归保护；未列明的 operand-size、addressing form、prefix/VEX/EVEX encoding、feature-gated form 不能因为同 mnemonic 标为 `implemented` 就推断为已支持。
+状态表必须保守解释：`implemented` 只代表状态表中列明的 form/encoding 已实现并受回归保护；未列明的 operand-size、addressing form、prefix/VEX/EVEX encoding、feature-gated form 不能因为同 mnemonic 标为 `implemented` 就推断为已支持。CI 通过 `tools/validate-instruction-status.ps1` 交叉检查状态表、`generated-specs.json` 和 regression corpus，避免 coverage 声明漂移。
 
 建议状态包括：
 
@@ -422,7 +422,8 @@ GitHub Actions Windows x64 Release CI 已通过
 7. tools/validate-regression-contract.ps1 在 CI 中结构化校验状态表、replay corpus、stage3 gate 名称/必填字段和生成器模板 family/必填段契约
 8. tools/validate-stage3-gate-output.ps1 在 CI 中校验 `--list-gates` 输出与 docs/stage3-regression-gates.yml 的 gate 名称、category、command 一致
 9. --dump-specs 和 tools/validate-generated-spec-manifest.ps1 在 CI 中校验当前 generated spec manifest、唯一 selector，以及 regression corpus selector 均存在于 manifest 中
-10. 当前不使用自托管硬件；GitHub hosted runner 保留 feature matrix、generated spec manifest、manual replay 和 full regression 证据
+10. tools/validate-instruction-status.ps1 在 CI 中校验 instruction-status form 必填字段、coverage 声明、generated selector、regression replay 和 unsafe-native 标注
+11. 当前不使用自托管硬件；GitHub hosted runner 保留 feature matrix、generated spec manifest、manual replay 和 full regression 证据
 ```
 
 第三阶段仍未声称完成完整 AMD64 指令集覆盖。后续补具体指令时，必须继续按 instruction-status.yml form 粒度扩展状态表、测试生成器和 regression corpus。

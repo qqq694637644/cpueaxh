@@ -76,6 +76,10 @@ jobs:
         shell: pwsh
         run: ./tools/validate-generated-spec-manifest.ps1 -ManifestPath generated-specs.json
 
+      - name: Validate instruction status coverage
+        shell: pwsh
+        run: ./tools/validate-instruction-status.ps1 -ManifestPath generated-specs.json
+
       - name: List manual coverage index
         shell: pwsh
         run: |
