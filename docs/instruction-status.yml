@@ -396,6 +396,89 @@ families:
               manual: false
             unsafe_native_reason: null
 
+  flags:
+    status: in_progress
+    regression_gate: test.exe full suite
+    entries:
+      - mnemonic: CLC/STC/CMC
+        forms:
+          - name: clc
+            encoding: "F8"
+            operands: ["CF"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: stc
+            encoding: "F9"
+            operands: ["CF"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cmc
+            encoding: "F5"
+            operands: ["CF"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: CLD
+        forms:
+          - name: cld
+            encoding: "FC"
+            operands: ["DF"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: LAHF/SAHF
+        forms:
+          - name: lahf
+            encoding: "9F"
+            operands: ["AH", "RFLAGS"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sahf
+            encoding: "9E"
+            operands: ["RFLAGS", "AH"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+
   data_movement:
     status: in_progress
     regression_gate: test.exe full suite

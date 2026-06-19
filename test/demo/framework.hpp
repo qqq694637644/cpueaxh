@@ -285,6 +285,11 @@ enum class FlagProgram : std::uint8_t {
     Cmovcc,
     Jcc,
     Cmc,
+    Clc,
+    Stc,
+    Cld,
+    Lahf,
+    Sahf,
 };
 
 enum class MoveProgram : std::uint8_t {
@@ -2188,8 +2193,24 @@ public:
         emit8(0xF5);
     }
 
+    void clc() {
+        emit8(0xF8);
+    }
+
+    void stc() {
+        emit8(0xF9);
+    }
+
+    void cld() {
+        emit8(0xFC);
+    }
+
     void lahf() {
         emit8(0x9F);
+    }
+
+    void sahf() {
+        emit8(0x9E);
     }
 
     void enter(std::uint16_t size) {
@@ -2880,6 +2901,11 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
         specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Jcc), condition.code, kStatusMask, std::string("j") + condition.name });
     }
     specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cmc), 0, kFlagCF, "cmc" });
+    specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Clc), 0, kFlagCF, "clc" });
+    specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Stc), 0, kFlagCF, "stc" });
+    specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cld), 0, kFlagDF, "cld" });
+    specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Lahf), 0, 0, "lahf" });
+    specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Sahf), 0, kFlagCF | kFlagPF | kFlagAF | kFlagZF | kFlagSF, "sahf" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovA), 0, 0, "mov_rax_r8" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovB), 0, 0, "mov_r9_rbx" });
     specs.push_back({ Family::MoveOps, static_cast<std::uint32_t>(MoveProgram::MovzxByte), 0, 0, "movzx_byte" });
@@ -3182,8 +3208,23 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             code.mov_reg_reg(Reg::R12, Reg::R14);
             code.mark(label_end);
         }
-        else {
+        else if (program == FlagProgram::Cmc) {
             code.cmc();
+        }
+        else if (program == FlagProgram::Clc) {
+            code.clc();
+        }
+        else if (program == FlagProgram::Stc) {
+            code.stc();
+        }
+        else if (program == FlagProgram::Cld) {
+            code.cld();
+        }
+        else if (program == FlagProgram::Lahf) {
+            code.lahf();
+        }
+        else {
+            code.sahf();
         }
         break;
     }
