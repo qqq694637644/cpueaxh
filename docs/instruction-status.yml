@@ -186,6 +186,44 @@ families:
               regression_replay: false
               manual: false
             unsafe_native_reason: null
+      - mnemonic: CRC32
+        forms:
+          - name: crc32_r32_r8
+            encoding: "F2 0F 38 F0 /r"
+            operands: ["r32", "r/m8"]
+            operand_size: 32
+            mode: long64
+            feature_gate: sse42
+            status: feature_gated
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: crc32_r32_r32
+            encoding: "F2 0F 38 F1 /r"
+            operands: ["r32", "r/m32"]
+            operand_size: 32
+            mode: long64
+            feature_gate: sse42
+            status: feature_gated
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: crc32_r64_r64
+            encoding: "F2 REX.W 0F 38 F1 /r"
+            operands: ["r64", "r/m64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: feature_gated
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
 
   control_flow:
     status: in_progress

@@ -636,6 +636,9 @@ inline void cpu_decode_instruction(
     else if (opc == 0x0F38 && is_pshufb_instruction(buf, fetched, prefix_len)) {
         handler = execute_pshufb;
     }
+    else if (opc == 0x0F38 && mandatory_prefix == 0xF2 && is_crc32_instruction(buf, fetched, prefix_len)) {
+        handler = execute_crc32;
+    }
     else if (opc == 0x0F38 && mandatory_prefix == 0) {
         if (is_sha256rnds2_instruction(buf, fetched, prefix_len)) handler = execute_sha256rnds2;
         else if (is_sha256msg1_instruction(buf, fetched, prefix_len)) handler = execute_sha256msg1;

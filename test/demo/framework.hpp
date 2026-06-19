@@ -262,6 +262,9 @@ enum class BitOp : std::uint8_t {
     BswapAlt,
     Tzcnt,
     Lzcnt,
+    Crc32Byte,
+    Crc32Dword,
+    Crc32Qword,
 };
 
 enum class FlagProgram : std::uint8_t {
@@ -1840,6 +1843,33 @@ public:
         emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
     }
 
+    void crc32_r32_r8(Reg dst, Reg src) {
+        emit8(0xF2);
+        emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF0);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void crc32_r32_r32(Reg dst, Reg src) {
+        emit8(0xF2);
+        emit_rex(false, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF1);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void crc32_r64_r64(Reg dst, Reg src) {
+        emit8(0xF2);
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0x38);
+        emit8(0xF1);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
     void bswap(Reg reg) {
         emit_rex(true, 0, 0, static_cast<std::uint8_t>(reg));
         emit8(0x0F);
@@ -2614,6 +2644,11 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BswapAlt), 0, kStatusMask, "bswap_rax" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Tzcnt), 0, features.bmi1 ? kBitCountMask : kBitScanMask, features.bmi1 ? "tzcnt_rdx_rbx" : "f3_bsf_rdx_rbx" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Lzcnt), 0, features.lzcnt ? kBitCountMask : kBitScanMask, features.lzcnt ? "lzcnt_r9_r10" : "f3_bsr_r9_r10" });
+    if (features.sse42) {
+        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Byte), 0, 0, "crc32_r32_r8" });
+        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Dword), 0, 0, "crc32_r32_r32" });
+        specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Crc32Qword), 0, 0, "crc32_r64_r64" });
+    }
     for (const CondSpec& condition : kConditions) {
         specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Setcc), condition.code, kStatusMask, std::string("set") + condition.name });
         specs.push_back({ Family::FlagOps, static_cast<std::uint32_t>(FlagProgram::Cmovcc), condition.code, kStatusMask, std::string("cmov") + condition.name });
@@ -2832,6 +2867,15 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             break;
         case BitOp::Lzcnt:
             code.lzcnt(Reg::R9, Reg::R10);
+            break;
+        case BitOp::Crc32Byte:
+            code.crc32_r32_r8(Reg::RAX, Reg::RBX);
+            break;
+        case BitOp::Crc32Dword:
+            code.crc32_r32_r32(Reg::R8, Reg::R9);
+            break;
+        case BitOp::Crc32Qword:
+            code.crc32_r64_r64(Reg::R10, Reg::R11);
             break;
         }
         break;
