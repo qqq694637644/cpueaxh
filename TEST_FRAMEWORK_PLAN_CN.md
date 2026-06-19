@@ -251,12 +251,19 @@ initial_memory
 
 这些字段写入 `initial_state`，schema 为 `cpueaxh.generated-initial-state.v1`，用于 debugging 和最小化。实际 replay 仍必须以 `case_selector + seed_index` 为准，不能把快照当作替代生成器。
 
+当前 generated differential mismatch 已落地的结果快照字段：
+
+```text
+native_result
+emu_result
+```
+
+这些字段写入 `result_state`，schema 为 `cpueaxh.generated-result-state.v1`，包含 native/emu 的 GPR、RIP、RFLAGS、MXCSR 和数据区快照。native 指针值会先规范化为 guest 地址。该快照只用于分析差异，replay 仍以 deterministic selector/seed 机制为准。
+
 后续可继续扩展字段：
 
 ```text
 initial_ymm/zmm/k/x87
-native_result
-emu_result
 host_cpu_vendor/model/features
 ```
 
@@ -412,7 +419,7 @@ GitHub Actions Windows x64 Release CI 已通过
 
 ```text
 1. manual/unsafe-native 已有 `cpueaxh.manual-index.v1` 结构化 replay 入口，并在 CI 中用 `test/manual/exception_priority.json` 验证
-2. `--record-bundle` 已上传最小 replay bundle：feature matrix + generated spec manifest + failure record + generated initial_state + 日志
+2. `--record-bundle` 已上传最小 replay bundle：feature matrix + generated spec manifest + failure record + generated initial_state/result_state + 日志
 3. 不引入自托管硬件 workflow；当前以 GitHub hosted runner 的 feature-gated 测试和证据 artifact 为准
 ```
 

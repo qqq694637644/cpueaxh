@@ -25,6 +25,7 @@ Accepted diagnostic fields:
 - `seed`: diagnostic only; replay derives the deterministic seed from `case_selector` and `seed_index`.
 - `image_hex`: diagnostic only; replay regenerates the case image from the current generator.
 - `initial_state`: diagnostic only; replay regenerates the case state from `case_selector` and `seed_index`.
+- `result_state`: diagnostic only; replay recomputes native/emu results from `case_selector` and `seed_index`.
 - `detail`: diagnostic only.
 - `case_name`: diagnostic only.
 - `replay_hint`: diagnostic only.
@@ -49,6 +50,34 @@ Generated failures emitted by `--record-failure` / `--record-bundle` include an 
 ```
 
 This snapshot is for debugging and minimization. It must not replace deterministic replay from `case_selector + seed_index`.
+
+Generated differential mismatches also include a `result_state` object after both native and emulated executions have produced readable state:
+
+```json
+{
+  "schema": "cpueaxh.generated-result-state.v1",
+  "native_result": {
+    "gprs": {
+      "rax": "0x0000000000000000"
+    },
+    "rip": "0x0000000000100000",
+    "rflags": "0x0000000000000246",
+    "mxcsr": "0x0000000000001f80",
+    "data_hex": "01 02 03"
+  },
+  "emu_result": {
+    "gprs": {
+      "rax": "0x0000000000000000"
+    },
+    "rip": "0x0000000000100000",
+    "rflags": "0x0000000000000246",
+    "mxcsr": "0x0000000000001f80",
+    "data_hex": "01 02 03"
+  }
+}
+```
+
+Native code and stack pointers are normalized to guest addresses before they are written. This result snapshot is diagnostic evidence for the observed mismatch and is not a replay source of truth.
 
 Replay command:
 
@@ -160,4 +189,4 @@ On CI failure, the workflow uploads a diagnostics bundle containing:
 - `test-run.log` from the full regression run.
 - `cpu-info.txt` from the Windows runner.
 
-These files are enough to identify the failing generated case and reproduce it locally when the failure is generated-case based. Generated failures also include an initial scalar/vector/data snapshot for debugging and minimization.
+These files are enough to identify the failing generated case and reproduce it locally when the failure is generated-case based. Generated failures also include initial and result scalar/vector/data snapshots for debugging and minimization.

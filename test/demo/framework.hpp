@@ -415,15 +415,26 @@ struct Failure {
     std::array<std::uint64_t, 16> initial_regs{};
     std::array<std::string, 16> initial_xmm_hex{};
     std::string initial_data_hex;
+    std::array<std::uint64_t, 16> native_result_regs{};
+    std::array<std::uint64_t, 16> emu_result_regs{};
+    std::string native_result_data_hex;
+    std::string emu_result_data_hex;
     std::uint64_t seed = 0;
     std::uint64_t seed_index = 0;
     std::uint64_t initial_rip = 0;
     std::uint64_t initial_rflags = 0;
     std::uint32_t initial_mxcsr = 0;
     std::uint32_t initial_data_offset = 0;
+    std::uint64_t native_result_rip = 0;
+    std::uint64_t native_result_rflags = 0;
+    std::uint32_t native_result_mxcsr = 0;
+    std::uint64_t emu_result_rip = 0;
+    std::uint64_t emu_result_rflags = 0;
+    std::uint32_t emu_result_mxcsr = 0;
     bool has_seed = false;
     bool has_seed_index = false;
     bool has_initial_state = false;
+    bool has_result_state = false;
 };
 
 struct TestOptions {
@@ -542,6 +553,31 @@ inline std::vector<std::uint8_t> generated_case_initial_data(const BuiltCase& bu
     return std::vector<std::uint8_t>(built.image.begin() + offset, built.image.begin() + offset + kDataSize);
 }
 
+inline void attach_generated_result_state(
+    Failure& failure,
+    const std::array<std::uint64_t, 16>& native_regs,
+    std::uint64_t native_rip,
+    std::uint64_t native_rflags,
+    std::uint32_t native_mxcsr,
+    const std::vector<std::uint8_t>& native_data,
+    const std::array<std::uint64_t, 16>& emu_regs,
+    std::uint64_t emu_rip,
+    std::uint64_t emu_rflags,
+    std::uint32_t emu_mxcsr,
+    const std::vector<std::uint8_t>& emu_data) {
+    failure.native_result_regs = native_regs;
+    failure.native_result_rip = native_rip;
+    failure.native_result_rflags = native_rflags;
+    failure.native_result_mxcsr = native_mxcsr;
+    failure.native_result_data_hex = bytes_hex(native_data);
+    failure.emu_result_regs = emu_regs;
+    failure.emu_result_rip = emu_rip;
+    failure.emu_result_rflags = emu_rflags;
+    failure.emu_result_mxcsr = emu_mxcsr;
+    failure.emu_result_data_hex = bytes_hex(emu_data);
+    failure.has_result_state = true;
+}
+
 inline void attach_built_case_to_failure(Failure& failure, const BuiltCase& built, std::uint64_t seed_index) {
     if (failure.case_name.empty()) {
         failure.case_name = built.spec.name + ":" + std::to_string(built.seed);
@@ -637,6 +673,39 @@ inline bool write_failure_record(const std::string& path, const Failure& failure
         file << "\n    ],\n";
         file << "    \"data_offset\": " << failure.initial_data_offset << ",\n";
         file << "    \"data_hex\": \"" << json_escape(failure.initial_data_hex) << "\"\n";
+        file << "  }";
+    }
+    if (failure.has_result_state) {
+        file << ",\n  \"result_state\": {\n";
+        file << "    \"schema\": \"cpueaxh.generated-result-state.v1\",\n";
+        file << "    \"native_result\": {\n";
+        file << "      \"gprs\": {";
+        for (std::size_t index = 0; index < failure.native_result_regs.size(); ++index) {
+            if (index != 0) {
+                file << ",";
+            }
+            file << "\n        \"" << gpr_name_by_index(index) << "\": \"" << hex64(failure.native_result_regs[index]) << "\"";
+        }
+        file << "\n      },\n";
+        file << "      \"rip\": \"" << hex64(failure.native_result_rip) << "\",\n";
+        file << "      \"rflags\": \"" << hex64(failure.native_result_rflags) << "\",\n";
+        file << "      \"mxcsr\": \"" << hex64(static_cast<std::uint64_t>(failure.native_result_mxcsr)) << "\",\n";
+        file << "      \"data_hex\": \"" << json_escape(failure.native_result_data_hex) << "\"\n";
+        file << "    },\n";
+        file << "    \"emu_result\": {\n";
+        file << "      \"gprs\": {";
+        for (std::size_t index = 0; index < failure.emu_result_regs.size(); ++index) {
+            if (index != 0) {
+                file << ",";
+            }
+            file << "\n        \"" << gpr_name_by_index(index) << "\": \"" << hex64(failure.emu_result_regs[index]) << "\"";
+        }
+        file << "\n      },\n";
+        file << "      \"rip\": \"" << hex64(failure.emu_result_rip) << "\",\n";
+        file << "      \"rflags\": \"" << hex64(failure.emu_result_rflags) << "\",\n";
+        file << "      \"mxcsr\": \"" << hex64(static_cast<std::uint64_t>(failure.emu_result_mxcsr)) << "\",\n";
+        file << "      \"data_hex\": \"" << json_escape(failure.emu_result_data_hex) << "\"\n";
+        file << "    }\n";
         file << "  }";
     }
     if (!failure.spec_name.empty() && failure.has_seed_index) {
@@ -9879,6 +9948,18 @@ public:
             failure.detail = "guest read flags failed";
             return false;
         }
+        std::uint64_t guest_rip = 0;
+        if (!read_reg(CPUEAXH_X86_REG_RIP, guest_rip)) {
+            failure.case_name = built.spec.name + ":" + std::to_string(built.seed);
+            failure.detail = "guest read rip failed";
+            return false;
+        }
+        std::uint32_t guest_mxcsr = 0;
+        if (!read_reg32(CPUEAXH_X86_REG_MXCSR, guest_mxcsr)) {
+            failure.case_name = built.spec.name + ":" + std::to_string(built.seed);
+            failure.detail = "guest read mxcsr failed";
+            return false;
+        }
 
         std::vector<std::uint8_t> guest_data(kDataSize);
         err = cpueaxh_mem_read(engine_, kGuestCodeBase + built.data_offset, guest_data.data(), guest_data.size());
@@ -9889,9 +9970,27 @@ public:
         }
 
         const std::uint8_t* native_data = native_code_ + built.data_offset;
+        const std::vector<std::uint8_t> native_data_snapshot(native_data, native_data + kDataSize);
+        std::array<std::uint64_t, 16> normalized_native_regs{};
+        for (std::size_t index = 0; index < normalized_native_regs.size(); ++index) {
+            normalized_native_regs[index] = normalize_native_value(native_context.regs[index], built);
+        }
+        const std::uint64_t normalized_native_rip = normalize_native_value(native_context.rip, built);
+        attach_generated_result_state(
+            failure,
+            normalized_native_regs,
+            normalized_native_rip,
+            native_context.rflags,
+            native_context.mxcsr,
+            native_data_snapshot,
+            guest_regs,
+            guest_rip,
+            guest_flags,
+            guest_mxcsr,
+            guest_data);
         for (std::size_t index = 0; index < 16; ++index) {
             const std::uint64_t guest_value = guest_regs[index];
-            const std::uint64_t native_value = normalize_native_value(native_context.regs[index], built);
+            const std::uint64_t native_value = normalized_native_regs[index];
             if (guest_value != native_value) {
                 failure.case_name = built.spec.name + ":" + std::to_string(built.seed);
                 failure.detail = std::string(reg_name(static_cast<Reg>(index))) + " guest=" + hex64(guest_value) + " native=" + hex64(native_value);
@@ -9941,6 +10040,10 @@ private:
     }
 
     bool read_reg(int reg, std::uint64_t& value) {
+        return cpueaxh_reg_read(engine_, reg, &value) == CPUEAXH_ERR_OK;
+    }
+
+    bool read_reg32(int reg, std::uint32_t& value) {
         return cpueaxh_reg_read(engine_, reg, &value) == CPUEAXH_ERR_OK;
     }
 

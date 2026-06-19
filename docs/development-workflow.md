@@ -83,6 +83,8 @@ AI-generated code is allowed only behind the same regression gate as human-writt
 
 Generated failure records include `initial_state` with GPRs, RIP, RFLAGS, MXCSR, XMM, and generated data bytes when the runner can attach the built case. This is diagnostic evidence for minimization; deterministic replay remains `case_selector + seed_index`.
 
+Generated differential mismatches also include `result_state` with native and emulated GPRs, RIP, RFLAGS, MXCSR, and data bytes after execution. Native code/stack pointers are normalized to guest addresses before recording. This is diagnostic evidence only.
+
 `test.exe --dump-specs generated-specs.json` records the generated differential spec names selected under the current CPU feature matrix. `tools/validate-generated-spec-manifest.ps1` checks the manifest and verifies that regression replay records still point to existing generated specs.
 
 Manual/unsafe-native records with schema `cpueaxh.manual-index.v1` are replayable through `--replay`; the current implementation validates the manual index selector and runs the full manual special suite as a conservative coverage-group replay.
