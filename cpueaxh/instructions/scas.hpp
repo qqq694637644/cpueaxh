@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/scas.hpp - SCAS instruction implementation
 
 int decode_scas_operand_size(CPU_CONTEXT* ctx, uint8_t opcode) {

@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/rdrand.hpp - RDRAND instruction implementation
 
 int decode_rdrand_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {

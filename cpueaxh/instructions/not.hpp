@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/not.hpp - NOT instruction implementation
 
 // --- NOT internal helpers ---

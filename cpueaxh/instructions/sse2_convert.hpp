@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_convert.hpp - packed SSE2 conversion implementation
 
 int decode_sse2_convert_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

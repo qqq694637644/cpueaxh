@@ -1,3 +1,5 @@
+#pragma once
+
 // cpu/memory.hpp - CPU memory access functions
 
 inline uint32_t cpu_make_page_fault_error(const CPU_CONTEXT* ctx, uint32_t access, bool protection_violation) {

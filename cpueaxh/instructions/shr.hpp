@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/shr.hpp - SHR instruction implementation
 
 int decode_shr_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {

@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/rol.hpp - ROL instruction implementation
 
 int decode_rol_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {

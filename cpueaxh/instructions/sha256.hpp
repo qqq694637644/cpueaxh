@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sha256.hpp - SHA256RNDS2/SHA256MSG1/SHA256MSG2 implementation
 
 static inline bool cpu_has_sha_feature() {

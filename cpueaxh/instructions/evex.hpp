@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/evex.hpp - Shared EVEX prefix/decode helpers
 
 #define CPUEAXH_EVEX_VL_128 0x01

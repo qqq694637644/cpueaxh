@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/push.hpp - PUSH instruction implementation
 
 // --- PUSH execution helpers ---

@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/avx_vex.hpp - Minimal two-byte / three-byte VEX / AVX instruction support
 
 struct AVXRegister256 {

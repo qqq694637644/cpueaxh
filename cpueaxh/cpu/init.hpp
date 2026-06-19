@@ -1,3 +1,5 @@
+#pragma once
+
 // cpu/init.hpp - CPU initialization
 
 void init_cpu_context(CPU_CONTEXT* ctx, MEMORY_MANAGER* mem_mgr, bool start_in_compat32 = false) {

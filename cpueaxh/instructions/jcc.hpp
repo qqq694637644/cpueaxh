@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/jcc.hpp - Jcc (Jump if Condition Is Met) instruction implementation
 
 // --- Condition evaluation helpers ---

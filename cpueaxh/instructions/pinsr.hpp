@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/pinsr.hpp - PINSRB/PINSRD/PINSRQ implementation
 
 static inline bool is_pinsr_instruction(const uint8_t* code, int len, int prefix_len) {

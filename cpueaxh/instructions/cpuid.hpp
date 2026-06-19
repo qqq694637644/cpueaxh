@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/cpuid.hpp - CPUID instruction implementation
 
 #include <intrin.h>

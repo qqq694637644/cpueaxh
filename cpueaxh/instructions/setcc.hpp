@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/setcc.hpp - SETcc instruction implementation
 
 int decode_setcc_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {

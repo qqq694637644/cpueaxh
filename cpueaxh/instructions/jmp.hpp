@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/jmp.hpp - JMP instruction implementation
 
 // --- JMP execution helpers ---

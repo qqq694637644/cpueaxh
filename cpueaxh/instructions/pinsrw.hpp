@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/pinsrw.hpp - PINSRW/VPINSRW implementation
 
 static inline bool is_pinsrw_instruction(const uint8_t* code, int len, int prefix_len) {

@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/ret.hpp - RET far instruction implementation
 
 int decode_ret_far_operand_size(CPU_CONTEXT* ctx) {

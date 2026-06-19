@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse_math.hpp - SQRTPS/SQRTSS/RSQRTPS/RSQRTSS/RCPPS/RCPSS/MAXPS/MINPS/MAXSS/MINSS implementation
 
 int decode_sse_math_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

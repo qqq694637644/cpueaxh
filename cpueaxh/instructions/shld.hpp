@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/shld.hpp - SHLD/SHRD instruction implementation
 
 int decode_shld_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

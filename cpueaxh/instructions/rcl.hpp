@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/rcl.hpp - RCL instruction implementation
 
 uint8_t get_rcl_count(CPU_CONTEXT* ctx, int operand_size, uint8_t raw_count) {

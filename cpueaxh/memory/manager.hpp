@@ -1,3 +1,5 @@
+#pragma once
+
 // memory/manager.hpp - Virtual memory manager with page-granularity allocation
 
 #pragma once

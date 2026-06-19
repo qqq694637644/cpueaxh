@@ -51,6 +51,38 @@ function Assert-TestFrameworkContains {
     }
 }
 
+function Assert-CoreHeadersHavePragmaOnce {
+    $headerRoots = @('cpueaxh/cpu', 'cpueaxh/memory', 'cpueaxh/instructions')
+    foreach ($root in $headerRoots) {
+        if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+            throw "Missing core header root: $root"
+        }
+        Get-ChildItem -LiteralPath $root -Recurse -File -Filter '*.hpp' | ForEach-Object {
+            $firstNonBlank = Get-Content -LiteralPath $_.FullName | Where-Object { $_.Trim().Length -ne 0 } | Select-Object -First 1
+            if ($firstNonBlank -notmatch '^\s*#pragma\s+once\b') {
+                throw "Core header lacks #pragma once: $($_.FullName)"
+            }
+        }
+    }
+}
+
+function Assert-NoLegacyFrameworkJsonExtractors {
+    $content = Get-ChildItem -LiteralPath 'test/framework' -Filter '*.hpp' -File |
+        ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }
+    $joined = $content -join "`n"
+    if ($joined -match 'json_extract_string|json_extract_u64') {
+        throw 'framework strict replay must not expose legacy json_extract_* helpers.'
+    }
+}
+
+function Assert-FrameworkHeadersDoNotRequireUmbrellaOrder {
+    $bad = @(Get-ChildItem -LiteralPath 'test/framework' -Filter '*.hpp' -File |
+        Where-Object { (Get-Content -LiteralPath $_.FullName -Raw) -match 'keep include order there' })
+    if ($bad.Count -ne 0) {
+        throw "Framework headers still claim umbrella include-order dependence: $($bad.Name -join ', ')"
+    }
+}
+
 function Assert-SetEquals {
     param(
         [Parameter(Mandatory = $true)][string[]]$Actual,
@@ -223,8 +255,13 @@ Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-s
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern '--dump-specs generated-specs\.json' -Message 'required CI must dump the generated spec manifest.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-generated-spec-manifest\.ps1' -Message 'required CI must validate the generated spec manifest.'
 Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-instruction-status\.ps1' -Message 'required CI must validate instruction-status coverage.'
+Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-strict-replay\.ps1' -Message 'required CI must validate strict replay schema rejection.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'if-no-files-found:\s*error' -Message 'extended regression diagnostics must fail when expected evidence is missing.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'build\.log' -Message 'extended regression must capture build.log.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'validate-strict-replay\.ps1' -Message 'extended regression must validate strict replay schema rejection.'
 Assert-FileContains -Path 'tools/validate-generated-spec-manifest.ps1' -Pattern 'cpueaxh\.generated-specs\.v1' -Message 'generated spec manifest validator must check schema.'
 Assert-FileContains -Path 'tools/validate-instruction-status.ps1' -Pattern 'instruction-status\.yml has an invalid or missing schema' -Message 'instruction status validator must check schema.'
+Assert-FileContains -Path 'cpueaxh/cpu/executor.hpp' -Pattern 'CPUEAXH_STRICT_INTERNAL' -Message 'executor must keep strict internal decode checks enabled.'
 Assert-FileContains -Path 'docs/hardware-runner-matrix.md' -Pattern 'GitHub hosted runner feature matrix' -Message 'runner matrix doc must describe hosted-runner validation.'
 Assert-FileContains -Path 'docs/hardware-runner-matrix.md' -Pattern 'hosted-runner-only' -Message 'runner matrix doc must avoid self-hosted hardware requirements.'
 
@@ -232,5 +269,8 @@ Assert-Stage3GateManifest
 Assert-GeneratorTemplates
 Assert-NonEmptyJsonCorpus
 Assert-ManualIndexRecords
+Assert-CoreHeadersHavePragmaOnce
+Assert-NoLegacyFrameworkJsonExtractors
+Assert-FrameworkHeadersDoNotRequireUmbrellaOrder
 
 Write-Host 'Regression contract validation passed.'

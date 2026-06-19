@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/leave.hpp - LEAVE instruction implementation
 
 int decode_leave_operand_size(CPU_CONTEXT* ctx) {

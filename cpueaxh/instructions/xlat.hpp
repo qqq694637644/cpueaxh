@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/xlat.hpp - XLAT instruction implementation
 
 int decode_xlat_address_size(CPU_CONTEXT* ctx) {

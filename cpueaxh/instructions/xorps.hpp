@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/xorps.hpp - XORPS instruction implementation
 
 int decode_xorps_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

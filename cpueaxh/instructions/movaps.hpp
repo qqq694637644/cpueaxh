@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/movaps.hpp - MOVAPS instruction implementation
 
 int decode_movaps_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

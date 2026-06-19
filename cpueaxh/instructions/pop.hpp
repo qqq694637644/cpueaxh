@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/pop.hpp - POP instruction implementation
 
 // --- POP execution helpers ---

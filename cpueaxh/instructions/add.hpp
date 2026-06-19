@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/add.hpp - ADD instruction implementation
 
 // --- ADD execution helpers ---

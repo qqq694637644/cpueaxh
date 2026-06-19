@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/mov.hpp - MOV instruction implementation
 
 // --- MOV execution helpers ---

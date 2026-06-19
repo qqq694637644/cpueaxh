@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_int_arith.hpp - PADD*/PSUB*/PMULLW/PMULUDQ/PMADDWD implementation
 
 int decode_sse2_int_arith_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

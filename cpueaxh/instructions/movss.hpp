@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/movss.hpp - MOVSS instruction implementation
 
 int decode_movss_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

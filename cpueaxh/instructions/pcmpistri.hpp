@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/pcmpistri.hpp - PCMPISTRI instruction implementation
 
 static int decode_pcmpistri_segment_override(uint8_t prefix) {

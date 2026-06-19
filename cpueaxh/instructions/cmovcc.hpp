@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/cmovcc.hpp - CMOVcc instruction implementation
 
 int decode_cmovcc_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {

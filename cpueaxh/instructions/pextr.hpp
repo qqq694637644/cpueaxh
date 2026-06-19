@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/pextr.hpp - PEXTRB/PEXTRD/PEXTRQ implementation
 
 static inline bool is_pextr_instruction(const uint8_t* code, int len, int prefix_len) {

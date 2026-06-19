@@ -1,6 +1,6 @@
 #pragma once
 // Split from test/demo/framework.hpp: manual helper runners and low-level scenario helpers.
-// Included through test/framework/framework.hpp; keep include order there.
+// This header is self-contained and may be included directly; framework.hpp is only an umbrella include.
 
 #include "generated_specs.hpp"
 

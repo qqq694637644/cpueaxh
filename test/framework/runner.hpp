@@ -1,6 +1,6 @@
 #pragma once
 // Split from test/demo/framework.hpp: top-level generated/replay/test runner.
-// Included through test/framework/framework.hpp; keep include order there.
+// This header is self-contained and may be included directly; framework.hpp is only an umbrella include.
 
 #include "manual_registry.hpp"
 

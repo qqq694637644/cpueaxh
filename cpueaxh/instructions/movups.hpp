@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/movups.hpp - MOVUPS instruction implementation
 
 int decode_movups_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

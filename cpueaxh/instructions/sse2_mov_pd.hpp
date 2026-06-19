@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_mov_pd.hpp - MOVAPD/MOVUPD/MOVSD/MOVLPD/MOVHPD/MOVMSKPD implementation
 
 int decode_sse2_mov_pd_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/pushf.hpp - PUSHF/POPF instruction implementation
 
 static const uint64_t PUSHF_RF_BIT = (1ULL << 16);

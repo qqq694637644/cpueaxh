@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sub.hpp - SUB instruction implementation
 
 // --- SUB execution helpers ---

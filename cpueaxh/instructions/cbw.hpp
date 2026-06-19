@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/cbw.hpp - CBW/CWDE/CDQE instruction implementation
 
 int decode_cbw_operand_size(CPU_CONTEXT* ctx) {

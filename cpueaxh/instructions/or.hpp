@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/or.hpp - OR instruction implementation
 
 // --- OR internal helpers ---

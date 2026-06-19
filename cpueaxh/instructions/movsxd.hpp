@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/movsxd.hpp - MOVSXD instruction implementation
 
 int decode_movsxd_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {

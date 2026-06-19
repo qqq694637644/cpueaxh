@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/div.hpp - DIV instruction implementation
 
 // --- DIV internal helpers ---

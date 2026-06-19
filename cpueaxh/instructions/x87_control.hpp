@@ -1,3 +1,5 @@
+#pragma once
+
 // instructions/x87_control.hpp - FLDCW/FNSTCW/FSTCW implementation
 
 static void decode_x87_control_modrm(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {

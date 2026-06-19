@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_misc.hpp - MASKMOVDQU/LDDQU implementation
 
 int decode_sse2_misc_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

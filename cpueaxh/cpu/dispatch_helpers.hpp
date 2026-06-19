@@ -1,3 +1,5 @@
+#pragma once
+
 // cpu/dispatch_helpers.hpp - Stateless instruction-byte inspection helpers
 // shared by the decoder and the executor.
 //

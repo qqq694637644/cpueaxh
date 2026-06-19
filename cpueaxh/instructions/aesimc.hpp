@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/aesimc.hpp - AESIMC/VAESIMC implementation
 
 static XMMRegister apply_aesimc128(XMMRegister source) {

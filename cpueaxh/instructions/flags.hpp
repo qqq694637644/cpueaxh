@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/flags.hpp - CLC/STC/CLD/STD instruction implementation
 
 DecodedInstruction decode_flags_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {

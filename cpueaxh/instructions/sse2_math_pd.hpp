@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_math_pd.hpp - SQRTPD/SQRTSD/MAXPD/MAXSD/MINPD/MINSD implementation
 
 int decode_sse2_math_pd_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

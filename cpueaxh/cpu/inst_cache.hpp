@@ -1,3 +1,5 @@
+#pragma once
+
 // cpu/inst_cache.hpp - Direct-mapped cache of pre-decoded instructions keyed
 // by RIP. Cache entries are validated against a monotonic code-version counter
 // maintained by the memory manager so that any change to the executable view

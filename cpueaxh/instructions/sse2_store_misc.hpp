@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_store_misc.hpp - MOVNTDQ/MOVNTPD/MOVNTI implementation
 
 int decode_sse2_store_misc_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

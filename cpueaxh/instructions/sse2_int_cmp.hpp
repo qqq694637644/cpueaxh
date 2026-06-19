@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_int_cmp.hpp - PCMPEQ*/PCMPGT* implementation
 
 int decode_sse2_int_cmp_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

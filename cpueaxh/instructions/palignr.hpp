@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/palignr.hpp - PALIGNR/VPALIGNR implementation
 
 static inline bool is_palignr_instruction(const uint8_t* code, int len, int prefix_len) {

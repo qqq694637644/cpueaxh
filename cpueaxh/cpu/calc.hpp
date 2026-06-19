@@ -1,4 +1,6 @@
-﻿// cpu/calc.hpp - CPU calculation functions (flags, arithmetic)
+#pragma once
+
+// cpu/calc.hpp - CPU calculation functions (flags, arithmetic)
 
 // Compute parity of the lowest byte: true if even number of set bits
 bool calc_parity(uint8_t val) {

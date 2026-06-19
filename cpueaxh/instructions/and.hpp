@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/and.hpp - AND instruction implementation
 
 // --- AND execution helpers ---

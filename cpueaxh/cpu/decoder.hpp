@@ -1,3 +1,5 @@
+#pragma once
+
 // cpu/decoder.hpp - Translates a fetched instruction byte stream into a
 // DecodedInst that records which legacy execute_* handler should service it.
 //

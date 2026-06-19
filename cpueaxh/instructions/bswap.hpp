@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/bswap.hpp - BSWAP instruction implementation
 
 int decode_bswap_reg_index(CPU_CONTEXT* ctx, uint8_t opcode) {

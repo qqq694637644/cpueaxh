@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/pshufb.hpp - PSHUFB implementation
 
 static int decode_pshufb_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

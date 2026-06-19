@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/pblendw.hpp - PBLENDW implementation
 
 static inline bool is_pblendw_instruction(const uint8_t* code, int len, int prefix_len) {

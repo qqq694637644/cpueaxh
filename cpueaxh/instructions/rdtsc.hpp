@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/rdtsc.hpp - RDTSC instruction implementation
 
 #include <intrin.h>

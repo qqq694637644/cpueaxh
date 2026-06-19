@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse_misc.hpp - MOVNTPS/PREFETCHh/PREFETCHW implementation
 
 int decode_sse_misc_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

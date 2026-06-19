@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/aesenc.hpp - AES round instruction implementation
 
 static inline bool cpu_has_aes_feature() {

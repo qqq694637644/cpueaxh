@@ -1,8 +1,6 @@
 #pragma once
 // Split from test/demo/framework.hpp: types, options, strict replay helpers, host features, manifests, and shared metadata.
-// Included through test/framework/framework.hpp; keep include order there.
-
-#pragma once
+// This header is self-contained and may be included directly; framework.hpp is only an umbrella include.
 
 #define NOMINMAX
 
@@ -832,91 +830,6 @@ inline bool read_text_file(const std::string& path, std::string& contents) {
     std::ostringstream stream;
     stream << file.rdbuf();
     contents = stream.str();
-    return true;
-}
-
-inline bool json_extract_string(const std::string& json, const std::string& key, std::string& value) {
-    const std::string pattern = std::string("\"") + key + "\"";
-    std::size_t pos = json.find(pattern);
-    if (pos == std::string::npos) {
-        return false;
-    }
-    pos = json.find(':', pos + pattern.size());
-    if (pos == std::string::npos) {
-        return false;
-    }
-    ++pos;
-    while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
-        ++pos;
-    }
-    if (pos >= json.size() || json[pos] != '"') {
-        return false;
-    }
-    ++pos;
-
-    std::string result;
-    while (pos < json.size()) {
-        const char ch = json[pos++];
-        if (ch == '"') {
-            value = result;
-            return true;
-        }
-        if (ch == '\\' && pos < json.size()) {
-            const char esc = json[pos++];
-            switch (esc) {
-            case '"': result.push_back('"'); break;
-            case '\\': result.push_back('\\'); break;
-            case '/': result.push_back('/'); break;
-            case 'b': result.push_back('\b'); break;
-            case 'f': result.push_back('\f'); break;
-            case 'n': result.push_back('\n'); break;
-            case 'r': result.push_back('\r'); break;
-            case 't': result.push_back('\t'); break;
-            default: result.push_back(esc); break;
-            }
-        }
-        else {
-            result.push_back(ch);
-        }
-    }
-    return false;
-}
-
-inline bool json_extract_u64(const std::string& json, const std::string& key, std::uint64_t& value) {
-    const std::string pattern = std::string("\"") + key + "\"";
-    std::size_t pos = json.find(pattern);
-    if (pos == std::string::npos) {
-        return false;
-    }
-    pos = json.find(':', pos + pattern.size());
-    if (pos == std::string::npos) {
-        return false;
-    }
-    ++pos;
-    while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
-        ++pos;
-    }
-    if (pos >= json.size() || !std::isdigit(static_cast<unsigned char>(json[pos]))) {
-        return false;
-    }
-
-    std::uint64_t result = 0;
-    do {
-        const std::uint64_t digit = static_cast<std::uint64_t>(json[pos] - '0');
-        if (result > (std::numeric_limits<std::uint64_t>::max() - digit) / 10u) {
-            return false;
-        }
-        result = result * 10u + digit;
-        ++pos;
-    } while (pos < json.size() && std::isdigit(static_cast<unsigned char>(json[pos])));
-
-    while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos]))) {
-        ++pos;
-    }
-    if (pos < json.size() && json[pos] != ',' && json[pos] != '}') {
-        return false;
-    }
-    value = result;
     return true;
 }
 

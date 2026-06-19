@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/lahf.hpp - LAHF/SAHF instruction implementation
 
 uint8_t get_ah(CPU_CONTEXT* ctx) {

@@ -1,3 +1,5 @@
+#pragma once
+
 // instructions/x87_env.hpp - FLDENV/FNSTENV/FSTENV implementation
 
 static void x87_env_write16(CPU_CONTEXT* ctx, uint64_t address) {

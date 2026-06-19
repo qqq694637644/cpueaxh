@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/xchg.hpp - XCHG instruction implementation
 int decode_xchg_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int reg_index = (modrm >> 3) & 0x07;

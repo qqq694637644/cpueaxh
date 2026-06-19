@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/cdq.hpp - CDQ/CQO instruction implementation
 
 int decode_cdq_operand_size(CPU_CONTEXT* ctx) {

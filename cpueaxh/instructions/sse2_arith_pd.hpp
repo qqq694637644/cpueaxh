@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_arith_pd.hpp - ADDPD/ADDSD/SUBPD/SUBSD/MULPD/MULSD/DIVPD/DIVSD implementation
 
 int decode_sse2_arith_pd_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

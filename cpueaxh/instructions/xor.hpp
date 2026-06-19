@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/xor.hpp - XOR instruction implementation
 
 // --- XOR internal helpers ---

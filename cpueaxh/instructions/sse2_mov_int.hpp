@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_mov_int.hpp - MOVDQA/MOVDQU/PMOVMSKB implementation
 
 int decode_sse2_mov_int_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

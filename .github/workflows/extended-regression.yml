@@ -35,7 +35,12 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Build test project
-        run: msbuild cpueaxh.sln /m /p:Configuration=Release /p:Platform=x64 /t:test
+        shell: pwsh
+        run: |
+          msbuild cpueaxh.sln /m /p:Configuration=Release /p:Platform=x64 /t:test *> build.log
+          $exitCode = $LASTEXITCODE
+          Get-Content build.log
+          if ($exitCode -ne 0) { exit $exitCode }
 
       - name: Locate test executable
         shell: pwsh
@@ -72,6 +77,14 @@ jobs:
           Get-Content generated-specs.json
           if ($exitCode -ne 0) { exit $exitCode }
 
+      - name: List generated differential specs
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --list *> test-specs.log
+          $exitCode = $LASTEXITCODE
+          Get-Content test-specs.log
+          if ($exitCode -ne 0) { exit $exitCode }
+
       - name: Validate generated spec manifest
         shell: pwsh
         run: ./tools/validate-generated-spec-manifest.ps1 -ManifestPath generated-specs.json
@@ -100,6 +113,18 @@ jobs:
         shell: pwsh
         run: ./tools/validate-stage3-gate-output.ps1 -OutputPath stage3-gates.log
 
+      - name: Replay manual coverage sample
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --replay test\manual\exception_priority.json --record-bundle manual-replay-bundle *> manual-replay.log
+          $exitCode = $LASTEXITCODE
+          Get-Content manual-replay.log
+          if ($exitCode -ne 0) { exit $exitCode }
+
+      - name: Validate strict replay schema rejection
+        shell: pwsh
+        run: ./tools/validate-strict-replay.ps1 -TestExe "$env:CPUEAXH_TEST_EXE"
+
       - name: Run long generated regression
         shell: pwsh
         run: |
@@ -120,12 +145,17 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cpueaxh-extended-regression-diagnostics
-          if-no-files-found: ignore
+          if-no-files-found: error
           path: |
             failure-bundle/**
+            manual-replay-bundle/**
+            build.log
             extended-test-run.log
+            test-specs.log
             manual-index.log
             stage3-gates.log
+            manual-replay.log
+            strict-replay.log
             cpu-features.json
             generated-specs.json
             cpu-info.txt

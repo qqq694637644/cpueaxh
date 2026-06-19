@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/pause.hpp - PAUSE instruction implementation
 
 DecodedInstruction decode_pause_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {

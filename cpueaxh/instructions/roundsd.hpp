@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/roundsd.hpp - ROUNDSD instruction implementation
 
 #include <intrin.h>

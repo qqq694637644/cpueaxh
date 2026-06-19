@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse_cmp.hpp - CMPPS/CMPSS/COMISS/UCOMISS implementation
 
 int decode_sse_cmp_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

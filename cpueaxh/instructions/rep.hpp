@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/rep.hpp - REP/REPNE prefix implementation
 
 uint8_t decode_rep_prefix(CPU_CONTEXT* ctx, const uint8_t* code, size_t code_size, size_t* prefix_len) {
