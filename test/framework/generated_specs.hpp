@@ -1,5 +1,6 @@
 #pragma once
 // Split from test/demo/framework.hpp: generated spec catalog, case builder, and generated compare harness.
+// Carries the generated AMD64 arithmetic/RMW coverage that landed on main before this refactor.
 // This header is self-contained and may be included directly; framework.hpp is only an umbrella include.
 
 #include "code_builder.hpp"
