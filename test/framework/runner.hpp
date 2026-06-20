@@ -94,9 +94,23 @@ inline bool run_generated_case_by_name(
 
 inline bool run_all_tests(const TestOptions& options) {
     const HostFeatures features = query_host_features();
+    std::vector<Failure> failures;
     auto record_failure = [&](Failure& failure) -> bool {
         attach_host_features_to_failure(failure, features);
         return write_failure_record(options.failure_record_path, failure);
+    };
+    auto collect_failure = [&](Failure failure) -> void {
+        attach_host_features_to_failure(failure, features);
+        failures.push_back(failure);
+    };
+    auto flush_failures = [&]() -> bool {
+        if (failures.empty()) {
+            return true;
+        }
+        if (!write_failure_record(options.failure_record_path, failures[0])) {
+            return false;
+        }
+        return write_failures_record(options.failures_record_path, failures);
     };
 
     if (!write_host_feature_record(options.feature_record_path, features)) {
@@ -227,7 +241,8 @@ inline bool run_all_tests(const TestOptions& options) {
         failure.case_name = "harness_init";
         failure.detail = harness.init_error();
         std::cerr << failure.detail << std::endl;
-        record_failure(failure);
+        collect_failure(failure);
+        flush_failures();
         return false;
     }
 
@@ -240,7 +255,7 @@ inline bool run_all_tests(const TestOptions& options) {
             attach_built_case_to_failure(failure, built, seed_index);
             std::cerr << "FAIL " << failure.case_name << std::endl;
             std::cerr << failure.detail << std::endl;
-            record_failure(failure);
+            collect_failure(failure);
             return false;
         }
         ++executed;
@@ -256,13 +271,19 @@ inline bool run_all_tests(const TestOptions& options) {
         }
         if (options.has_seed_index) {
             if (!run_generated_seed(spec, options.seed_index)) {
-                return false;
+                if (options.fail_fast) {
+                    flush_failures();
+                    return false;
+                }
             }
         }
         else {
             for (std::uint64_t seed_index = 0; seed_index < options.generated_seed_count; ++seed_index) {
                 if (!run_generated_seed(spec, seed_index)) {
-                    return false;
+                    if (options.fail_fast) {
+                        flush_failures();
+                        return false;
+                    }
                 }
             }
         }
@@ -271,8 +292,11 @@ inline bool run_all_tests(const TestOptions& options) {
     if (run_manual) {
         Failure failure;
         if (!run_manual_special_tests(features, executed, total, &failure)) {
-            record_failure(failure);
-            return false;
+            collect_failure(failure);
+            if (options.fail_fast) {
+                flush_failures();
+                return false;
+            }
         }
     }
 
@@ -285,8 +309,12 @@ inline bool run_all_tests(const TestOptions& options) {
             failure.detail = replay_error;
             std::cerr << "FAIL regression " << regression_file << std::endl;
             std::cerr << replay_error << std::endl;
-            record_failure(failure);
-            return false;
+            collect_failure(failure);
+            if (options.fail_fast) {
+                flush_failures();
+                return false;
+            }
+            continue;
         }
 
         Failure failure;
@@ -294,8 +322,12 @@ inline bool run_all_tests(const TestOptions& options) {
             std::cerr << "FAIL regression " << regression_file << std::endl;
             std::cerr << failure.case_name << std::endl;
             std::cerr << failure.detail << std::endl;
-            record_failure(failure);
-            return false;
+            collect_failure(failure);
+            if (options.fail_fast) {
+                flush_failures();
+                return false;
+            }
+            continue;
         }
         ++executed;
         if ((executed % 1024) == 0 || executed == total) {
@@ -303,6 +335,11 @@ inline bool run_all_tests(const TestOptions& options) {
         }
     }
 
+    if (!failures.empty()) {
+        std::cerr << "FAIL collected failures: " << failures.size() << std::endl;
+        flush_failures();
+        return false;
+    }
     std::cout << "PASS " << executed << "/" << total << std::endl;
     return true;
 }

@@ -546,6 +546,7 @@ struct TestOptions {
     std::string exact_case;
     std::string manual_case;
     std::string failure_record_path;
+    std::string failures_record_path;
     std::string feature_record_path;
     std::string spec_manifest_path;
     std::string record_bundle_dir;
@@ -556,6 +557,7 @@ struct TestOptions {
     bool dump_features_only = false;
     bool dump_specs_only = false;
     bool run_regression_corpus = true;
+    bool fail_fast = false;
 };
 
 struct ManualCaseIndexEntry {
@@ -845,6 +847,46 @@ inline bool write_failure_record(const std::string& path, const Failure& failure
              << " --seed-index " << failure.seed_index << "\"";
     }
     file << "\n}\n";
+    return true;
+}
+
+inline bool write_failures_record(const std::string& path, const std::vector<Failure>& failures) {
+    if (path.empty()) {
+        return true;
+    }
+    if (!ensure_parent_directory(path)) {
+        return false;
+    }
+    std::ofstream file(path, std::ios::out | std::ios::trunc);
+    if (!file) {
+        std::cerr << "failed to open failures record: " << path << std::endl;
+        return false;
+    }
+    file << "{\n";
+    file << "  \"schema\": \"cpueaxh.failures.v1\",\n";
+    file << "  \"failure_count\": " << failures.size() << ",\n";
+    file << "  \"failures\": [\n";
+    for (std::size_t index = 0; index < failures.size(); ++index) {
+        const Failure& failure = failures[index];
+        file << "    { \"case_name\": \"" << json_escape(failure.case_name) << "\", "
+             << "\"detail\": \"" << json_escape(failure.detail) << "\"";
+        if (!failure.spec_name.empty()) {
+            file << ", \"spec_name\": \"" << json_escape(failure.spec_name) << "\"";
+        }
+        if (failure.has_seed_index) {
+            file << ", \"seed_index\": " << failure.seed_index;
+        }
+        if (failure.has_seed) {
+            file << ", \"seed\": \"" << failure.seed << "\"";
+        }
+        file << " }";
+        if (index + 1 != failures.size()) {
+            file << ",";
+        }
+        file << "\n";
+    }
+    file << "  ]\n";
+    file << "}\n";
     return true;
 }
 

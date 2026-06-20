@@ -130,6 +130,15 @@ function Assert-RequiredCoverageGates {
     Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'Validate required coverage gates' -Message 'extended regression must validate required coverage gates.'
 }
 
+function Assert-AllFailuresCollection {
+    Assert-TestFrameworkContains -Pattern '--fail-fast' -Message 'CLI must expose explicit --fail-fast.'
+    Assert-TestFrameworkContains -Pattern '--record-failures' -Message 'CLI must expose --record-failures.'
+    Assert-TestFrameworkContains -Pattern 'write_failures_record' -Message 'framework must write all-failures records.'
+    Assert-TestFrameworkContains -Pattern 'cpueaxh\.failures\.v1' -Message 'all-failures record must have a schema.'
+    Assert-TestFrameworkContains -Pattern 'FAIL collected failures' -Message 'runner must report collected failures instead of first-failure only.'
+    Assert-TestFrameworkContains -Pattern 'failures\.json' -Message 'record bundles must include failures.json.'
+}
+
 function Assert-NoLegacyFrameworkJsonExtractors {
     $content = Get-ChildItem -LiteralPath 'test/framework' -Filter '*.hpp' -File |
         ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }
@@ -345,6 +354,7 @@ Assert-CpueaxhInternalUsesInstructionModules
 Assert-StrictReplayFixtures
 Assert-GeneratedManifestPolicyFields
 Assert-RequiredCoverageGates
+Assert-AllFailuresCollection
 Assert-NoLegacyFrameworkJsonExtractors
 Assert-FrameworkHeadersDoNotRequireUmbrellaOrder
 
