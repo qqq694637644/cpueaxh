@@ -12,6 +12,10 @@ void execute_avx_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     uint8_t map_select = avx_vex_map_select(&prefix);
     apply_avx_vex_state(ctx, &prefix);
 
+    if (try_execute_bmi_vex(ctx, code, code_size, &prefix)) {
+        return;
+    }
+
     if (map_select == 0x03) {
         if ((opcode == 0x14 || opcode == 0x15 || opcode == 0x16) && mandatory_prefix == 1) {
             if (is_256 || avx_vex_requires_reserved_vvvv(&prefix)) {

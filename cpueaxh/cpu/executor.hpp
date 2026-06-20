@@ -292,6 +292,11 @@ static inline int cpu_step_dispatch_decoded(CPU_CONTEXT* ctx, DecodedInst* decod
             result_code = CPU_STEP_EXCEPTION;
             goto cpu_step_finish;
         }
+        if (decoded->flags & DECODED_FLAG_DB) {
+            raise_db_ctx(ctx);
+            result_code = CPU_STEP_EXCEPTION;
+            goto cpu_step_finish;
+        }
 
         // Snapshot policy:
         //   * scalar snapshot is taken unless the decoder proved the handler

@@ -178,7 +178,7 @@ inline void cpu_decoder_set_inline_ret(DecodedInst* dec, uint8_t prefix_len, int
 // that should default to #UD when no escape callback is registered (matches
 // the existing cpu_step_with_prefetch behaviour for INT/IN/OUT/SYSCALL/etc).
 inline bool cpu_decoder_is_escape_owned_ud(uint16_t opc) {
-    return opc == 0x00CD ||
+    return opc == 0x00CD || opc == 0x0F0B ||
         opc == 0x00E4 || opc == 0x00E5 || opc == 0x00E6 || opc == 0x00E7 ||
         opc == 0x00EC || opc == 0x00ED || opc == 0x00EE || opc == 0x00EF ||
         opc == 0x0F05 || opc == 0x0F34 ||
@@ -196,7 +196,7 @@ inline bool cpu_decoder_is_escape_owned_ud(uint16_t opc) {
 // 0x0F1E (RDSSP/NOP-ish CET) are escape-candidates as a whole because their
 // sub-encodings determine the actual escape ID.
 inline bool cpu_decoder_is_escape_candidate_opc(uint16_t opc) {
-    if (opc == 0x00CC || opc == 0x00CD || opc == 0x00F4) return true; // INT3 / INT / HLT
+    if (opc == 0x00CC || opc == 0x00CD || opc == 0x00F1 || opc == 0x00F4 || opc == 0x0F0B) return true; // INT3 / INT / INT1 / HLT / UD2
     if (opc == 0x00E4 || opc == 0x00E5 || opc == 0x00E6 || opc == 0x00E7 ||
         opc == 0x00EC || opc == 0x00ED || opc == 0x00EE || opc == 0x00EF ||
         opc == 0x006C || opc == 0x006D) {
@@ -246,10 +246,17 @@ inline DecodedExecuteFn cpu_decoder_resolve_two_byte_misc(
     if (opc == 0x0FA0 || opc == 0x0FA8) return execute_push;
     if (opc == 0x0FA1 || opc == 0x0FA9) return execute_pop;
     if (opc == 0x0F77) return execute_emms;
+    if (opc == 0x0F01 && is_serialize_instruction(buf, fetched, prefix_len)) return execute_serialize;
     if (opc == 0x0F0D || opc == 0x0F18 || (opc == 0x0F2B && mandatory_prefix == 0x00)) return execute_sse_misc;
     if ((opc == 0x0F2B && mandatory_prefix == 0x66) ||
         (opc == 0x0FE7 && mandatory_prefix == 0x66) ||
         opc == 0x0FC3) return execute_sse2_store_misc;
+    if (opc == 0x0FAE && mandatory_prefix == 0xF3 && (prefix_len + 2) < (int)fetched) {
+        const uint8_t modrm = buf[prefix_len + 2];
+        if (((modrm >> 6) & 0x03) == 3 && ((modrm >> 3) & 0x07) <= 1) return execute_fsgsbase;
+        *out_ud = true;
+        return NULL;
+    }
     if (opc == 0x0FAE) return execute_sse_state;
     if (opc == 0x0FAF) return execute_imul;
     if (opc == 0x0FA4 || opc == 0x0FA5) return execute_shld;
@@ -263,7 +270,9 @@ inline DecodedExecuteFn cpu_decoder_resolve_two_byte_misc(
     if (opc == 0x0F31) { *out_ud = true; return NULL; }
     if (opc == 0x0FC0 || opc == 0x0FC1) return execute_xadd;
     if (opc == 0x0FB0 || opc == 0x0FB1) return execute_cmpxchg;
+    if (opc == 0x0F33) return execute_rdpmc;
     if (opc == 0x0FC7 && is_rdpid_instruction(buf, fetched, prefix_len)) return execute_rdpid;
+    if (opc == 0x0FC7 && is_rdseed_instruction(buf, fetched)) return execute_rdseed;
     if (opc == 0x0FC7 && (prefix_len + 2) < (int)fetched) {
         const uint8_t modrm = buf[prefix_len + 2];
         if ((((modrm >> 3) & 0x07) == 7) && (((modrm >> 6) & 0x03) == 3)) { *out_ud = true; return NULL; }
@@ -499,6 +508,8 @@ inline void cpu_decode_instruction(
 
     if (opc == 0x00F4) { dec->flags |= DECODED_FLAG_UD; return; }
     if (opc == 0x00CC) { dec->flags |= DECODED_FLAG_BP; return; }
+    if (opc == 0x00F1) { dec->flags |= DECODED_FLAG_DB; return; }
+    if (opc == 0x0F0B) { dec->flags |= DECODED_FLAG_UD; return; }
     if (cpu_decoder_is_escape_owned_ud(opc)) {
         dec->flags |= DECODED_FLAG_UD;
         return;
@@ -1025,7 +1036,7 @@ inline void cpu_decode_instruction(
     // Mark the entry as snapshot-free when the instruction is provably safe.
     // Only set the flag when no other side-channel forces us to keep the
     // scalar snapshot (UD / BP / vector dispatch handle their own state).
-    if ((dec->flags & (DECODED_FLAG_UD | DECODED_FLAG_BP | DECODED_FLAG_TOUCHES_VECTOR | DECODED_FLAG_INLINE_RET)) == 0) {
+    if ((dec->flags & (DECODED_FLAG_UD | DECODED_FLAG_BP | DECODED_FLAG_DB | DECODED_FLAG_TOUCHES_VECTOR | DECODED_FLAG_INLINE_RET)) == 0) {
         if (cpu_decoder_classify_no_fault(buf, fetched, prefix_len, opc,
                 group_reg, group3_reg, fe_reg, ff_reg, group2_reg)) {
             dec->flags |= DECODED_FLAG_NO_FAULT;
@@ -1066,7 +1077,7 @@ inline void cpu_decoder_try_attach_fast_handler(CPU_CONTEXT* ctx,
     if (dec->inline_kind != DECODED_INLINE_NONE) {
         return;
     }
-    if (dec->flags & (DECODED_FLAG_UD | DECODED_FLAG_BP | DECODED_FLAG_INLINE_RET)) {
+    if (dec->flags & (DECODED_FLAG_UD | DECODED_FLAG_BP | DECODED_FLAG_DB | DECODED_FLAG_INLINE_RET)) {
         return;
     }
     if (dec->handler == NULL) {
@@ -1183,8 +1194,12 @@ inline void cpu_decoder_try_attach_fast_handler(CPU_CONTEXT* ctx,
     if (dec->handler == execute_cpuid){ attach_one(decode_cpuid_instruction,execute_cpuid_fast);return; }
     if (dec->handler == execute_rdtsc){ attach_one(decode_rdtsc_instruction,execute_rdtsc_fast);return; }
     if (dec->handler == execute_rdtscp){attach_one(decode_rdtscp_instruction,execute_rdtscp_fast);return; }
+    if (dec->handler == execute_rdpmc){ attach_one(decode_rdpmc_instruction,execute_rdpmc_fast);return; }
+    if (dec->handler == execute_rdseed){ attach_one(decode_rdseed_instruction,execute_rdseed_fast);return; }
     if (dec->handler == execute_xgetbv){attach_one(decode_xgetbv_instruction,execute_xgetbv_fast);return; }
     if (dec->handler == execute_rdpid){ attach_one(decode_rdpid_instruction,execute_rdpid_fast);return; }
+    if (dec->handler == execute_fsgsbase){ attach_one(decode_fsgsbase_instruction,execute_fsgsbase_fast);return; }
+    if (dec->handler == execute_serialize){ attach_one(decode_serialize_instruction,execute_serialize_fast);return; }
     if (dec->handler == execute_popcnt){attach_one(decode_popcnt_instruction,execute_popcnt_fast);return; }
     if (dec->handler == execute_endbr){ attach_one(decode_endbr_instruction,execute_endbr_fast);return; }
     if (dec->handler == execute_xorps){ attach_one(decode_xorps_instruction,execute_xorps_fast);return; }
