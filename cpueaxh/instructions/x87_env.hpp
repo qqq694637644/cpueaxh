@@ -2,6 +2,8 @@
 
 // instructions/x87_env.hpp - FLDENV/FNSTENV/FSTENV implementation
 
+#include "x87_control.hpp"
+
 static void x87_env_write16(CPU_CONTEXT* ctx, uint64_t address) {
     uint8_t bytes[14] = {};
     uint8_t* byte_ptrs[14] = {};
