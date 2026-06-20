@@ -2,6 +2,9 @@
 
 // cpu/memory.hpp - CPU memory access functions
 
+#include "def.h"
+#include "../memory/manager.hpp"
+
 inline uint32_t cpu_make_page_fault_error(const CPU_CONTEXT* ctx, uint32_t access, bool protection_violation) {
     uint32_t error_code = protection_violation ? 0x1u : 0x0u;
 
