@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/movzx.hpp - MOVZX instruction implementation
 
 static int decode_movzx_segment_override(uint8_t prefix) {

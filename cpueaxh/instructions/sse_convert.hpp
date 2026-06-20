@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse_convert.hpp - CVTSI2SS/CVTSS2SI/CVTTSS2SI/CVTPI2PS/CVTPS2PI implementation
 
 int decode_sse_convert_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

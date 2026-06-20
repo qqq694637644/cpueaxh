@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_int_logic.hpp - PAND/PANDN/POR/PXOR implementation
 
 int decode_sse2_int_logic_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

@@ -1,4 +1,8 @@
+#pragma once
+
 // instrusments/pcmpistrm.hpp - PCMPISTRM instruction implementation
+
+#include "avx_vex.hpp"
 
 static int decode_pcmpistrm_segment_override(uint8_t prefix) {
     switch (prefix) {

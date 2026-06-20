@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/test.hpp - TEST instruction implementation
 
 // --- TEST execution helpers ---

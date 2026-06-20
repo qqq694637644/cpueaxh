@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/popcnt.hpp - POPCNT instruction implementation
 
 static inline bool cpu_has_popcnt_feature() {

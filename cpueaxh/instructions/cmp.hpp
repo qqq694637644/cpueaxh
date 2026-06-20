@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/cmp.hpp - CMP instruction implementation
 // CMP performs SRC1 - SRC2, sets flags identically to SUB, discards the result.
 

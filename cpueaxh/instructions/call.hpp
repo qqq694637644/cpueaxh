@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/call.hpp - CALL instruction implementation
 
 // --- CALL execution helpers ---

@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/xadd.hpp - XADD instruction implementation
 
 int decode_xadd_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

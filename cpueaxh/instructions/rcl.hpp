@@ -1,17 +1,8 @@
+#pragma once
+
 // instrusments/rcl.hpp - RCL instruction implementation
 
-uint8_t get_rcl_count(CPU_CONTEXT* ctx, int operand_size, uint8_t raw_count) {
-    unsigned int count = raw_count & get_rol_count_mask(operand_size);
-    switch (operand_size) {
-    case 8:  return (uint8_t)(count % 9u);
-    case 16: return (uint8_t)(count % 17u);
-    case 32:
-    case 64: return (uint8_t)count;
-    default:
-        raise_ud_ctx(ctx);
-        return 0;
-    }
-}
+#include "rol.hpp"
 
 void update_flags_rcl(CPU_CONTEXT* ctx, uint64_t result, int operand_size, unsigned int count, bool carry_out) {
     if (count == 0) {

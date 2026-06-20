@@ -1,3 +1,5 @@
+#pragma once
+
 // cpu/decoder.hpp - Translates a fetched instruction byte stream into a
 // DecodedInst that records which legacy execute_* handler should service it.
 //
@@ -17,6 +19,7 @@
 #include "def.h"
 #include "decoded.hpp"
 #include "dispatch_helpers.hpp"
+#include "../instructions/all_instructions.hpp"
 
 // Conservative classifier that returns true only when the instruction at
 // (buf, fetched) is provably free of any architectural fault that would force

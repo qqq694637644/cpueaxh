@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/rol.hpp - ROL instruction implementation
 
 int decode_rol_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {
@@ -77,6 +79,19 @@ uint64_t get_rol_sign_mask(CPU_CONTEXT* ctx, int operand_size) {
 
 uint8_t get_rol_count_mask(int operand_size) {
     return operand_size == 64 ? 0x3F : 0x1F;
+}
+
+uint8_t get_rcl_count(CPU_CONTEXT* ctx, int operand_size, uint8_t raw_count) {
+    unsigned int count = raw_count & get_rol_count_mask(operand_size);
+    switch (operand_size) {
+    case 8:  return (uint8_t)(count % 9u);
+    case 16: return (uint8_t)(count % 17u);
+    case 32:
+    case 64: return (uint8_t)count;
+    default:
+        raise_ud_ctx(ctx);
+        return 0;
+    }
 }
 
 uint8_t decode_rol_count(CPU_CONTEXT* ctx, const DecodedInstruction* inst) {

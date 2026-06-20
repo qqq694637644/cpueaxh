@@ -1,4 +1,11 @@
+#pragma once
+
 // instrusments/pextr.hpp - PEXTRB/PEXTRD/PEXTRQ implementation
+
+#include "evex.hpp"
+#include "movdq.hpp"
+#include "sse_arith.hpp"
+#include "sse2_misc.hpp"
 
 static inline bool is_pextr_instruction(const uint8_t* code, int len, int prefix_len) {
     if (!code || prefix_len + 4 >= len) {

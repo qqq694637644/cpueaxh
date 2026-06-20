@@ -20,6 +20,8 @@ Required fields:
 
 `case_selector` must be a non-empty exact generated spec name. `seed_index` must be an unquoted JSON number. Quoted numbers, negative values, signed values, and overflow values are rejected.
 
+Generated replay records are strict top-level JSON objects. Unknown fields, duplicate fields, missing required fields, trailing commas, and trailing data are rejected before replay selection is applied.
+
 Accepted diagnostic fields:
 
 - `seed`: diagnostic only; replay derives the deterministic seed from `case_selector` and `seed_index`.
@@ -207,7 +209,10 @@ Manual replay records are rejected at runtime unless all of these conditions hol
 
 - `category` exists and is either `manual` or `unsafe-native`;
 - `category` matches the category in `test.exe --list-manual` for the selected `case_selector`;
+- `coverage` exists and exactly matches the coverage text in `test.exe --list-manual` for the selected `case_selector`;
 - `replay` exists and contains `--manual-case <case_selector>`.
+
+Manual replay records are also strict top-level JSON objects. Unknown fields, duplicate fields, missing required fields, trailing commas, and trailing data are rejected.
 
 This is intentionally strict: malformed manual replay records must be fixed rather than silently falling back to a broader mode.
 

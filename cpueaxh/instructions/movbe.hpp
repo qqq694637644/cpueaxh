@@ -1,3 +1,5 @@
+#pragma once
+
 // instructions/movbe.hpp - MOVBE instruction implementation
 
 static inline bool cpu_has_movbe_feature() {

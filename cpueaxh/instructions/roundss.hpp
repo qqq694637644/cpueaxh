@@ -1,6 +1,10 @@
+#pragma once
+
 // instrusments/roundss.hpp - ROUNDSS instruction implementation
 
 #include <intrin.h>
+#include "sse_math.hpp"
+#include "sse_arith.hpp"
 
 static int decode_roundss_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int reg = (modrm >> 3) & 0x07;
@@ -81,6 +85,7 @@ static unsigned int roundss_host_rounding_mode(uint32_t mxcsr) {
     case 0: return _MM_ROUND_NEAREST;
     case 1: return _MM_ROUND_DOWN;
     case 2: return _MM_ROUND_UP;
+    case 3: return _MM_ROUND_TOWARD_ZERO;
     default: return _MM_ROUND_TOWARD_ZERO;
     }
 }
@@ -98,6 +103,7 @@ static __m128 apply_roundss_intrinsic(__m128 destination, __m128 source, uint8_t
     case 0: return _mm_round_ss(destination, source, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
     case 1: return _mm_round_ss(destination, source, _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
     case 2: return _mm_round_ss(destination, source, _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
+    case 3: return _mm_round_ss(destination, source, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     default: return _mm_round_ss(destination, source, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     }
 }

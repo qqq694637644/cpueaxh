@@ -1,4 +1,12 @@
+#pragma once
+
 // instrusments/rep.hpp - REP/REPNE prefix implementation
+
+#include "movs.hpp"
+#include "cmps.hpp"
+#include "stos.hpp"
+#include "lods.hpp"
+#include "scas.hpp"
 
 uint8_t decode_rep_prefix(CPU_CONTEXT* ctx, const uint8_t* code, size_t code_size, size_t* prefix_len) {
     size_t offset = 0;

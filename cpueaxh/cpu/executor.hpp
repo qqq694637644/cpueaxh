@@ -1,9 +1,15 @@
+#pragma once
+
 // cpu/executor.hpp - Instruction fetch-decode-dispatch main loop.
 //
 // The instruction stream is decoded once per static program counter and the
 // resulting DecodedInst is cached by RIP, code-version and CPU-mode key (see
 // cpu/inst_cache.hpp). On a hit we skip prefix scanning, opcode classification
 // and the long if/else dispatch ladder, going straight to the cached handler.
+
+#include "core.hpp"
+#include "inst_cache.hpp"
+#include "decoder.hpp"
 
 // Maximum bytes we fetch ahead per instruction (Intel max is 15 bytes). The
 // canonical definition lives in dispatch_helpers.hpp; we re-affirm the value
@@ -21,6 +27,10 @@ static_assert(MAX_INST_FETCH == DECODED_INST_MAX_BYTES,
 #define CPU_STEP_FETCH_ERR 2   // no bytes readable at rip
 #define CPU_STEP_UD        3   // unrecognised opcode
 #define CPU_STEP_EXCEPTION 4   // pending CPU exception
+
+#ifndef CPUEAXH_STRICT_INTERNAL
+#define CPUEAXH_STRICT_INTERNAL 1
+#endif
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -92,18 +102,21 @@ static int fetch_instruction_bytes(CPU_CONTEXT* ctx, uint64_t addr, uint8_t* buf
 // here would re-fire MEM_FETCH for bytes belonging to the *next* instruction,
 // which is exactly the bug this notify pass exists to fix.
 //
-// For the rare entries where `length == 0` (handler attached but no probe ran
-// successfully -- e.g. an exotic shape that fell through every attach_one
-// branch), fall back to byte_count so we still notify *something* rather
-// than silently dropping the hook. That degraded case is at worst the old
-// behaviour, never worse.
+// A cached handler with `length <= 0` is an incomplete decode payload. Strict
+// development builds fail that state instead of falling back to byte_count and
+// hiding the decode bug.
 static inline void cpu_executor_notify_fetched_bytes(CPU_CONTEXT* ctx, uint64_t rip, const DecodedInst* decoded) {
     if (!cpu_has_hook_type(ctx, CPUEAXH_HOOK_MEM_FETCH)) {
         return;
     }
     int count = (int)decoded->length;
     if (count <= 0) {
+#if CPUEAXH_STRICT_INTERNAL
+        raise_ud_ctx(ctx);
+        return;
+#else
         count = (int)decoded->byte_count;
+#endif
     }
     if (count > (int)decoded->byte_count) {
         count = (int)decoded->byte_count;

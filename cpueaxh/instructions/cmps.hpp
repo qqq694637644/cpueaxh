@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/cmps.hpp - CMPS instruction implementation
 
 int decode_cmps_operand_size(CPU_CONTEXT* ctx, uint8_t opcode) {

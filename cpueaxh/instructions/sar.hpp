@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sar.hpp - SAR instruction implementation
 
 int decode_sar_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {

@@ -1,4 +1,8 @@
+#pragma once
+
 // cpu/helper.hpp - CPU helper functions (segments, descriptors, register access, addressing)
+
+#include "memory.hpp"
 
 SegmentDescriptor load_descriptor_from_table(CPU_CONTEXT* ctx, uint16_t selector) {
     SegmentDescriptor desc = {};

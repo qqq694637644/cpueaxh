@@ -1,4 +1,8 @@
+#pragma once
+
 // instrusments/rcr.hpp - RCR instruction implementation
+
+#include "rol.hpp"
 
 void update_flags_rcr(CPU_CONTEXT* ctx, uint64_t result, int operand_size, unsigned int count, bool carry_out) {
     if (count == 0) {

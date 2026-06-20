@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)][string]$ManifestPath,
-    [string]$StatusPath = 'docs/instruction-status.yml',
+    [string]$StatusPath = 'docs/instruction-status.json',
     [string]$RegressionDir = 'test/regression'
 )
 
@@ -17,34 +17,6 @@ $AllowedStatuses = @(
     'blocked'
 )
 
-function Get-RequiredScalar {
-    param(
-        [Parameter(Mandatory = $true)][string]$Block,
-        [Parameter(Mandatory = $true)][string]$Field,
-        [Parameter(Mandatory = $true)][string]$FormName
-    )
-    $pattern = "(?m)^\s+${Field}:\s*(.+?)\s*$"
-    $match = [regex]::Match($Block, $pattern)
-    if (-not $match.Success) {
-        throw "Instruction-status form '$FormName' missing required field '$Field'."
-    }
-    return $match.Groups[1].Value.Trim().Trim('"')
-}
-
-function Get-RequiredBoolean {
-    param(
-        [Parameter(Mandatory = $true)][string]$Block,
-        [Parameter(Mandatory = $true)][string]$Field,
-        [Parameter(Mandatory = $true)][string]$FormName
-    )
-    $pattern = "(?m)^\s+${Field}:\s*(true|false)\s*$"
-    $match = [regex]::Match($Block, $pattern)
-    if (-not $match.Success) {
-        throw "Instruction-status form '$FormName' missing boolean coverage field '$Field'."
-    }
-    return $match.Groups[1].Value -eq 'true'
-}
-
 function Test-FeatureGateEnabled {
     param(
         [Parameter(Mandatory = $true)][string]$FeatureGate,
@@ -59,9 +31,36 @@ function Test-FeatureGateEnabled {
 
     $property = $ManifestFeatures.PSObject.Properties[$FeatureGate]
     if ($null -eq $property) {
-        throw "instruction-status.yml uses unknown feature_gate '$FeatureGate'."
+        throw "instruction-status.json uses unknown feature_gate '$FeatureGate'."
     }
     return [bool]$property.Value
+}
+
+function Require-StringField {
+    param(
+        [Parameter(Mandatory = $true)]$Object,
+        [Parameter(Mandatory = $true)][string]$Field,
+        [Parameter(Mandatory = $true)][string]$FormName
+    )
+    if ($null -eq $Object.PSObject.Properties[$Field] -or [string]::IsNullOrWhiteSpace([string]$Object.$Field)) {
+        throw "Instruction-status form '$FormName' missing required field '$Field'."
+    }
+    return [string]$Object.$Field
+}
+
+function Require-BoolField {
+    param(
+        [Parameter(Mandatory = $true)]$Object,
+        [Parameter(Mandatory = $true)][string]$Field,
+        [Parameter(Mandatory = $true)][string]$FormName
+    )
+    if ($null -eq $Object.PSObject.Properties[$Field]) {
+        throw "Instruction-status form '$FormName' missing boolean coverage field '$Field'."
+    }
+    if ($Object.$Field -isnot [bool]) {
+        throw "Instruction-status form '$FormName' coverage field '$Field' must be boolean."
+    }
+    return [bool]$Object.$Field
 }
 
 if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
@@ -76,6 +75,7 @@ if ($manifest.schema -ne 'cpueaxh.generated-specs.v1') {
     throw "Unexpected generated spec manifest schema: $($manifest.schema)"
 }
 $specNames = @($manifest.specs | ForEach-Object { [string]$_.name })
+$manifestInstructionForms = @($manifest.specs | ForEach-Object { [string]$_.instruction_form })
 
 $regressionSelectors = @{}
 if (Test-Path -LiteralPath $RegressionDir -PathType Container) {
@@ -87,57 +87,56 @@ if (Test-Path -LiteralPath $RegressionDir -PathType Container) {
     }
 }
 
-$status = Get-Content -LiteralPath $StatusPath -Raw
-if ($status -notmatch '(?m)^schema:\s*cpueaxh\.instruction-status\.v1\s*$') {
-    throw 'instruction-status.yml has an invalid or missing schema.'
+$status = Get-Content -LiteralPath $StatusPath -Raw | ConvertFrom-Json
+if ($status.schema -ne 'cpueaxh.instruction-status.v1') {
+    throw "instruction-status.json has an invalid or missing schema: $($status.schema)"
 }
-foreach ($required in @('required_identity_fields:', 'status_values:', 'families:')) {
-    if ($status -notmatch [regex]::Escape($required)) {
-        throw "instruction-status.yml is missing section '$required'."
+foreach ($section in @('required_identity_fields', 'status_values', 'stage3_contracts', 'forms')) {
+    if ($null -eq $status.PSObject.Properties[$section]) {
+        throw "instruction-status.json is missing section '$section'."
     }
 }
-
-$formMatches = [regex]::Matches(
-    $status,
-    '(?ms)^\s{10}-\s+name:\s*([^\r\n]+)\s*$.*?(?=^\s{10}-\s+name:\s*|^\s{6}-\s+mnemonic:\s*|^\s{2}[a-z0-9_]+:\s*$|\z)'
-)
-if ($formMatches.Count -eq 0) {
-    throw 'instruction-status.yml has no form entries.'
+if (-not $status.forms -or $status.forms.Count -eq 0) {
+    throw 'instruction-status.json has no form entries.'
 }
 
 $formNames = @{}
-foreach ($match in $formMatches) {
-    $name = $match.Groups[1].Value.Trim().Trim('"')
-    $block = $match.Value
+$generatedFormNames = @{}
+foreach ($form in $status.forms) {
+    $name = Require-StringField -Object $form -Field 'name' -FormName '<unknown>'
     if ($formNames.ContainsKey($name)) {
-        throw "instruction-status.yml has duplicate form name '$name'."
+        throw "instruction-status.json has duplicate form name '$name'."
     }
     $formNames[$name] = $true
 
-    foreach ($field in @('encoding', 'operands', 'operand_size', 'mode', 'feature_gate', 'status', 'unsafe_native_reason')) {
-        [void](Get-RequiredScalar -Block $block -Field $field -FormName $name)
+    foreach ($field in @('encoding', 'operands_raw', 'operand_size', 'mode', 'feature_gate', 'status', 'unsafe_native_reason')) {
+        [void](Require-StringField -Object $form -Field $field -FormName $name)
+    }
+    if ($null -eq $form.coverage) {
+        throw "Instruction-status form '$name' missing coverage block."
     }
 
-    $featureGate = Get-RequiredScalar -Block $block -Field 'feature_gate' -FormName $name
-    $formStatus = Get-RequiredScalar -Block $block -Field 'status' -FormName $name
+    $featureGate = [string]$form.feature_gate
+    $formStatus = [string]$form.status
     if ($formStatus -notin $AllowedStatuses) {
         throw "Instruction-status form '$name' uses unknown status '$formStatus'."
     }
 
-    if ($block -notmatch '(?m)^\s+coverage:\s*$') {
-        throw "Instruction-status form '$name' missing coverage block."
-    }
-    $generatedDifferential = Get-RequiredBoolean -Block $block -Field 'generated_differential' -FormName $name
-    $regressionReplay = Get-RequiredBoolean -Block $block -Field 'regression_replay' -FormName $name
-    $manualCoverage = Get-RequiredBoolean -Block $block -Field 'manual' -FormName $name
+    $generatedDifferential = Require-BoolField -Object $form.coverage -Field 'generated_differential' -FormName $name
+    $regressionReplay = Require-BoolField -Object $form.coverage -Field 'regression_replay' -FormName $name
+    $manualCoverage = Require-BoolField -Object $form.coverage -Field 'manual' -FormName $name
 
     if ($generatedDifferential -and $featureGate -eq 'controlled_environment') {
         throw "Instruction-status form '$name' cannot claim generated_differential under controlled_environment."
     }
 
+    if ($generatedDifferential) {
+        $generatedFormNames[$name] = $true
+    }
+
     if ($generatedDifferential -and (Test-FeatureGateEnabled -FeatureGate $featureGate -ManifestFeatures $manifest.features)) {
-        if ($name -notin $specNames) {
-            throw "Instruction-status form '$name' claims generated_differential but is absent from generated-specs manifest."
+        if ($name -notin $manifestInstructionForms) {
+            throw "Instruction-status form '$name' claims generated_differential but is absent from generated manifest instruction_form values."
         }
     }
 
@@ -156,7 +155,7 @@ foreach ($match in $formMatches) {
         if (-not $manualCoverage) {
             throw "unsafe_for_native form '$name' must have manual/model coverage."
         }
-        if ($block -match '(?m)^\s+unsafe_native_reason:\s*(null|""|\s*)$') {
+        if ([string]::IsNullOrWhiteSpace([string]$form.unsafe_native_reason) -or [string]$form.unsafe_native_reason -eq 'null') {
             throw "unsafe_for_native form '$name' must explain unsafe_native_reason."
         }
     }
@@ -167,4 +166,16 @@ foreach ($match in $formMatches) {
     }
 }
 
-Write-Host "Instruction status validation passed. Forms: $($formMatches.Count)"
+foreach ($manifestForm in $manifestInstructionForms) {
+    if ([string]::IsNullOrWhiteSpace($manifestForm)) {
+        throw 'Generated spec manifest contains an empty instruction_form.'
+    }
+    if (-not $formNames.ContainsKey($manifestForm)) {
+        throw "Generated spec manifest references unknown instruction_form '$manifestForm'."
+    }
+    if (-not $generatedFormNames.ContainsKey($manifestForm)) {
+        throw "Generated spec manifest references instruction_form '$manifestForm' but instruction-status does not mark generated_differential=true."
+    }
+}
+
+Write-Host "Instruction status validation passed. Forms: $($status.forms.Count)"

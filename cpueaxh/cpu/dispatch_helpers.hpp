@@ -1,3 +1,5 @@
+#pragma once
+
 // cpu/dispatch_helpers.hpp - Stateless instruction-byte inspection helpers
 // shared by the decoder and the executor.
 //
@@ -9,6 +11,7 @@
 
 #include "../cpueaxh_platform.hpp"
 #include "def.h"
+#include "helper.hpp"
 
 #define MAX_INST_FETCH 15
 

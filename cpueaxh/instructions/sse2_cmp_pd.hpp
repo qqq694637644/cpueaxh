@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_cmp_pd.hpp - COMISD/UCOMISD/CMPPD/CMPSD implementation
 
 int decode_sse2_cmp_pd_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

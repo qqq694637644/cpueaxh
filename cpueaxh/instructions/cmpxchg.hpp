@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/cmpxchg.hpp - CMPXCHG instruction implementation
 
 int decode_cmpxchg_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

@@ -1,4 +1,9 @@
+#pragma once
+
 // cpu/memory.hpp - CPU memory access functions
+
+#include "def.h"
+#include "../memory/manager.hpp"
 
 inline uint32_t cpu_make_page_fault_error(const CPU_CONTEXT* ctx, uint32_t access, bool protection_violation) {
     uint32_t error_code = protection_violation ? 0x1u : 0x0u;
@@ -415,6 +420,66 @@ inline uint64_t read_memory_qword(CPU_CONTEXT* ctx, uint64_t address) {
         cpu_notify_memory_hook(ctx, CPUEAXH_HOOK_MEM_READ, address, 8, value);
     }
     return value;
+}
+
+struct CpuReadResult8 {
+    bool ok;
+    uint8_t value;
+};
+
+struct CpuReadResult16 {
+    bool ok;
+    uint16_t value;
+};
+
+struct CpuReadResult32 {
+    bool ok;
+    uint32_t value;
+};
+
+struct CpuReadResult64 {
+    bool ok;
+    uint64_t value;
+};
+
+inline CpuReadResult8 read_memory_byte_checked(CPU_CONTEXT* ctx, uint64_t address) {
+    CpuReadResult8 result = { false, 0 };
+    if (!ctx || cpu_has_exception(ctx)) {
+        return result;
+    }
+    result.value = read_memory_byte(ctx, address);
+    result.ok = !cpu_has_exception(ctx);
+    return result;
+}
+
+inline CpuReadResult16 read_memory_word_checked(CPU_CONTEXT* ctx, uint64_t address) {
+    CpuReadResult16 result = { false, 0 };
+    if (!ctx || cpu_has_exception(ctx)) {
+        return result;
+    }
+    result.value = read_memory_word(ctx, address);
+    result.ok = !cpu_has_exception(ctx);
+    return result;
+}
+
+inline CpuReadResult32 read_memory_dword_checked(CPU_CONTEXT* ctx, uint64_t address) {
+    CpuReadResult32 result = { false, 0 };
+    if (!ctx || cpu_has_exception(ctx)) {
+        return result;
+    }
+    result.value = read_memory_dword(ctx, address);
+    result.ok = !cpu_has_exception(ctx);
+    return result;
+}
+
+inline CpuReadResult64 read_memory_qword_checked(CPU_CONTEXT* ctx, uint64_t address) {
+    CpuReadResult64 result = { false, 0 };
+    if (!ctx || cpu_has_exception(ctx)) {
+        return result;
+    }
+    result.value = read_memory_qword(ctx, address);
+    result.ok = !cpu_has_exception(ctx);
+    return result;
 }
 
 inline void write_memory_qword(CPU_CONTEXT* ctx, uint64_t address, uint64_t value) {

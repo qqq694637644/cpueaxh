@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/mul.hpp - MUL instruction implementation
 
 // --- MUL internal helpers ---

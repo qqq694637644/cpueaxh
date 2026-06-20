@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/nop.hpp - NOP instruction implementation
 
 static void decode_nop_modrm(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {

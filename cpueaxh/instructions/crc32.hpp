@@ -1,3 +1,5 @@
+#pragma once
+
 // instructions/crc32.hpp - SSE4.2 CRC32 instruction implementation
 
 static inline bool cpu_has_sse42_feature() {

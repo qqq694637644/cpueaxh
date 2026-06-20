@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/bsf.hpp - BSF/BSR instruction implementation
 
 int decode_bsf_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {

@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/endbr.hpp - ENDBR32/ENDBR64 instruction implementation
 
 inline bool probe_endbr_instruction(const uint8_t* code, size_t code_size) {

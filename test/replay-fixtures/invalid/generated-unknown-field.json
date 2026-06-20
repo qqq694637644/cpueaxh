@@ -1,0 +1,6 @@
+{
+  "schema": "cpueaxh.failure.v1",
+  "case_selector": "add_rr_rax_rbx",
+  "seed_index": 0,
+  "unknown": true
+}

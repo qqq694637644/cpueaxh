@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/idiv.hpp - IDIV instruction implementation
 
 // --- IDIV internal helpers ---

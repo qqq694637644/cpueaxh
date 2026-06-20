@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/rdpid.hpp - RDPID instruction implementation
 
 inline bool rdpid_has_required_prefix(const uint8_t* code, size_t code_size, int prefix_len) {

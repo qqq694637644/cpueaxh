@@ -1,4 +1,9 @@
+#pragma once
+
 // instrusments/aeskeygenassist.hpp - AESKEYGENASSIST/VAESKEYGENASSIST implementation
+
+#include "aesenc.hpp"
+#include "sse2_pack.hpp"
 
 static int decode_aeskeygenassist_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int reg = (modrm >> 3) & 0x07;

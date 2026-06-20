@@ -1,4 +1,8 @@
+#pragma once
+
 // instrusments/avx_vex.hpp - Minimal two-byte / three-byte VEX / AVX instruction support
+
+#include "crypto_instructions.hpp"
 
 struct AVXRegister256 {
     XMMRegister low;
@@ -1486,6 +1490,7 @@ static unsigned int avx_host_rounding_mode(uint32_t mxcsr) {
     case 0: return _MM_ROUND_NEAREST;
     case 1: return _MM_ROUND_DOWN;
     case 2: return _MM_ROUND_UP;
+    case 3: return _MM_ROUND_TOWARD_ZERO;
     default: return _MM_ROUND_TOWARD_ZERO;
     }
 }
@@ -1502,6 +1507,7 @@ static __m128 apply_avx_round_ps_intrinsic(__m128 value, uint8_t imm8, uint32_t 
     case 0: return _mm_round_ps(value, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
     case 1: return _mm_round_ps(value, _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
     case 2: return _mm_round_ps(value, _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
+    case 3: return _mm_round_ps(value, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     default: return _mm_round_ps(value, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     }
 }
@@ -1518,6 +1524,7 @@ static __m128d apply_avx_round_pd_intrinsic(__m128d value, uint8_t imm8, uint32_
     case 0: return _mm_round_pd(value, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
     case 1: return _mm_round_pd(value, _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
     case 2: return _mm_round_pd(value, _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
+    case 3: return _mm_round_pd(value, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     default: return _mm_round_pd(value, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     }
 }
@@ -1534,6 +1541,7 @@ static __m128 apply_avx_round_ss_intrinsic(__m128 src1, __m128 rhs, uint8_t imm8
     case 0: return _mm_round_ss(src1, rhs, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
     case 1: return _mm_round_ss(src1, rhs, _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
     case 2: return _mm_round_ss(src1, rhs, _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
+    case 3: return _mm_round_ss(src1, rhs, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     default: return _mm_round_ss(src1, rhs, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     }
 }
@@ -1550,6 +1558,7 @@ static __m128d apply_avx_round_sd_intrinsic(__m128d src1, __m128d rhs, uint8_t i
     case 0: return _mm_round_sd(src1, rhs, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
     case 1: return _mm_round_sd(src1, rhs, _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
     case 2: return _mm_round_sd(src1, rhs, _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
+    case 3: return _mm_round_sd(src1, rhs, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     default: return _mm_round_sd(src1, rhs, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     }
 }

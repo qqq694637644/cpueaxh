@@ -1,3 +1,5 @@
+#pragma once
+
 // cpu/decoded.hpp - Pre-decoded instruction representation used by the
 // instruction cache fast path. The decoder analyses an instruction once and
 // stores enough information to bypass prefix scanning, opcode classification

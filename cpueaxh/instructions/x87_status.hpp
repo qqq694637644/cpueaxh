@@ -1,3 +1,5 @@
+#pragma once
+
 // instructions/x87_status.hpp - FINIT/FNINIT and FSTSW/FNSTSW implementation
 
 static void decode_x87_status_modrm(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {

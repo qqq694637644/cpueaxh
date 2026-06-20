@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse_mov_misc.hpp - SSE MOVLPS/MOVHPS/MOVLHPS/MOVHLPS/MOVMSKPS implementation
 
 int decode_sse_mov_misc_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

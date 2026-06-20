@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse_state.hpp - LDMXCSR/STMXCSR/fence/CLFLUSH implementation
 
 static void decode_sse_state_modrm(CPU_CONTEXT* ctx, DecodedInstruction* inst, uint8_t* code, size_t code_size, size_t* offset) {

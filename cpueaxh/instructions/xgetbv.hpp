@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/xgetbv.hpp - XGETBV instruction implementation
 
 DecodedInstruction decode_xgetbv_instruction(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {

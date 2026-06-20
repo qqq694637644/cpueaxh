@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_shuffle.hpp - SHUFPD/UNPCKLPD/UNPCKHPD/PSHUFD/PSHUFHW/PSHUFLW/PEXTRW implementation
 
 int decode_sse2_shuffle_gp_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

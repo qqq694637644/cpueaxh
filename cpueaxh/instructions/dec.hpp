@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/dec.hpp - DEC instruction implementation
 
 // --- DEC internal helpers ---

@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse2_shift.hpp - PSLL*/PSRL*/PSRA* implementation
 
 int decode_sse2_shift_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

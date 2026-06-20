@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/stos.hpp - STOS instruction implementation
 
 int decode_stos_operand_size(CPU_CONTEXT* ctx, uint8_t opcode) {

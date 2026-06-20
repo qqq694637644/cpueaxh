@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/imul.hpp - IMUL instruction implementation
 
 // --- IMUL internal helpers ---

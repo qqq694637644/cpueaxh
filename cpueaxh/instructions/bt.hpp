@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/bt.hpp - BT/BTS/BTR/BTC instruction implementation
 
 enum BitTestOperation {

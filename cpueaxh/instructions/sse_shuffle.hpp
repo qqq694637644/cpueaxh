@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse_shuffle.hpp - SHUFPS/UNPCKLPS/UNPCKHPS implementation
 
 int decode_sse_shuffle_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

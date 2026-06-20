@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/inc.hpp - INC instruction implementation
 
 // --- INC internal helpers ---

@@ -10,12 +10,12 @@ on:
       - "test/**"
       - "TEST_FRAMEWORK_PLAN_CN.md"
       - "docs/development-workflow.md"
-      - "docs/instruction-status.yml"
+      - "docs/instruction-status.json"
       - "docs/replay-schema.md"
       - "docs/instruction-test-generator-template.md"
       - "docs/hardware-runner-matrix.md"
-      - "docs/stage3-regression-gates.yml"
-      - "docs/generator-templates.yml"
+      - "docs/stage3-regression-gates.json"
+      - "docs/generator-templates.json"
       - "tools/**"
       - "cpueaxh.sln"
       - "**/*.vcxproj"
@@ -30,12 +30,12 @@ on:
       - "test/**"
       - "TEST_FRAMEWORK_PLAN_CN.md"
       - "docs/development-workflow.md"
-      - "docs/instruction-status.yml"
+      - "docs/instruction-status.json"
       - "docs/replay-schema.md"
       - "docs/instruction-test-generator-template.md"
       - "docs/hardware-runner-matrix.md"
-      - "docs/stage3-regression-gates.yml"
-      - "docs/generator-templates.yml"
+      - "docs/stage3-regression-gates.json"
+      - "docs/generator-templates.json"
       - "tools/**"
       - "cpueaxh.sln"
       - "**/*.vcxproj"
@@ -62,8 +62,17 @@ jobs:
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
 
+      - name: Validate cpueaxh core header smoke
+        shell: pwsh
+        run: ./tools/validate-cpueaxh-header-smoke.ps1
+
       - name: Build test project
-        run: msbuild cpueaxh.sln /m /p:Configuration=Release /p:Platform=x64 /t:test
+        shell: pwsh
+        run: |
+          msbuild cpueaxh.sln /m /p:Configuration=Release /p:Platform=x64 /t:test *> build.log
+          $exitCode = $LASTEXITCODE
+          Get-Content build.log
+          if ($exitCode -ne 0) { exit $exitCode }
 
       - name: Locate test executable
         shell: pwsh
@@ -144,6 +153,35 @@ jobs:
           Get-Content manual-replay.log
           if ($exitCode -ne 0) { exit $exitCode }
 
+      - name: Validate strict replay schema rejection
+        shell: pwsh
+        run: ./tools/validate-strict-replay.ps1 -TestExe "$env:CPUEAXH_TEST_EXE"
+
+      - name: Validate required coverage gates
+        shell: pwsh
+        run: |
+          & "$env:CPUEAXH_TEST_EXE" --list --require-feature base --require-spec add_rr_rax_rbx --require-family binary_reg_reg *> require-coverage.log
+          $exitCode = $LASTEXITCODE
+          Get-Content require-coverage.log
+          if ($exitCode -ne 0) { exit $exitCode }
+
+          & "$env:CPUEAXH_TEST_EXE" --list --require-feature definitely_missing *> require-coverage-negative.log
+          $negativeFeatureExit = $LASTEXITCODE
+          Get-Content require-coverage-negative.log | Tee-Object -FilePath require-coverage.log -Append
+          if ($negativeFeatureExit -eq 0) { throw "missing required feature unexpectedly succeeded" }
+
+          & "$env:CPUEAXH_TEST_EXE" --list --require-spec definitely_missing *> require-coverage-negative.log
+          $negativeSpecExit = $LASTEXITCODE
+          Get-Content require-coverage-negative.log | Tee-Object -FilePath require-coverage.log -Append
+          if ($negativeSpecExit -eq 0) { throw "missing required spec unexpectedly succeeded" }
+
+          & "$env:CPUEAXH_TEST_EXE" --list --require-family definitely_missing *> require-coverage-negative.log
+          $negativeFamilyExit = $LASTEXITCODE
+          Get-Content require-coverage-negative.log | Tee-Object -FilePath require-coverage.log -Append
+          if ($negativeFamilyExit -eq 0) { throw "missing required family unexpectedly succeeded" }
+          $global:LASTEXITCODE = 0
+          exit 0
+
       - name: Run full regression suite
         shell: pwsh
         run: |
@@ -160,8 +198,16 @@ jobs:
           if-no-files-found: error
           path: |
             cpu-features.json
+            build.log
+            .header-smoke/cpueaxh-header-smoke.log
             generated-specs.json
             test-specs.log
+            manual-index.log
+            stage3-gates.log
+            manual-replay.log
+            strict-replay.log
+            require-coverage.log
+            test-run.log
             cpu-info.txt
 
       - name: Upload failure diagnostics
@@ -169,15 +215,19 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cpueaxh-failure-diagnostics
-          if-no-files-found: ignore
+          if-no-files-found: error
           path: |
             failure-bundle/**
             manual-replay-bundle/**
             cpu-features.json
+            build.log
+            .header-smoke/cpueaxh-header-smoke.log
             generated-specs.json
             test-specs.log
             manual-index.log
             stage3-gates.log
             manual-replay.log
+            strict-replay.log
+            require-coverage.log
             test-run.log
             cpu-info.txt

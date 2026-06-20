@@ -1,4 +1,8 @@
+#pragma once
+
 // instrusments/shld.hpp - SHLD/SHRD instruction implementation
+
+#include "shl.hpp"
 
 int decode_shld_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int reg = (modrm >> 3) & 0x07;

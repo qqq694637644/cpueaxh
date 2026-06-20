@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/neg.hpp - NEG instruction implementation
 
 // --- NEG internal helpers ---

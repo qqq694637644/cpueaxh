@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/cmpxchg8b16b.hpp - CMPXCHG8B/CMPXCHG16B instruction implementation
 
 int decode_cmpxchg8b16b_group(uint8_t modrm) {

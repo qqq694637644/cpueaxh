@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/movs.hpp - MOVS instruction implementation
 
 int decode_movs_operand_size(CPU_CONTEXT* ctx, uint8_t opcode) {

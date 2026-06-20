@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse_logic.hpp - ANDPS/ANDNPS/ORPS/XORPS/XORPD/PXOR implementation
 
 int decode_sse_logic_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/movdq.hpp - MOVD/MOVQ/MOVDQ2Q/MOVQ2DQ instruction implementation
 
 int decode_movdq_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

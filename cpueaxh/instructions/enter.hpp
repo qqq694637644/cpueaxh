@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/enter.hpp - ENTER instruction implementation
 
 int decode_enter_operand_size(CPU_CONTEXT* ctx) {

@@ -5,9 +5,9 @@
 ## Instruction / test status
 
 - [ ] No instruction behavior changed.
-- [ ] Instruction behavior changed and `docs/instruction-status.yml` was updated.
+- [ ] Instruction behavior changed and `docs/instruction-status.json` was updated.
 - [ ] New or changed user-mode safe behavior has true-CPU differential coverage.
-- [ ] Unsafe, privileged, model-only, or controlled-runner behavior is explicitly documented in `docs/instruction-status.yml`.
+- [ ] Unsafe, privileged, model-only, or controlled-runner behavior is explicitly documented in `docs/instruction-status.json`.
 
 ## Regression validation
 

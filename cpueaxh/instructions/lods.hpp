@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/lods.hpp - LODS instruction implementation
 
 int decode_lods_operand_size(CPU_CONTEXT* ctx, uint8_t opcode) {

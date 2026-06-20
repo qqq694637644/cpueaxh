@@ -1,5 +1,5 @@
 param(
-    [string]$ManifestPath = 'docs/stage3-regression-gates.yml',
+    [string]$ManifestPath = 'docs/stage3-regression-gates.json',
     [Parameter(Mandatory = $true)][string]$OutputPath
 )
 
@@ -25,32 +25,30 @@ function Get-ManifestGates {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         throw "Missing stage3 gate manifest: $Path"
     }
-    $content = Get-Content -LiteralPath $Path -Raw
-    if ($content -notmatch '(?m)^schema:\s*cpueaxh\.stage3-regression-gates\.v1\s*$') {
+    $manifest = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    if ($manifest.schema -ne 'cpueaxh.stage3-regression-gates.v1') {
         throw "Invalid stage3 gate manifest schema: $Path"
+    }
+    if (-not $manifest.required_gates -or $manifest.required_gates.Count -eq 0) {
+        throw "No stage3 gates found in manifest: $Path"
     }
 
     $entries = @{}
-    $matches = [regex]::Matches($content, '(?ms)^\s+-\s+name:\s*([^\r\n]+)\s*$.*?(?=^\s+-\s+name:\s*|\z)')
-    foreach ($match in $matches) {
-        $name = $match.Groups[1].Value.Trim()
-        $block = $match.Value
-        if ($block -notmatch '(?m)^\s+category:\s*([^\r\n]+)\s*$') {
-            throw "Gate '$name' missing category in manifest."
+    foreach ($gate in $manifest.required_gates) {
+        foreach ($field in @('name', 'category', 'command')) {
+            if ($null -eq $gate.PSObject.Properties[$field] -or [string]::IsNullOrWhiteSpace([string]$gate.$field)) {
+                throw "Stage3 gate manifest entry is missing field '$field'."
+            }
         }
-        $category = $Matches[1].Trim()
-        if ($block -notmatch '(?m)^\s+command:\s*([^\r\n]+)\s*$') {
-            throw "Gate '$name' missing command in manifest."
+        $name = [string]$gate.name
+        if ($entries.ContainsKey($name)) {
+            throw "Duplicate stage3 gate manifest entry: $name"
         }
-        $command = $Matches[1].Trim()
         $entries[$name] = [pscustomobject]@{
             Name = $name
-            Category = $category
-            Command = $command
+            Category = [string]$gate.category
+            Command = [string]$gate.command
         }
-    }
-    if ($entries.Count -eq 0) {
-        throw "No stage3 gates found in manifest: $Path"
     }
     return $entries
 }

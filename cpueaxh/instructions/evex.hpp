@@ -1,4 +1,8 @@
+#pragma once
+
 // instrusments/evex.hpp - Shared EVEX prefix/decode helpers
+
+#include "movdq.hpp"
 
 #define CPUEAXH_EVEX_VL_128 0x01
 #define CPUEAXH_EVEX_VL_256 0x02

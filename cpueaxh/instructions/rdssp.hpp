@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/rdssp.hpp - RDSSPD/RDSSPQ instruction implementation
 
 inline bool probe_rdssp_instruction(const uint8_t* code, size_t code_size, bool* is_64bit = NULL, uint32_t* instruction_size = NULL) {

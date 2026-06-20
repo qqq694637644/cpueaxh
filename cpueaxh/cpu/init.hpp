@@ -1,4 +1,8 @@
+#pragma once
+
 // cpu/init.hpp - CPU initialization
+
+#include "def.h"
 
 void init_cpu_context(CPU_CONTEXT* ctx, MEMORY_MANAGER* mem_mgr, bool start_in_compat32 = false) {
     CPUEAXH_MEMSET(ctx, 0, sizeof(CPU_CONTEXT));

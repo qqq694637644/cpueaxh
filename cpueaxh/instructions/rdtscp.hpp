@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/rdtscp.hpp - RDTSCP instruction implementation
 
 #include <intrin.h>

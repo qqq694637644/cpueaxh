@@ -1,3 +1,5 @@
+#pragma once
+
 // instrusments/sse_arith.hpp - ADDPS/ADDSS/SUBPS/SUBSS/MULPS/MULSS/DIVPS/DIVSS implementation
 
 int decode_sse_arith_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {

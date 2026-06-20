@@ -1,4 +1,8 @@
+#pragma once
+
 // instrusments/aesimc.hpp - AESIMC/VAESIMC implementation
+
+#include "aesenc.hpp"
 
 static XMMRegister apply_aesimc128(XMMRegister source) {
     return aesenc_m128i_to_xmm(_mm_aesimc_si128(aesenc_xmm_to_m128i(source)));
