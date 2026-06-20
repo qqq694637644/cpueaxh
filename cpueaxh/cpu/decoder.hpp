@@ -245,6 +245,7 @@ inline DecodedExecuteFn cpu_decoder_resolve_two_byte_misc(
     if (opc >= 0x0F90 && opc <= 0x0F9F) return execute_setcc;
     if (opc == 0x0FA0 || opc == 0x0FA8) return execute_push;
     if (opc == 0x0FA1 || opc == 0x0FA9) return execute_pop;
+    if (opc == 0x0F77) return execute_emms;
     if (opc == 0x0F0D || opc == 0x0F18 || (opc == 0x0F2B && mandatory_prefix == 0x00)) return execute_sse_misc;
     if ((opc == 0x0F2B && mandatory_prefix == 0x66) ||
         (opc == 0x0FE7 && mandatory_prefix == 0x66) ||

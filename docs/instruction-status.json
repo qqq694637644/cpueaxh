@@ -2515,6 +2515,21 @@
       "unsafe_native_reason": "null"
     },
     {
+      "name": "emms",
+      "encoding": "0F 77",
+      "operands_raw": "[]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "manual_tested",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": true
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
       "name": "aesenc",
       "encoding": "66 0F 38 DC /r",
       "operands_raw": "[\"xmm\", \"xmm/m128\"]",

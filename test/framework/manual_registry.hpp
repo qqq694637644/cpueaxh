@@ -33,7 +33,7 @@ inline std::uint64_t manual_special_case_count(const HostFeatures& features, con
     const std::uint64_t per_seed_special = (features.avx ? 57ull : 44ull) + (features.popcnt ? 3ull : 0ull) + 12ull + (features.rdpid ? 3ull : 0ull)
         + (features.aes ? 6ull : 0ull)
         + ((features.aes && features.avx) ? 2ull : 0ull)
-        + 4ull;
+        + 5ull;
     const std::uint64_t exception_special = 80ull + ((features.aes && features.avx) ? 2ull : 0ull);
     std::uint64_t total = 0;
     if (manual_case_runs_per_seed_group(manual_case)) {
@@ -89,6 +89,7 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> push_stack_unmapped = { 0x50 };
     const std::vector<std::uint8_t> call_stack_unmapped = { 0xE8, 0x00, 0x00, 0x00, 0x00 };
     const std::vector<std::uint8_t> fninit = { 0xDB, 0xE3 };
+    const std::vector<std::uint8_t> emms = { 0x0F, 0x77 };
     const std::vector<std::uint8_t> fnstsw_ax_only = { 0xDF, 0xE0 };
     const std::vector<std::uint8_t> finit_only = { 0x9B, 0xDB, 0xE3 };
     const std::vector<std::uint8_t> fstsw_ax_only = { 0x9B, 0xDF, 0xE0 };
@@ -340,6 +341,9 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
 
         const std::uint64_t seed_finit = seeded(seed_index, 0xE019);
         if (!tick(run_manual_x87_reset_case("finit:" + std::to_string(seed_finit), finit_reset, seed_finit, failure), failure)) return false;
+
+        const std::uint64_t seed_emms = seeded(seed_index, 0xE0A0);
+        if (!tick(run_manual_emms_case("emms:" + std::to_string(seed_emms), emms, seed_emms, failure), failure)) return false;
 
         const std::uint64_t seed_fnstsw_mem = seeded(seed_index, 0xE01A);
         const std::uint16_t fnstsw_mem_value = static_cast<std::uint16_t>(seeded(seed_fnstsw_mem, 0x94) & 0xFFFFu);

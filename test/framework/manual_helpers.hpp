@@ -1238,6 +1238,88 @@ cleanup:
     return ok;
 }
 
+inline bool run_manual_emms_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        std::vector<std::uint8_t> image = code;
+        image.push_back(0x90);
+        image.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, image, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        const std::uint16_t initial_control = static_cast<std::uint16_t>(0x5100u | (seed & 0x00FFu));
+        const std::uint16_t initial_status = static_cast<std::uint16_t>(0x2200u | ((seed >> 8) & 0x00FFu));
+        const std::uint16_t initial_tag = static_cast<std::uint16_t>(seeded(seed, 0xE0) & 0x7FFFu);
+        const std::uint16_t initial_opcode = static_cast<std::uint16_t>(0x4400u | ((seed >> 24) & 0x00FFu));
+        const std::uint64_t initial_ip = 0x1122334455667788ull ^ seed;
+        const std::uint64_t initial_dp = 0x8877665544332211ull ^ (seed << 1);
+        context.x87_control_word = initial_control;
+        context.x87_status_word = initial_status;
+        context.x87_tag_word = initial_tag;
+        context.x87_last_opcode = initial_opcode;
+        context.x87_instruction_pointer = initial_ip;
+        context.x87_data_pointer = initial_dp;
+        context.x87_pending_exception = false;
+
+        const int step = cpu_step(&context);
+        if (step != kCpuStepOk || cpu_has_exception(&context)) {
+            failure.case_name = name;
+            failure.detail = "emms execution failed";
+            break;
+        }
+        if (context.rip != kGuestCodeBase + static_cast<std::uint64_t>(code.size())) {
+            failure.case_name = name;
+            failure.detail = "emms rip advance mismatch";
+            break;
+        }
+        for (std::size_t index = 0; index < 16; ++index) {
+            if (index == static_cast<std::size_t>(REG_RSP)) {
+                continue;
+            }
+            if (context.regs[index] != initial.regs[index]) {
+                failure.case_name = name;
+                failure.detail = "emms changed scalar register state";
+                goto cleanup;
+            }
+        }
+        if ((context.rflags & kStatusMask) != (initial.rflags & kStatusMask)) {
+            failure.case_name = name;
+            failure.detail = "emms changed flags";
+            break;
+        }
+        if (context.x87_tag_word != 0xFFFFu) {
+            failure.case_name = name;
+            failure.detail = "emms did not empty x87 tag word";
+            break;
+        }
+        if (context.x87_control_word != initial_control ||
+            context.x87_status_word != initial_status ||
+            context.x87_last_opcode != initial_opcode ||
+            context.x87_instruction_pointer != initial_ip ||
+            context.x87_data_pointer != initial_dp ||
+            context.x87_pending_exception) {
+            failure.case_name = name;
+            failure.detail = "emms changed non-tag x87 state";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+cleanup:
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
 inline bool run_manual_x87_fldcw_load_case(
     const std::string& name,
     const std::vector<std::uint8_t>& code,
