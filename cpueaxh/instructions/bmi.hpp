@@ -4,7 +4,7 @@
 
 #include "avx_vex_common.hpp"
 
-static inline bool cpu_has_bmi1_feature() {
+static inline bool bmi_has_bmi1_feature() {
     int cpu_info[4] = {};
     cpu_query_cpuid(cpu_info, 0, 0);
     if (cpu_info[0] < 7) {
@@ -14,7 +14,7 @@ static inline bool cpu_has_bmi1_feature() {
     return (cpu_info[1] & (1 << 3)) != 0;
 }
 
-static inline bool cpu_has_bmi2_feature() {
+static inline bool bmi_has_bmi2_feature() {
     int cpu_info[4] = {};
     cpu_query_cpuid(cpu_info, 0, 0);
     if (cpu_info[0] < 7) {
@@ -233,7 +233,7 @@ static inline bool try_execute_bmi_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t c
     const bool is_256 = avx_vex_is_256(prefix);
 
     if (map_select == 0x03 && opcode == 0xF0 && mandatory_prefix == 3) {
-        if (is_256 || avx_vex_requires_reserved_vvvv(prefix) || !cpu_has_bmi2_feature()) {
+        if (is_256 || avx_vex_requires_reserved_vvvv(prefix) || !bmi_has_bmi2_feature()) {
             raise_ud_ctx(ctx);
             return true;
         }
@@ -263,7 +263,7 @@ static inline bool try_execute_bmi_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t c
 
     if (opcode == 0xF7 && (mandatory_prefix == 0 || mandatory_prefix == 1 || mandatory_prefix == 2 || mandatory_prefix == 3)) {
         const bool is_bextr = mandatory_prefix == 0;
-        if (is_256 || (is_bextr ? !cpu_has_bmi1_feature() : !cpu_has_bmi2_feature())) {
+        if (is_256 || (is_bextr ? !bmi_has_bmi1_feature() : !bmi_has_bmi2_feature())) {
             raise_ud_ctx(ctx);
             return true;
         }
@@ -308,7 +308,7 @@ static inline bool try_execute_bmi_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t c
     }
 
     if (opcode == 0xF5 && (mandatory_prefix == 0 || mandatory_prefix == 2 || mandatory_prefix == 3)) {
-        if (is_256 || !cpu_has_bmi2_feature()) {
+        if (is_256 || !bmi_has_bmi2_feature()) {
             raise_ud_ctx(ctx);
             return true;
         }
@@ -345,7 +345,7 @@ static inline bool try_execute_bmi_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t c
     }
 
     if (opcode == 0xF3 && mandatory_prefix == 0) {
-        if (is_256 || !cpu_has_bmi1_feature()) {
+        if (is_256 || !bmi_has_bmi1_feature()) {
             raise_ud_ctx(ctx);
             return true;
         }
@@ -381,7 +381,7 @@ static inline bool try_execute_bmi_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t c
     }
 
     if (opcode == 0xF6 && mandatory_prefix == 3) {
-        if (is_256 || !cpu_has_bmi2_feature()) {
+        if (is_256 || !bmi_has_bmi2_feature()) {
             raise_ud_ctx(ctx);
             return true;
         }
