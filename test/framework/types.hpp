@@ -1090,6 +1090,7 @@ inline bool json_skip_value_strict(const std::string& json, std::size_t& pos, st
 struct StrictJsonObject {
     std::map<std::string, std::string> string_values;
     std::map<std::string, std::uint64_t> u64_values;
+    std::map<std::string, std::string> raw_values;
 
     bool required_string(const std::string& key, std::string& value) const {
         const auto iter = string_values.find(key);
@@ -1103,6 +1104,15 @@ struct StrictJsonObject {
     bool required_u64(const std::string& key, std::uint64_t& value) const {
         const auto iter = u64_values.find(key);
         if (iter == u64_values.end()) {
+            return false;
+        }
+        value = iter->second;
+        return true;
+    }
+
+    bool raw_value(const std::string& key, std::string& value) const {
+        const auto iter = raw_values.find(key);
+        if (iter == raw_values.end()) {
             return false;
         }
         value = iter->second;
@@ -1176,6 +1186,7 @@ inline bool json_parse_top_level_object(
                 return false;
             }
             json_skip_ws(json, pos);
+            const std::size_t value_start = pos;
             if (pos < json.size() && json[pos] == '"') {
                 std::string value;
                 if (!json_parse_string_token(json, pos, value, error)) {
@@ -1184,7 +1195,6 @@ inline bool json_parse_top_level_object(
                 object.string_values[key] = value;
             }
             else {
-                const std::size_t value_start = pos;
                 if (!json_skip_value_strict(json, pos, error)) {
                     return false;
                 }
@@ -1194,6 +1204,7 @@ inline bool json_parse_top_level_object(
                     object.u64_values[key] = u64;
                 }
             }
+            object.raw_values[key] = json.substr(value_start, pos - value_start);
             json_skip_ws(json, pos);
             if (pos < json.size() && json[pos] == ',') {
                 ++pos;
@@ -1233,6 +1244,236 @@ inline bool json_validate_top_level_object(
     std::string& error) {
     StrictJsonObject object;
     return json_parse_top_level_object(json, required_keys, optional_keys, false, object, error);
+}
+
+inline std::vector<std::string> json_gpr_field_names() {
+    return {
+        "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
+        "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"
+    };
+}
+
+inline std::vector<std::string> json_host_feature_field_names() {
+    return {
+        "avx", "avx2", "fma", "sha", "popcnt", "ssse3", "sse41", "sse42",
+        "aes", "rdpid", "bmi1", "lzcnt", "movbe"
+    };
+}
+
+inline bool json_required_string_fields(
+    const StrictJsonObject& object,
+    const std::vector<std::string>& keys,
+    const std::string& label,
+    std::string& error) {
+    for (const std::string& key : keys) {
+        std::string value;
+        if (!object.required_string(key, value)) {
+            error = label + " field must be a non-empty JSON string: " + key;
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool json_required_u64_fields(
+    const StrictJsonObject& object,
+    const std::vector<std::string>& keys,
+    const std::string& label,
+    std::string& error) {
+    for (const std::string& key : keys) {
+        std::uint64_t value = 0;
+        if (!object.required_u64(key, value)) {
+            error = label + " field must be an unsigned JSON number: " + key;
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool json_required_schema(
+    const StrictJsonObject& object,
+    const std::string& expected_schema,
+    const std::string& label,
+    std::string& error) {
+    std::string schema;
+    if (!object.required_string("schema", schema)) {
+        error = label + " has no non-empty schema";
+        return false;
+    }
+    if (schema != expected_schema) {
+        error = label + " has unexpected schema: " + schema;
+        return false;
+    }
+    return true;
+}
+
+inline bool json_validate_array_value(const std::string& raw_value, const std::string& label, std::string& error) {
+    std::size_t pos = 0;
+    json_skip_ws(raw_value, pos);
+    if (pos >= raw_value.size() || raw_value[pos] != '[') {
+        error = label + " must be a JSON array";
+        return false;
+    }
+    if (!json_parse_value_syntax_strict(raw_value, pos, error)) {
+        error = label + " array schema validation failed: " + error;
+        return false;
+    }
+    json_skip_ws(raw_value, pos);
+    if (pos != raw_value.size()) {
+        error = label + " array has trailing data";
+        return false;
+    }
+    return true;
+}
+
+inline bool json_validate_gpr_object_value(const std::string& raw_value, const std::string& label, std::string& error) {
+    StrictJsonObject gprs;
+    const std::vector<std::string> fields = json_gpr_field_names();
+    if (!json_parse_top_level_object(raw_value, fields, {}, false, gprs, error)) {
+        error = label + " gprs schema validation failed: " + error;
+        return false;
+    }
+    return json_required_string_fields(gprs, fields, label + " gprs", error);
+}
+
+inline bool json_validate_generated_initial_state(const std::string& raw_value, std::string& error) {
+    StrictJsonObject object;
+    if (!json_parse_top_level_object(raw_value,
+        { "schema", "gprs", "rip", "rflags", "mxcsr", "xmm", "data_offset", "data_hex" },
+        {}, false, object, error)) {
+        error = "initial_state schema validation failed: " + error;
+        return false;
+    }
+    if (!json_required_schema(object, "cpueaxh.generated-initial-state.v1", "initial_state", error)) {
+        return false;
+    }
+    if (!json_required_string_fields(object, { "rip", "rflags", "mxcsr", "data_hex" }, "initial_state", error) ||
+        !json_required_u64_fields(object, { "data_offset" }, "initial_state", error)) {
+        return false;
+    }
+    std::string gprs;
+    if (!object.raw_value("gprs", gprs) || !json_validate_gpr_object_value(gprs, "initial_state", error)) {
+        return false;
+    }
+    std::string xmm;
+    if (!object.raw_value("xmm", xmm) || !json_validate_array_value(xmm, "initial_state.xmm", error)) {
+        return false;
+    }
+    return true;
+}
+
+inline bool json_validate_generated_result_entry(const std::string& raw_value, const std::string& label, std::string& error) {
+    StrictJsonObject object;
+    if (!json_parse_top_level_object(raw_value,
+        { "gprs", "rip", "rflags", "mxcsr", "data_hex" },
+        {}, false, object, error)) {
+        error = label + " schema validation failed: " + error;
+        return false;
+    }
+    if (!json_required_string_fields(object, { "rip", "rflags", "mxcsr", "data_hex" }, label, error)) {
+        return false;
+    }
+    std::string gprs;
+    if (!object.raw_value("gprs", gprs) || !json_validate_gpr_object_value(gprs, label, error)) {
+        return false;
+    }
+    return true;
+}
+
+inline bool json_validate_generated_result_state(const std::string& raw_value, std::string& error) {
+    StrictJsonObject object;
+    if (!json_parse_top_level_object(raw_value,
+        { "schema", "native_result", "emu_result" },
+        {}, false, object, error)) {
+        error = "result_state schema validation failed: " + error;
+        return false;
+    }
+    if (!json_required_schema(object, "cpueaxh.generated-result-state.v1", "result_state", error)) {
+        return false;
+    }
+    std::string native_result;
+    if (!object.raw_value("native_result", native_result) ||
+        !json_validate_generated_result_entry(native_result, "result_state.native_result", error)) {
+        return false;
+    }
+    std::string emu_result;
+    if (!object.raw_value("emu_result", emu_result) ||
+        !json_validate_generated_result_entry(emu_result, "result_state.emu_result", error)) {
+        return false;
+    }
+    return true;
+}
+
+inline bool json_validate_host_features_value(const std::string& raw_value, std::string& error) {
+    StrictJsonObject object;
+    if (!json_parse_top_level_object(raw_value,
+        { "schema", "vendor", "brand", "max_leaf", "max_leaf7", "max_extended_leaf", "family", "model", "stepping", "features" },
+        {}, false, object, error)) {
+        error = "host_features schema validation failed: " + error;
+        return false;
+    }
+    if (!json_required_schema(object, "cpueaxh.host-features.v1", "host_features", error) ||
+        !json_required_string_fields(object, { "vendor", "brand" }, "host_features", error) ||
+        !json_required_u64_fields(object, { "max_leaf", "max_leaf7", "max_extended_leaf", "family", "model", "stepping" }, "host_features", error)) {
+        return false;
+    }
+
+    std::string features_raw;
+    if (!object.raw_value("features", features_raw)) {
+        error = "host_features has no features object";
+        return false;
+    }
+    StrictJsonObject features;
+    const std::vector<std::string> feature_fields = json_host_feature_field_names();
+    if (!json_parse_top_level_object(features_raw, feature_fields, {}, false, features, error)) {
+        error = "host_features.features schema validation failed: " + error;
+        return false;
+    }
+    for (const std::string& key : feature_fields) {
+        std::string value;
+        if (!features.raw_value(key, value) || (value != "true" && value != "false")) {
+            error = "host_features.features field must be a JSON boolean: " + key;
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool json_validate_generated_replay_diagnostics(const StrictJsonObject& object, std::string& error) {
+    if (!json_required_string_fields(object, { "schema", "case_selector" }, "generated replay", error) ||
+        !json_required_u64_fields(object, { "seed_index" }, "generated replay", error)) {
+        return false;
+    }
+
+    for (const std::string& key : std::vector<std::string>{ "case_name", "detail", "spec_name", "image_hex", "replay_hint" }) {
+        std::string raw;
+        if (object.raw_value(key, raw)) {
+            std::string value;
+            if (!object.required_string(key, value)) {
+                error = "generated replay diagnostic field must be a JSON string: " + key;
+                return false;
+            }
+        }
+    }
+    std::string seed_raw;
+    if (object.raw_value("seed", seed_raw) &&
+        object.string_values.find("seed") == object.string_values.end() &&
+        object.u64_values.find("seed") == object.u64_values.end()) {
+        error = "generated replay diagnostic field must be a string or unsigned number: seed";
+        return false;
+    }
+
+    std::string raw;
+    if (object.raw_value("initial_state", raw) && !json_validate_generated_initial_state(raw, error)) {
+        return false;
+    }
+    if (object.raw_value("result_state", raw) && !json_validate_generated_result_state(raw, error)) {
+        return false;
+    }
+    if (object.raw_value("host_features", raw) && !json_validate_host_features_value(raw, error)) {
+        return false;
+    }
+    return true;
 }
 
 inline bool manual_replay_hint_matches_case(const std::string& replay_hint, const std::string& manual_case) {
@@ -1344,6 +1585,10 @@ inline bool apply_replay_file(const std::string& path, TestOptions& options, std
         { "case_name", "detail", "spec_name", "seed", "image_hex", "replay_hint", "initial_state", "result_state", "host_features" },
         false, object, error)) {
         error = "generated replay JSON schema validation failed: " + error;
+        return false;
+    }
+    if (!json_validate_generated_replay_diagnostics(object, error)) {
+        error = "generated replay diagnostic schema validation failed: " + error;
         return false;
     }
 

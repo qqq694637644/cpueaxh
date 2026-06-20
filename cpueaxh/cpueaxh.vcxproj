@@ -120,17 +120,6 @@
     <ClCompile Include="cpueaxh.cpp">
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
-    <ClCompile Include="header_smoke\header_smoke_string.cpp" />
-    <ClCompile Include="header_smoke\header_smoke_simd_sse.cpp" />
-    <ClCompile Include="header_smoke\header_smoke_integer.cpp" />
-    <ClCompile Include="header_smoke\header_smoke_control_flow.cpp" />
-    <ClCompile Include="header_smoke\header_smoke_x87.cpp" />
-    <ClCompile Include="header_smoke\header_smoke_simd_avx.cpp" />
-    <ClCompile Include="header_smoke\header_smoke_all_instructions.cpp" />
-    <ClCompile Include="header_smoke\header_smoke_stack.cpp" />
-    <ClCompile Include="header_smoke\header_smoke_core.cpp" />
-    <ClCompile Include="header_smoke\header_smoke_system.cpp" />
-    <ClCompile Include="header_smoke\header_smoke_crypto.cpp" />
   </ItemGroup>
   <ItemGroup Condition="'$(Platform)'=='x64'">
     <MASM Include="host_bridge.asm" />

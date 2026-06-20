@@ -216,10 +216,11 @@ bool execute_locked_bt_memory(CPU_CONTEXT* ctx, BitTestOperation operation, uint
         }
     }
 
-    uint64_t current_value = read_memory_operand(ctx, address, operand_size) & cpu_memory_operand_mask(ctx, operand_size);
-    if (cpu_has_exception(ctx)) {
+    const CpuReadResult64 read_result = read_memory_operand_checked(ctx, address, operand_size);
+    if (!read_result.ok) {
         return true;
     }
+    uint64_t current_value = read_result.value & cpu_memory_operand_mask(ctx, operand_size);
 
     for (;;) {
         bool carry = ((current_value >> bit_index) & 0x1ULL) != 0;

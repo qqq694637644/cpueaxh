@@ -91,10 +91,11 @@ bool not_rm_atomic(CPU_CONTEXT* ctx, uint8_t modrm, uint64_t mem_addr, int opera
         }
     }
 
-    uint64_t current_value = read_memory_operand(ctx, mem_addr, operand_size) & cpu_memory_operand_mask(ctx, operand_size);
-    if (cpu_has_exception(ctx)) {
+    const CpuReadResult64 read_result = read_memory_operand_checked(ctx, mem_addr, operand_size);
+    if (!read_result.ok) {
         return true;
     }
+    uint64_t current_value = read_result.value & cpu_memory_operand_mask(ctx, operand_size);
 
     for (;;) {
         uint64_t new_value = (~current_value) & cpu_memory_operand_mask(ctx, operand_size);

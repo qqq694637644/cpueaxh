@@ -1,0 +1,31 @@
+{
+  "schema": "cpueaxh.failure.v1",
+  "case_selector": "add_rr_rax_rbx",
+  "seed_index": 0,
+  "host_features": {
+    "schema": "cpueaxh.host-features.v1",
+    "vendor": "fixture",
+    "brand": "fixture cpu",
+    "max_leaf": 0,
+    "max_leaf7": 0,
+    "max_extended_leaf": 0,
+    "family": 0,
+    "model": 0,
+    "stepping": 0,
+    "features": {
+      "avx": false,
+      "avx2": false,
+      "fma": false,
+      "sha": false,
+      "popcnt": false,
+      "ssse3": false,
+      "sse41": false,
+      "sse42": false,
+      "aes": false,
+      "rdpid": false,
+      "bmi1": false,
+      "lzcnt": false,
+      "movbe": false
+    }
+  }
+}

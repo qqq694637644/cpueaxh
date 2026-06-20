@@ -22,6 +22,8 @@ Required fields:
 
 Generated replay records are strict top-level JSON objects. Unknown fields, duplicate fields, missing required fields, trailing commas, and trailing data are rejected before replay selection is applied.
 
+Diagnostic objects nested under `initial_state`, `result_state`, and `host_features` are also schema-validated when present. Unknown nested fields, duplicate nested fields, malformed nested objects, missing required nested fields, and invalid nested value types are rejected. These diagnostics are still not replay inputs; deterministic replay remains `case_selector + seed_index`.
+
 Accepted diagnostic fields:
 
 - `seed`: diagnostic only; replay derives the deterministic seed from `case_selector` and `seed_index`.

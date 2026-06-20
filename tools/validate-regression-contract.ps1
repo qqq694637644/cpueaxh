@@ -80,12 +80,22 @@ function Assert-CoreHeaderSmokeTranslationUnits {
         'cpueaxh/header_smoke/header_smoke_x87.cpp',
         'cpueaxh/header_smoke/header_smoke_all_instructions.cpp'
     )
+    $project = Get-Content -LiteralPath 'cpueaxh/cpueaxh.vcxproj' -Raw
+    $filters = ''
+    if (Test-Path -LiteralPath 'cpueaxh/cpueaxh.vcxproj.filters' -PathType Leaf) {
+        $filters = Get-Content -LiteralPath 'cpueaxh/cpueaxh.vcxproj.filters' -Raw
+    }
     foreach ($path in $required) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
             throw "Missing core header smoke translation unit: $path"
         }
         $projectPath = $path.Replace('cpueaxh/', '').Replace('/', '\')
-        Assert-FileContains -Path 'cpueaxh/cpueaxh.vcxproj' -Pattern ([regex]::Escape($projectPath)) -Message "cpueaxh.vcxproj must compile $projectPath"
+        if ($project -match [regex]::Escape($projectPath)) {
+            throw "cpueaxh.vcxproj must not compile header smoke translation units into the normal library: $projectPath"
+        }
+        if ($filters -match [regex]::Escape($projectPath)) {
+            throw "cpueaxh.vcxproj.filters must not list header smoke translation units as normal project sources: $projectPath"
+        }
     }
 }
 
@@ -99,12 +109,22 @@ function Assert-IndividualHeaderSmokeScript {
     Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'cpueaxh-header-smoke\.log' -Message 'required CI must preserve header smoke logs.'
 }
 
+function Assert-BuildLogWarningGate {
+    Assert-FileContains -Path 'tools/validate-build-log-zero-warnings.ps1' -Pattern 'Build produced warnings' -Message 'build-log validator must fail on warnings.'
+    Assert-FileContains -Path 'tools/validate-build-log-zero-warnings.ps1' -Pattern 'Warning\\\(s\\\)' -Message 'build-log validator must reject nonzero warning summaries.'
+    Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-build-log-zero-warnings\.ps1 -LogPath build\.log' -Message 'required CI must fail when build.log contains warnings.'
+    Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'validate-build-log-zero-warnings\.ps1 -LogPath build\.log' -Message 'extended CI must fail when build.log contains warnings.'
+}
+
 function Assert-CpueaxhInternalUsesInstructionModules {
     Assert-FileContains -Path 'cpueaxh/cpueaxh_internal.hpp' -Pattern 'cpu/core\.hpp' -Message 'cpueaxh_internal.hpp must include cpu/core.hpp.'
     Assert-FileContains -Path 'cpueaxh/cpueaxh_internal.hpp' -Pattern 'instructions/all_instructions\.hpp' -Message 'cpueaxh_internal.hpp must include instruction family umbrella.'
     $internal = Get-Content -LiteralPath 'cpueaxh/cpueaxh_internal.hpp' -Raw
     if ($internal -match 'instructions/(add|mov|avx_vex|sse2_|x87_)') {
         throw 'cpueaxh_internal.hpp must not return to direct per-instruction includes.'
+    }
+    if ($internal -match '#include\s+"[^"]*\\') {
+        throw 'cpueaxh_internal.hpp include paths must use forward slashes.'
     }
 }
 
@@ -125,6 +145,12 @@ function Assert-StrictReplayFixtures {
     }
     Assert-FileContains -Path 'tools/validate-strict-replay.ps1' -Pattern 'test/replay-fixtures' -Message 'strict replay validator must consume checked-in fixtures.'
     Assert-FileContains -Path 'tools/validate-strict-replay.ps1' -Pattern 'Get-ChildItem' -Message 'strict replay validator must enumerate checked-in fixtures.'
+    Assert-FileContains -Path 'test/replay-fixtures/invalid/generated-unknown-nested-field.json' -Pattern '"unexpected"' -Message 'strict replay fixtures must reject unknown nested diagnostic fields.'
+    Assert-FileContains -Path 'test/replay-fixtures/valid/generated-host-features.json' -Pattern 'cpueaxh\.host-features\.v1' -Message 'strict replay fixtures must accept well-formed nested host feature diagnostics.'
+    Assert-TestFrameworkContains -Pattern 'json_validate_generated_replay_diagnostics' -Message 'replay parser must validate generated diagnostic fields.'
+    Assert-TestFrameworkContains -Pattern 'json_validate_generated_initial_state' -Message 'replay parser must validate nested initial_state diagnostics.'
+    Assert-TestFrameworkContains -Pattern 'json_validate_generated_result_state' -Message 'replay parser must validate nested result_state diagnostics.'
+    Assert-TestFrameworkContains -Pattern 'json_validate_host_features_value' -Message 'replay parser must validate nested host_features diagnostics.'
 }
 
 function Assert-GeneratedManifestPolicyFields {
@@ -169,6 +195,62 @@ function Assert-FrameworkHeadersDoNotRequireUmbrellaOrder {
     if ($bad.Count -ne 0) {
         throw "Framework headers still claim umbrella include-order dependence: $($bad.Name -join ', ')"
     }
+}
+
+function Assert-RoundSwitchesUseUnreachableDefault {
+    foreach ($path in @('cpueaxh/instructions/roundsd.hpp', 'cpueaxh/instructions/roundss.hpp', 'cpueaxh/instructions/avx_vex_ops.hpp')) {
+        $content = Get-Content -LiteralPath $path -Raw
+        $sameLineFallbacks = @(Get-Content -LiteralPath $path | Where-Object { $_ -cmatch 'default:\s*return\s+_mm_round' })
+        if ($sameLineFallbacks.Count -ne 0) {
+            throw "Round mode switch still uses a silent default fallback: $path"
+        }
+        if ($content -notmatch 'CPUEAXH_UNREACHABLE\(\)') {
+            throw "Round mode switch must mark masked default as unreachable: $path"
+        }
+    }
+}
+
+function Assert-CheckedMemoryReadHelpers {
+    Assert-FileContains -Path 'tools/validate-memory-read-contract.ps1' -Pattern 'read_memory_operand\(\) is only allowed inside cpueaxh/cpu/memory\.hpp' -Message 'memory read contract validator must forbid raw shared operand reads outside memory.hpp.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'struct CpuReadResult8' -Message 'memory helpers must expose checked byte reads.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_byte_checked' -Message 'memory helpers must expose read_memory_byte_checked.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_word_checked' -Message 'memory helpers must expose read_memory_word_checked.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_dword_checked' -Message 'memory helpers must expose read_memory_dword_checked.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_qword_checked' -Message 'memory helpers must expose read_memory_qword_checked.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_operand_checked' -Message 'shared memory operand readers must have a checked variant.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'CpuReadResult64 read_result' -Message 'atomic RMW helpers must use checked memory reads before consuming values.'
+    & ./tools/validate-memory-read-contract.ps1
+}
+
+function Assert-AvxVexModuleSplit {
+    $required = @(
+        'avx_vex_common.hpp',
+        'avx_vex_decode.hpp',
+        'avx_vex_ops.hpp',
+        'avx_vex_execute.hpp',
+        'avx_vex.hpp'
+    )
+    foreach ($name in $required) {
+        $path = Join-Path 'cpueaxh/instructions' $name
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Missing AVX/VEX module header: $path"
+        }
+        $firstNonBlank = Get-Content -LiteralPath $path | Where-Object { $_.Trim().Length -ne 0 } | Select-Object -First 1
+        if ($firstNonBlank -notmatch '^\s*#pragma\s+once\b') {
+            throw "AVX/VEX module header lacks #pragma once: $path"
+        }
+        Assert-FileContains -Path 'cpueaxh/instructions/simd_avx_instructions.hpp' -Pattern ([regex]::Escape($name)) -Message "simd AVX umbrella must include $name."
+    }
+
+    $umbrellaLines = @(Get-Content -LiteralPath 'cpueaxh/instructions/avx_vex.hpp')
+    if ($umbrellaLines.Count -gt 40) {
+        throw 'avx_vex.hpp must remain a small umbrella; put implementation into avx_vex_* modules.'
+    }
+    Assert-FileContains -Path 'cpueaxh/instructions/avx_vex.hpp' -Pattern 'avx_vex_execute\.hpp' -Message 'avx_vex.hpp must include the execution module.'
+    Assert-FileContains -Path 'cpueaxh/instructions/avx_vex_common.hpp' -Pattern 'struct AVXRegister256' -Message 'AVX/VEX common module must own shared register types.'
+    Assert-FileContains -Path 'cpueaxh/instructions/avx_vex_decode.hpp' -Pattern 'decode_avx_vex_modrm' -Message 'AVX/VEX decode module must own decode helpers.'
+    Assert-FileContains -Path 'cpueaxh/instructions/avx_vex_ops.hpp' -Pattern 'apply_avx_round_ps_intrinsic' -Message 'AVX/VEX ops module must own operation helpers.'
+    Assert-FileContains -Path 'cpueaxh/instructions/avx_vex_execute.hpp' -Pattern 'execute_avx_vex' -Message 'AVX/VEX execute module must own dispatch.'
 }
 
 function Assert-SetEquals {
@@ -352,6 +434,13 @@ Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-s
 Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'if-no-files-found:\s*error' -Message 'extended regression diagnostics must fail when expected evidence is missing.'
 Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'build\.log' -Message 'extended regression must capture build.log.'
 Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'validate-strict-replay\.ps1' -Message 'extended regression must validate strict replay schema rejection.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'strict-replay\.log' -Message 'extended regression must preserve strict replay logs.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'manual-replay\.log' -Message 'extended regression must preserve manual replay logs.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'manual-index\.log' -Message 'extended regression must preserve manual index logs.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'stage3-gates\.log' -Message 'extended regression must preserve stage3 gate logs.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'cpu-features\.json' -Message 'extended regression must preserve CPU feature evidence.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'generated-specs\.json' -Message 'extended regression must preserve generated spec evidence.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'extended-test-run\.log' -Message 'extended regression must preserve long regression logs.'
 Assert-FileContains -Path 'tools/validate-generated-spec-manifest.ps1' -Pattern 'cpueaxh\.generated-specs\.v1' -Message 'generated spec manifest validator must check schema.'
 Assert-FileContains -Path 'tools/validate-instruction-status.ps1' -Pattern 'instruction-status\.json has an invalid or missing schema' -Message 'instruction status validator must check JSON schema.'
 Assert-FileContains -Path 'cpueaxh/cpu/executor.hpp' -Pattern 'CPUEAXH_STRICT_INTERNAL' -Message 'executor must keep strict internal decode checks enabled.'
@@ -365,6 +454,7 @@ Assert-ManualIndexRecords
 Assert-CoreHeadersHavePragmaOnce
 Assert-CoreHeaderSmokeTranslationUnits
 Assert-IndividualHeaderSmokeScript
+Assert-BuildLogWarningGate
 Assert-CpueaxhInternalUsesInstructionModules
 Assert-InstructionModuleCoverage
 Assert-StrictReplayFixtures
@@ -373,5 +463,8 @@ Assert-RequiredCoverageGates
 Assert-AllFailuresCollection
 Assert-NoLegacyFrameworkJsonExtractors
 Assert-FrameworkHeadersDoNotRequireUmbrellaOrder
+Assert-RoundSwitchesUseUnreachableDefault
+Assert-CheckedMemoryReadHelpers
+Assert-AvxVexModuleSplit
 
 Write-Host 'Regression contract validation passed.'
