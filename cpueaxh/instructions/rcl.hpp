@@ -2,6 +2,8 @@
 
 // instrusments/rcl.hpp - RCL instruction implementation
 
+#include "rol.hpp"
+
 uint8_t get_rcl_count(CPU_CONTEXT* ctx, int operand_size, uint8_t raw_count) {
     unsigned int count = raw_count & get_rol_count_mask(operand_size);
     switch (operand_size) {
