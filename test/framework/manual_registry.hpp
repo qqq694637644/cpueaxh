@@ -35,7 +35,7 @@ inline std::uint64_t manual_special_case_count(const HostFeatures& features, con
         + ((features.aes && features.avx) ? 2ull : 0ull)
         + (features.bmi2 ? 4ull : 0ull)
         + 5ull;
-    const std::uint64_t exception_special = 90ull + ((features.aes && features.avx) ? 2ull : 0ull);
+    const std::uint64_t exception_special = 94ull + ((features.aes && features.avx) ? 2ull : 0ull);
     std::uint64_t total = 0;
     if (manual_case_runs_per_seed_group(manual_case)) {
         total += kSeedCount * per_seed_special;
@@ -81,6 +81,8 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> int3 = { 0xCC };
     const std::vector<std::uint8_t> int1 = { 0xF1 };
     const std::vector<std::uint8_t> int_imm8 = { 0xCD, 0x80 };
+    const std::vector<std::uint8_t> rdpmc_only = { 0x0F, 0x33 };
+    const std::vector<std::uint8_t> rdpmc_ret = { 0x0F, 0x33, 0xC3 };
     const std::vector<std::uint8_t> rdfsbase_rax = { 0xF3, 0x48, 0x0F, 0xAE, 0xC0 };
     const std::vector<std::uint8_t> xgetbv = { 0x0F, 0x01, 0xD0 };
     const std::vector<std::uint8_t> shl_unmapped = { 0x48, 0xC1, 0x24, 0x25, 0x00, 0x00, 0x40, 0x00, 0x01 };
@@ -1553,6 +1555,14 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         const std::uint64_t seed_int = seeded(seed_index, 0xE083);
         if (!tick(run_manual_exception_case_public("public_int_default_ud:" + std::to_string(seed_int), int_imm8, seed_int, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
         if (!tick(run_manual_exception_case("int_default_ud:" + std::to_string(seed_int), int_imm8, seed_int, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+
+        const std::uint64_t seed_rdpmc_gp = seeded(seed_index, 0xE085);
+        if (!tick(run_manual_rdpmc_public_case("public_rdpmc_cpl3_pce0_gp:" + std::to_string(seed_rdpmc_gp), rdpmc_only, seed_rdpmc_gp, 0x20ull, 3, true, failure), failure)) return false;
+        if (!tick(run_manual_rdpmc_internal_case("rdpmc_cpl3_pce0_gp:" + std::to_string(seed_rdpmc_gp), rdpmc_only, seed_rdpmc_gp, 0x20ull, 3, true, failure), failure)) return false;
+
+        const std::uint64_t seed_rdpmc_ok = seeded(seed_index, 0xE086);
+        if (!tick(run_manual_rdpmc_public_case("public_rdpmc_cpl3_pce1_zero:" + std::to_string(seed_rdpmc_ok), rdpmc_ret, seed_rdpmc_ok, 0x120ull, 3, false, failure), failure)) return false;
+        if (!tick(run_manual_rdpmc_internal_case("rdpmc_cpl3_pce1_zero:" + std::to_string(seed_rdpmc_ok), rdpmc_only, seed_rdpmc_ok, 0x120ull, 3, false, failure), failure)) return false;
 
         const std::uint64_t seed_fsgsbase_cr4 = seeded(seed_index, 0xE084);
         if (!tick(run_manual_public_cr4_exception_case("public_rdfsbase_cr4_disabled_ud:" + std::to_string(seed_fsgsbase_cr4), rdfsbase_rax, seed_fsgsbase_cr4, 0, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;

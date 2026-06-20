@@ -611,6 +611,197 @@ inline bool run_manual_bmi2_shift_case(
     return ok;
 }
 
+inline bool run_manual_rdpmc_public_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    std::uint64_t cr4_value,
+    std::uint8_t cpl,
+    bool expect_exception,
+    Failure& failure) {
+    cpueaxh_engine* engine = nullptr;
+    cpueaxh_err err = cpueaxh_open(CPUEAXH_ARCH_X86, CPUEAXH_MODE_64, &engine);
+    if (err != CPUEAXH_ERR_OK) {
+        failure.case_name = name;
+        failure.detail = "cpueaxh_open failed";
+        return false;
+    }
+
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        if (!initialize_manual_engine(engine, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        const std::uint64_t initial_rax = 0xAAAAAAAA55555555ull ^ seeded(seed, 0xD10);
+        const std::uint64_t initial_rdx = 0xCCCCCCCC33333333ull ^ seeded(seed, 0xD11);
+        const std::uint64_t initial_rcx = 0x0000000000000001ull | (seeded(seed, 0xD12) & 0xFFFFFFFFull);
+        if (!write_engine_reg(engine, CPUEAXH_X86_REG_RAX, initial_rax) ||
+            !write_engine_reg(engine, CPUEAXH_X86_REG_RDX, initial_rdx) ||
+            !write_engine_reg(engine, CPUEAXH_X86_REG_RCX, initial_rcx) ||
+            !write_engine_reg(engine, CPUEAXH_X86_REG_CR0, 0x80000011ull) ||
+            !write_engine_reg(engine, CPUEAXH_X86_REG_CR4, cr4_value) ||
+            !write_engine_reg(engine, CPUEAXH_X86_REG_CPL, cpl)) {
+            failure.case_name = name;
+            failure.detail = "rdpmc register initialization failed";
+            break;
+        }
+
+        if (expect_exception) {
+            err = cpueaxh_emu_start(engine, kGuestCodeBase, 0, 0, 1);
+            if (err != CPUEAXH_ERR_EXCEPTION) {
+                failure.case_name = name;
+                failure.detail = "expected CPUEAXH_ERR_EXCEPTION";
+                break;
+            }
+            if (cpueaxh_code_exception(engine) != CPUEAXH_EXCEPTION_GP) {
+                failure.case_name = name;
+                failure.detail = "unexpected exception code";
+                break;
+            }
+        }
+        else {
+            err = cpueaxh_emu_start_function(engine, kGuestCodeBase, 0, 1000);
+            if (err != CPUEAXH_ERR_OK) {
+                failure.case_name = name;
+                failure.detail = "execution failed";
+                break;
+            }
+            if (cpueaxh_code_exception(engine) != CPUEAXH_EXCEPTION_NONE) {
+                failure.case_name = name;
+                failure.detail = "unexpected exception";
+                break;
+            }
+        }
+
+        std::uint64_t actual_rax = 0;
+        std::uint64_t actual_rdx = 0;
+        std::uint64_t actual_rcx = 0;
+        std::uint64_t actual_flags = 0;
+        if (!read_engine_reg(engine, CPUEAXH_X86_REG_RAX, actual_rax) ||
+            !read_engine_reg(engine, CPUEAXH_X86_REG_RDX, actual_rdx) ||
+            !read_engine_reg(engine, CPUEAXH_X86_REG_RCX, actual_rcx) ||
+            !read_engine_reg(engine, CPUEAXH_X86_REG_EFLAGS, actual_flags)) {
+            failure.case_name = name;
+            failure.detail = "rdpmc readback failed";
+            break;
+        }
+        if (expect_exception) {
+            if (actual_rax != initial_rax || actual_rdx != initial_rdx) {
+                failure.case_name = name;
+                failure.detail = "rdpmc exception path changed output registers";
+                break;
+            }
+        }
+        else if (actual_rax != 0 || actual_rdx != 0) {
+            failure.case_name = name;
+            failure.detail = "rdpmc deterministic zero result mismatch";
+            break;
+        }
+        if (actual_rcx != initial_rcx) {
+            failure.case_name = name;
+            failure.detail = "rdpmc changed rcx unexpectedly";
+            break;
+        }
+        if ((actual_flags & kStatusMask) != (initial.rflags & kStatusMask)) {
+            failure.case_name = name;
+            failure.detail = "rdpmc changed flags unexpectedly";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    cpueaxh_close(engine);
+    return ok;
+}
+
+inline bool run_manual_rdpmc_internal_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    std::uint64_t cr4_value,
+    std::uint8_t cpl,
+    bool expect_exception,
+    Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        std::vector<std::uint8_t> image = code;
+        image.push_back(0x90);
+        image.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, image, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        const std::uint64_t initial_rax = 0x1111111122222222ull ^ seeded(seed, 0xD20);
+        const std::uint64_t initial_rdx = 0x3333333344444444ull ^ seeded(seed, 0xD21);
+        const std::uint64_t initial_rcx = 0x0000000000000002ull | (seeded(seed, 0xD22) & 0xFFFFFFFFull);
+        context.regs[REG_RAX] = initial_rax;
+        context.regs[REG_RDX] = initial_rdx;
+        context.regs[REG_RCX] = initial_rcx;
+        context.control_regs[REG_CR0] = 0x80000011ull;
+        context.control_regs[REG_CR4] = cr4_value;
+        context.cpl = cpl;
+
+        const int status = cpu_step(&context);
+        if (expect_exception) {
+            if (status != kCpuStepException) {
+                failure.case_name = name;
+                failure.detail = "expected CPU_STEP_EXCEPTION";
+                break;
+            }
+            if (context.exception.code != CPUEAXH_EXCEPTION_GP) {
+                failure.case_name = name;
+                failure.detail = "unexpected exception code";
+                break;
+            }
+            if (context.regs[REG_RAX] != initial_rax || context.regs[REG_RDX] != initial_rdx) {
+                failure.case_name = name;
+                failure.detail = "rdpmc internal exception changed output registers";
+                break;
+            }
+        }
+        else {
+            if (status != kCpuStepOk || cpu_has_exception(&context)) {
+                failure.case_name = name;
+                failure.detail = "expected successful cpu_step";
+                break;
+            }
+            if (context.regs[REG_RAX] != 0 || context.regs[REG_RDX] != 0) {
+                failure.case_name = name;
+                failure.detail = "rdpmc internal deterministic zero mismatch";
+                break;
+            }
+            if (context.rip != kGuestCodeBase + static_cast<std::uint64_t>(code.size())) {
+                failure.case_name = name;
+                failure.detail = "rdpmc internal rip mismatch";
+                break;
+            }
+        }
+        if (context.regs[REG_RCX] != initial_rcx) {
+            failure.case_name = name;
+            failure.detail = "rdpmc internal changed rcx unexpectedly";
+            break;
+        }
+        if ((context.rflags & kStatusMask) != (initial.rflags & kStatusMask)) {
+            failure.case_name = name;
+            failure.detail = "rdpmc internal changed flags unexpectedly";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
 inline bool run_manual_rotate_carry_case(
     const std::string& name,
     const std::vector<std::uint8_t>& code,

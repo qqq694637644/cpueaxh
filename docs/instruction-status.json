@@ -6811,13 +6811,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "base",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "deterministic software model; host RDPMC is not used in CI/user-mode tests"
+      "unsafe_native_reason": "manual/model coverage uses deterministic zero model and does not execute host RDPMC in CI/user-mode tests"
     },
     {
       "name": "serialize",
