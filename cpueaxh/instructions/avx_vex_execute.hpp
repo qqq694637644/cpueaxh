@@ -3,6 +3,7 @@
 // instructions/avx_vex_execute.hpp - AVX/VEX instruction dispatch.
 
 #include "avx_vex_ops.hpp"
+#include "bmi.hpp"
 
 void execute_avx_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     AVXVexPrefix prefix = decode_avx_vex_prefix(ctx, code, code_size);
