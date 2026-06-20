@@ -80,12 +80,22 @@ function Assert-CoreHeaderSmokeTranslationUnits {
         'cpueaxh/header_smoke/header_smoke_x87.cpp',
         'cpueaxh/header_smoke/header_smoke_all_instructions.cpp'
     )
+    $project = Get-Content -LiteralPath 'cpueaxh/cpueaxh.vcxproj' -Raw
+    $filters = ''
+    if (Test-Path -LiteralPath 'cpueaxh/cpueaxh.vcxproj.filters' -PathType Leaf) {
+        $filters = Get-Content -LiteralPath 'cpueaxh/cpueaxh.vcxproj.filters' -Raw
+    }
     foreach ($path in $required) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
             throw "Missing core header smoke translation unit: $path"
         }
         $projectPath = $path.Replace('cpueaxh/', '').Replace('/', '\')
-        Assert-FileContains -Path 'cpueaxh/cpueaxh.vcxproj' -Pattern ([regex]::Escape($projectPath)) -Message "cpueaxh.vcxproj must compile $projectPath"
+        if ($project -match [regex]::Escape($projectPath)) {
+            throw "cpueaxh.vcxproj must not compile header smoke translation units into the normal library: $projectPath"
+        }
+        if ($filters -match [regex]::Escape($projectPath)) {
+            throw "cpueaxh.vcxproj.filters must not list header smoke translation units as normal project sources: $projectPath"
+        }
     }
 }
 
@@ -97,6 +107,13 @@ function Assert-IndividualHeaderSmokeScript {
     Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-cpueaxh-header-smoke\.ps1' -Message 'required CI must compile core header smoke.'
     Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'validate-cpueaxh-header-smoke\.ps1' -Message 'extended CI must compile core header smoke.'
     Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'cpueaxh-header-smoke\.log' -Message 'required CI must preserve header smoke logs.'
+}
+
+function Assert-BuildLogWarningGate {
+    Assert-FileContains -Path 'tools/validate-build-log-zero-warnings.ps1' -Pattern 'Build produced warnings' -Message 'build-log validator must fail on warnings.'
+    Assert-FileContains -Path 'tools/validate-build-log-zero-warnings.ps1' -Pattern 'Warning\\\(s\\\)' -Message 'build-log validator must reject nonzero warning summaries.'
+    Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-build-log-zero-warnings\.ps1 -LogPath build\.log' -Message 'required CI must fail when build.log contains warnings.'
+    Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'validate-build-log-zero-warnings\.ps1 -LogPath build\.log' -Message 'extended CI must fail when build.log contains warnings.'
 }
 
 function Assert-CpueaxhInternalUsesInstructionModules {
@@ -437,6 +454,7 @@ Assert-ManualIndexRecords
 Assert-CoreHeadersHavePragmaOnce
 Assert-CoreHeaderSmokeTranslationUnits
 Assert-IndividualHeaderSmokeScript
+Assert-BuildLogWarningGate
 Assert-CpueaxhInternalUsesInstructionModules
 Assert-InstructionModuleCoverage
 Assert-StrictReplayFixtures

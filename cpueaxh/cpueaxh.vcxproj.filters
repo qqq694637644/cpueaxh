@@ -396,38 +396,5 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cpueaxh.cpp" />
-    <ClCompile Include="header_smoke\header_smoke_string.cpp">
-      <Filter>header_smoke</Filter>
-    </ClCompile>
-    <ClCompile Include="header_smoke\header_smoke_simd_sse.cpp">
-      <Filter>header_smoke</Filter>
-    </ClCompile>
-    <ClCompile Include="header_smoke\header_smoke_integer.cpp">
-      <Filter>header_smoke</Filter>
-    </ClCompile>
-    <ClCompile Include="header_smoke\header_smoke_control_flow.cpp">
-      <Filter>header_smoke</Filter>
-    </ClCompile>
-    <ClCompile Include="header_smoke\header_smoke_x87.cpp">
-      <Filter>header_smoke</Filter>
-    </ClCompile>
-    <ClCompile Include="header_smoke\header_smoke_simd_avx.cpp">
-      <Filter>header_smoke</Filter>
-    </ClCompile>
-    <ClCompile Include="header_smoke\header_smoke_all_instructions.cpp">
-      <Filter>header_smoke</Filter>
-    </ClCompile>
-    <ClCompile Include="header_smoke\header_smoke_stack.cpp">
-      <Filter>header_smoke</Filter>
-    </ClCompile>
-    <ClCompile Include="header_smoke\header_smoke_core.cpp">
-      <Filter>header_smoke</Filter>
-    </ClCompile>
-    <ClCompile Include="header_smoke\header_smoke_system.cpp">
-      <Filter>header_smoke</Filter>
-    </ClCompile>
-    <ClCompile Include="header_smoke\header_smoke_crypto.cpp">
-      <Filter>header_smoke</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>

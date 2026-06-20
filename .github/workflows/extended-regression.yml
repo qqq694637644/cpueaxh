@@ -45,6 +45,7 @@ jobs:
           $exitCode = $LASTEXITCODE
           Get-Content build.log
           if ($exitCode -ne 0) { exit $exitCode }
+          ./tools/validate-build-log-zero-warnings.ps1 -LogPath build.log
 
       - name: Locate test executable
         shell: pwsh
