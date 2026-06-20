@@ -9,8 +9,6 @@
 // both user-mode (calloc) and kernel-mode (non-paged pool) builds without any
 // platform-specific code in the hot path.
 
-#pragma once
-
 #include "../cpueaxh_platform.hpp"
 #include "../memory/manager.hpp"
 #include "def.h"

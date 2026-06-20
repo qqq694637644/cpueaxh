@@ -218,7 +218,9 @@ bool evaluate_sse2_cmp_pd_predicate(double lhs, double rhs, uint8_t predicate) {
     case 5: return unordered || !(lhs < rhs);
     case 6: return unordered || !(lhs <= rhs);
     case 7: return !unordered;
-    default: return false;
+    default:
+        CPUEAXH_UNREACHABLE();
+        return false;
     }
 }
 

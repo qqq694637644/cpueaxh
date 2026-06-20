@@ -329,7 +329,9 @@ bool sse2_convert_round_fp_to_integer(double source, int dest_bits, bool truncat
             }
             break;
         case 3:
+            break;
         default:
+            CPUEAXH_UNREACHABLE();
             break;
         }
     }

@@ -197,17 +197,98 @@ function Assert-FrameworkHeadersDoNotRequireUmbrellaOrder {
     }
 }
 
-function Assert-RoundSwitchesUseUnreachableDefault {
-    foreach ($path in @('cpueaxh/instructions/roundsd.hpp', 'cpueaxh/instructions/roundss.hpp', 'cpueaxh/instructions/avx_vex_ops.hpp')) {
-        $content = Get-Content -LiteralPath $path -Raw
-        $sameLineFallbacks = @(Get-Content -LiteralPath $path | Where-Object { $_ -cmatch 'default:\s*return\s+_mm_round' })
-        if ($sameLineFallbacks.Count -ne 0) {
-            throw "Round mode switch still uses a silent default fallback: $path"
+function Get-CppFunctionBody {
+    param(
+        [string]$Path,
+        [string]$FunctionName
+    )
+
+    $content = Get-Content -LiteralPath $Path -Raw
+    $nameIndex = $content.IndexOf($FunctionName)
+    if ($nameIndex -lt 0) {
+        throw "Missing expected function $FunctionName in $Path"
+    }
+
+    $braceIndex = $content.IndexOf('{', $nameIndex)
+    if ($braceIndex -lt 0) {
+        throw "Missing function body for $FunctionName in $Path"
+    }
+
+    $depth = 0
+    for ($index = $braceIndex; $index -lt $content.Length; $index++) {
+        $ch = $content[$index]
+        if ($ch -eq '{') {
+            $depth++
         }
-        if ($content -notmatch 'CPUEAXH_UNREACHABLE\(\)') {
-            throw "Round mode switch must mark masked default as unreachable: $path"
+        elseif ($ch -eq '}') {
+            $depth--
+            if ($depth -eq 0) {
+                return $content.Substring($braceIndex + 1, $index - $braceIndex - 1)
+            }
         }
     }
+
+    throw "Unterminated function body for $FunctionName in $Path"
+}
+
+function Assert-FunctionDefaultContainsUnreachable {
+    param(
+        [string]$Path,
+        [string]$FunctionName,
+        [string]$Message
+    )
+
+    $body = Get-CppFunctionBody -Path $Path -FunctionName $FunctionName
+    $defaultIndex = $body.IndexOf('default:')
+    if ($defaultIndex -lt 0) {
+        throw "$Message Missing default label in $($FunctionName): $Path"
+    }
+
+    $defaultBlock = $body.Substring($defaultIndex)
+    if ($defaultBlock -notmatch '(?s)default:\s*CPUEAXH_UNREACHABLE\(\)\s*;') {
+        throw "$Message Default must call CPUEAXH_UNREACHABLE() in $($FunctionName): $Path"
+    }
+}
+
+function Assert-RoundSwitchesUseUnreachableDefault {
+    $checks = @(
+        @{ Path = 'cpueaxh/instructions/roundsd.hpp'; FunctionName = 'roundsd_host_rounding_mode' },
+        @{ Path = 'cpueaxh/instructions/roundss.hpp'; FunctionName = 'roundss_host_rounding_mode' },
+        @{ Path = 'cpueaxh/instructions/avx_vex_ops.hpp'; FunctionName = 'avx_host_rounding_mode' }
+    )
+
+    foreach ($check in $checks) {
+        $body = Get-CppFunctionBody -Path $check.Path -FunctionName $check.FunctionName
+        $defaultIndex = $body.IndexOf('default:')
+        if ($defaultIndex -lt 0) {
+            throw "Round mode switch must keep an explicit unreachable default: $($check.Path)"
+        }
+
+        $defaultBlock = $body.Substring($defaultIndex)
+        if ($defaultBlock -match '(?s)default:\s*return\b') {
+            throw "Round mode switch still uses a silent default fallback: $($check.Path)"
+        }
+        if ($defaultBlock -notmatch '(?s)default:\s*CPUEAXH_UNREACHABLE\(\)\s*;') {
+            throw "Round mode switch must mark masked default as unreachable: $($check.Path)"
+        }
+    }
+}
+
+function Assert-MaskedSemanticSwitchesUseUnreachableDefault {
+    $checks = @(
+        @{ Path = 'cpueaxh/instructions/sse_convert.hpp'; FunctionName = 'sse_convert_round_float_to_integer' },
+        @{ Path = 'cpueaxh/instructions/sse2_convert.hpp'; FunctionName = 'sse2_convert_round_fp_to_integer' },
+        @{ Path = 'cpueaxh/instructions/sse_cmp.hpp'; FunctionName = 'evaluate_sse_cmp_predicate' },
+        @{ Path = 'cpueaxh/instructions/sse2_cmp_pd.hpp'; FunctionName = 'evaluate_sse2_cmp_pd_predicate' },
+        @{ Path = 'cpueaxh/instructions/jcc.hpp'; FunctionName = 'eval_condition' },
+        @{ Path = 'cpueaxh/cpu/executor.hpp'; FunctionName = 'cpu_executor_eval_jcc_condition' }
+    )
+
+    foreach ($check in $checks) {
+        Assert-FunctionDefaultContainsUnreachable -Path $check.Path -FunctionName $check.FunctionName -Message 'Masked semantic switch must expose unexpected default paths.'
+    }
+
+    Assert-FileContains -Path 'cpueaxh/cpu/executor.hpp' -Pattern 'case 0xF:\s*return !zf && \(sf == of\);' -Message 'Jcc executor helper must handle cond 0xF explicitly instead of folding it into default.'
 }
 
 function Assert-CheckedMemoryReadHelpers {
@@ -464,6 +545,7 @@ Assert-AllFailuresCollection
 Assert-NoLegacyFrameworkJsonExtractors
 Assert-FrameworkHeadersDoNotRequireUmbrellaOrder
 Assert-RoundSwitchesUseUnreachableDefault
+Assert-MaskedSemanticSwitchesUseUnreachableDefault
 Assert-CheckedMemoryReadHelpers
 Assert-AvxVexModuleSplit
 

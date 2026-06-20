@@ -223,7 +223,10 @@ static inline bool cpu_executor_eval_jcc_condition(uint64_t flags, uint8_t cond)
     case 0xC: return sf != of;              // JL
     case 0xD: return sf == of;              // JGE
     case 0xE: return zf || (sf != of);      // JLE
-    default:  return !zf && (sf == of);     // JG (cond == 0xF)
+    case 0xF: return !zf && (sf == of);     // JG
+    default:
+        CPUEAXH_UNREACHABLE();
+        return false;
     }
 }
 

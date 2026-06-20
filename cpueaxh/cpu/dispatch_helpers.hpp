@@ -7,8 +7,6 @@
 // hoisted here so both the legacy (per-step) decode path in the executor and
 // the new cache-aware decoder can share them.
 
-#pragma once
-
 #include "../cpueaxh_platform.hpp"
 #include "def.h"
 #include "helper.hpp"

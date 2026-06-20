@@ -2,8 +2,6 @@
 
 // memory/manager.hpp - Virtual memory manager with page-granularity allocation
 
-#pragma once
-
 #include "../cpueaxh_platform.hpp"
 
 #define CPUEAXH_PAGE_SIZE 0x1000ULL
