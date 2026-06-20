@@ -4,6 +4,7 @@
 
 #include "evex.hpp"
 #include "movdq.hpp"
+#include "avx_vex.hpp"
 
 static inline bool is_pinsrw_instruction(const uint8_t* code, int len, int prefix_len) {
     if (!code || prefix_len + 4 >= len) {
