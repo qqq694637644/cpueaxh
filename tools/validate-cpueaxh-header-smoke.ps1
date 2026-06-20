@@ -24,10 +24,13 @@ function Resolve-VsDevCmd {
 
 function Add-SmokeCase {
     param(
-        [Parameter(Mandatory = $true)][System.Collections.Generic.List[object]]$Cases,
+        [System.Collections.Generic.List[object]]$Cases,
         [Parameter(Mandatory = $true)]$Header,
         [string[]]$PreambleIncludes = @()
     )
+    if ($null -eq $Cases) {
+        throw 'Add-SmokeCase received a null case list.'
+    }
     $Cases.Add([pscustomobject]@{
         Header = $Header
         PreambleIncludes = $PreambleIncludes
@@ -55,6 +58,12 @@ $instructionHeaders = @(Get-ChildItem -LiteralPath $InstructionDir -Filter '*.hp
     Sort-Object FullName)
 
 $smokeCases = New-Object 'System.Collections.Generic.List[object]'
+New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
+$logPath = Join-Path $WorkDir 'cpueaxh-header-smoke.log'
+if (Test-Path -LiteralPath $logPath) {
+    Remove-Item -LiteralPath $logPath -Force
+}
+"Building cpueaxh header smoke case list..." | Set-Content -LiteralPath $logPath -Encoding utf8
 foreach ($header in $coreHeaders) {
     Add-SmokeCase -Cases $smokeCases -Header $header
 }
@@ -66,13 +75,8 @@ if ($smokeCases.Count -eq 0) {
     throw 'No headers selected for smoke validation.'
 }
 
-New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
 $vcvarsPath = Resolve-VsDevCmd
 $repoRoot = (Get-Location).Path
-$logPath = Join-Path $WorkDir 'cpueaxh-header-smoke.log'
-if (Test-Path -LiteralPath $logPath) {
-    Remove-Item -LiteralPath $logPath -Force
-}
 
 foreach ($case in $smokeCases) {
     $header = $case.Header
