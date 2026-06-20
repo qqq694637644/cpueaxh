@@ -35,6 +35,7 @@ inline std::uint64_t manual_special_case_count(const HostFeatures& features, con
         + ((features.aes && features.avx) ? 2ull : 0ull)
         + (features.bmi2 ? 4ull : 0ull)
         + (features.fsgsbase ? 4ull : 0ull)
+        + (features.rdseed ? 2ull : 0ull)
         + 5ull;
     const std::uint64_t exception_special = 94ull + ((features.aes && features.avx) ? 2ull : 0ull);
     std::uint64_t total = 0;
@@ -84,6 +85,8 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> int_imm8 = { 0xCD, 0x80 };
     const std::vector<std::uint8_t> rdpmc_only = { 0x0F, 0x33 };
     const std::vector<std::uint8_t> rdpmc_ret = { 0x0F, 0x33, 0xC3 };
+    const std::vector<std::uint8_t> rdseed_rax = { 0x48, 0x0F, 0xC7, 0xF8 };
+    const std::vector<std::uint8_t> rdseed_rax_ret = { 0x48, 0x0F, 0xC7, 0xF8, 0xC3 };
     const std::vector<std::uint8_t> rdfsbase_rax = { 0xF3, 0x48, 0x0F, 0xAE, 0xC0 };
     const std::vector<std::uint8_t> rdfsbase_rax_ret = { 0xF3, 0x48, 0x0F, 0xAE, 0xC0, 0xC3 };
     const std::vector<std::uint8_t> rdgsbase_rdx = { 0xF3, 0x48, 0x0F, 0xAE, 0xCA };
@@ -342,6 +345,20 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
             const std::uint64_t seed_rdpid66 = seeded(seed_index, 0xE017);
             const std::uint32_t processor_id66 = static_cast<std::uint32_t>(seeded(seed_rdpid66, 0x92));
             if (!tick(run_manual_special_case("rdpid66:" + std::to_string(seed_rdpid66), rdpid_with_66, seed_rdpid66, processor_id66, true, failure), failure)) return false;
+        }
+
+        if (features.rdseed) {
+            const std::uint64_t seed_rdseed = seeded(seed_index, 0xE096);
+            if (!tick(run_manual_rdseed_public_case(
+                "public_rdseed_rax:" + std::to_string(seed_rdseed),
+                rdseed_rax_ret,
+                seed_rdseed,
+                failure), failure)) return false;
+            if (!tick(run_manual_rdseed_internal_case(
+                "rdseed_rax:" + std::to_string(seed_rdseed),
+                rdseed_rax,
+                seed_rdseed,
+                failure), failure)) return false;
         }
 
         if (features.bmi2) {
