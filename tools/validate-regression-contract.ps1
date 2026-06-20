@@ -194,6 +194,7 @@ function Assert-RoundSwitchesUseUnreachableDefault {
 }
 
 function Assert-CheckedMemoryReadHelpers {
+    Assert-FileContains -Path 'tools/validate-memory-read-contract.ps1' -Pattern 'read_memory_operand\(\) is only allowed inside cpueaxh/cpu/memory\.hpp' -Message 'memory read contract validator must forbid raw shared operand reads outside memory.hpp.'
     Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'struct CpuReadResult8' -Message 'memory helpers must expose checked byte reads.'
     Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_byte_checked' -Message 'memory helpers must expose read_memory_byte_checked.'
     Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_word_checked' -Message 'memory helpers must expose read_memory_word_checked.'
@@ -201,6 +202,7 @@ function Assert-CheckedMemoryReadHelpers {
     Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_qword_checked' -Message 'memory helpers must expose read_memory_qword_checked.'
     Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_operand_checked' -Message 'shared memory operand readers must have a checked variant.'
     Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'CpuReadResult64 read_result' -Message 'atomic RMW helpers must use checked memory reads before consuming values.'
+    & ./tools/validate-memory-read-contract.ps1
 }
 
 function Assert-AvxVexModuleSplit {
