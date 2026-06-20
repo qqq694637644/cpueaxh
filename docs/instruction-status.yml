@@ -2172,3 +2172,3010 @@ families:
               regression_replay: false
               manual: true
             unsafe_native_reason: "Privileged/MSR/VMX/SVM/system instructions are not executed directly in normal user-mode CI."
+
+  generated_manifest_forms:
+    status: in_progress
+    regression_gate: test.exe full suite
+    entries:
+      - mnemonic: GENERATED
+        forms:
+          - name: adc_rr_r10_r11
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: adc_rr_r8_r9
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: add_ri_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: add_ri_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: add_ri_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: add_rr_r10_r11
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: add_rr_r8_r9
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: aesdec
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: aes
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: aesdeclast
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: aes
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: aesenclast
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: aes
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: aeskeygenassist_imm1
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: aes
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: aeskeygenassist_imm128
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: aes
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: aeskeygenassist_imm27
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: aes
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: aeskeygenassist_imm54
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: aes
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: and_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: and_ri_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: and_ri_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: and_ri_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: and_rr_r10_r11
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: and_rr_r8_r9
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: bsf_r9_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: bsf_rdx_rbx
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: bswap_r11
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: bswap_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: call_lea
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: call_xor
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cmp_ri_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cmp_ri_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cmp_ri_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cmp_rr_r10_r11
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cmp_rr_r8_r9
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cmpsb
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cmpxchg_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: dec_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: dec_r13
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: dec_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: dec_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: enter_leave
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: inc_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: inc_r13
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: inc_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: inc_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: lea_scale2
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: lea_scale4
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: lodsb
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: lodsq
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: loop_taken
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: loopnz_taken
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: loopz_taken
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: lzcnt_r9_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: lzcnt
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: mov_mem_roundtrip
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: mov_r9_rbx
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: mov_rax_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movaps_mem_disp8_neg_xmm6
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movd_mm_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movd_mm_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movd_xmm_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movd_xmm_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movdqu_roundtrip
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movq_mm_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movq_mm_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movq_xmm_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movq_xmm_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movsb
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movsd
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movsq
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movsw
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movsx_byte
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movsx_word
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movsxd_dword
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movzx_byte
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: movzx_word
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: neg_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: neg_r13
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: neg_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: neg_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: not_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: not_r13
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: not_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: not_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: or_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: or_ri_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: or_ri_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: or_ri_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: or_rr_r10_r11
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: or_rr_r8_r9
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: paddq
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: paddq_pxor
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pand
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pblendw_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pblendw_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpeqb
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpeqd
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpeqw
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestri_imm0
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestri_imm112
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestri_imm120
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestri_imm16
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestri_imm24
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestri_imm64
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestri_imm72
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestri_imm8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestrm_imm0
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestrm_imm112
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestrm_imm120
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestrm_imm16
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestrm_imm24
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestrm_imm64
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestrm_imm72
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpestrm_imm8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpistrm_imm0
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpistrm_imm112
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpistrm_imm120
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpistrm_imm16
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpistrm_imm24
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpistrm_imm64
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpistrm_imm72
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pcmpistrm_imm8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse42
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: por
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufb
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: ssse3
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_mem_imm0
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_mem_imm114
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_mem_imm147
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_mem_imm198
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_mem_imm255
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_mem_imm27
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_mem_imm57
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_mem_imm78
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_reg_imm0
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_reg_imm114
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_reg_imm147
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_reg_imm198
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_reg_imm255
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_reg_imm27
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_reg_imm57
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pshufd_reg_imm78
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pslldq
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: psrldq
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: punpcklbw
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: punpckldq
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: punpcklqdq
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: punpcklwd
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: push_chain
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: push_pop_pair
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pushf_pop_lahf
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: pxor
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcl_cl_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcl_cl_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcl_cl_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcl_imm_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcl_imm_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcl_imm_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcr_cl_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcr_cl_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcr_cl_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcr_imm_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcr_imm_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rcr_imm_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rep_movsb
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rep_movsw
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rol_cl_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rol_cl_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rol_cl_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rol_imm_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rol_imm_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: rol_imm_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: ror_cl_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: ror_cl_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: ror_cl_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: ror_imm_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: ror_imm_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: ror_imm_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundsd_imm0
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundsd_imm1
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundsd_imm2
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundsd_imm3
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundsd_imm4
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundsd_imm8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundss_imm0
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundss_imm1
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundss_imm2
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundss_imm3
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundss_imm4
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: roundss_imm8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sar_cl_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sar_cl_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sar_cl_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sar_imm_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sar_imm_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sar_imm_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sbb_rr_r10_r11
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sbb_rr_r8_r9
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: scasb
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sha256msg1_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sha
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sha256msg1_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sha
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sha256msg2_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sha
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sha256msg2_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sha
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sha256rnds2_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sha
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sha256rnds2_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sha
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shl_cl_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shl_cl_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shl_cl_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shl_imm_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shl_imm_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shl_imm_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shr_cl_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shr_cl_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shr_cl_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shr_imm_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shr_imm_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: shr_imm_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: stosb
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: stosq
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sub_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sub_ri_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sub_ri_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sub_ri_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sub_rr_r10_r11
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: sub_rr_r8_r9
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: test_ri_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: test_ri_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: test_ri_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: test_rr_r10_r11
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: test_rr_r8_r9
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: tzcnt_rdx_rbx
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: bmi1
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vfmadd132sd_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: fma
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vfmadd132sd_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: fma
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vfmadd213sd_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: fma
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vfmadd213sd_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: fma
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vfmadd231sd_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: fma
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vfmadd231sd_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: fma
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vinsertf128_mem_imm0
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: avx
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vinsertf128_mem_imm1
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: avx
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vinsertf128_mem_imm127
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: avx
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vinsertf128_mem_imm64
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: avx
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vinsertf128_reg_imm0
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: avx
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vinsertf128_reg_imm1
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: avx
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vinsertf128_reg_imm127
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: avx
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vinsertf128_reg_imm64
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: avx
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vpblendw_xmm_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vpblendw_xmm_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vpblendw_ymm_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: vpblendw_ymm_reg
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: sse41
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: xadd_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: xor_mem
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: xor_ri_r10
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: xor_ri_r8
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: xor_ri_rax
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: xor_rr_r10_r11
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: xor_rr_r8_r9
+            encoding: "generated_by_case_builder"
+            operands: ["generated"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null

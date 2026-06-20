@@ -1880,14 +1880,18 @@ inline std::string generated_operation_name(const ProgramSpec& spec) {
 
 inline const char* generated_feature_gate(const ProgramSpec& spec) {
     const std::string& name = spec.name;
-    if (name.find("crc32") != std::string::npos) return "sse42";
+    if (name.find("crc32") != std::string::npos || name.find("pcmp") != std::string::npos) return "sse42";
+    if (name.find("pblendw") != std::string::npos || name.find("roundsd") != std::string::npos || name.find("roundss") != std::string::npos) return "sse41";
+    if (name.find("pshufb") != std::string::npos) return "ssse3";
     if (name.find("movbe") != std::string::npos) return "movbe";
     if (name.find("popcnt") != std::string::npos) return "popcnt";
     if (name.find("rdpid") != std::string::npos) return "rdpid";
     if (name.find("lzcnt") != std::string::npos) return "lzcnt";
     if (name.find("tzcnt") != std::string::npos) return "bmi1";
-    if (name.find("aes") != std::string::npos || name.find("sha") != std::string::npos) return "aes/sha";
-    if (!name.empty() && name[0] == 'v') return "avx_or_later";
+    if (name.find("sha") != std::string::npos) return "sha";
+    if (name.find("aes") != std::string::npos) return "aes";
+    if (name.find("vfmadd") != std::string::npos) return "fma";
+    if (name.find("ymm") != std::string::npos || name.find("avx") != std::string::npos || (!name.empty() && name[0] == 'v')) return "avx";
     return "base";
 }
 
