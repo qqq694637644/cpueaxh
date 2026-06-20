@@ -1,5 +1,6 @@
 param(
-    [string[]]$HeaderGlobs = @('cpueaxh/cpu/*.hpp', 'cpueaxh/memory/*.hpp'),
+    [string[]]$CoreHeaderGlobs = @('cpueaxh/cpu/*.hpp', 'cpueaxh/memory/*.hpp'),
+    [string]$InstructionDir = 'cpueaxh/instructions',
     [string]$WorkDir = '.header-smoke'
 )
 
@@ -21,17 +22,47 @@ function Resolve-VsDevCmd {
     return $vcvars
 }
 
-$headers = @()
-foreach ($glob in $HeaderGlobs) {
+function Add-SmokeCase {
+    param(
+        [Parameter(Mandatory = $true)][System.Collections.Generic.List[object]]$Cases,
+        [Parameter(Mandatory = $true)]$Header,
+        [string[]]$PreambleIncludes = @()
+    )
+    $Cases.Add([pscustomobject]@{
+        Header = $Header
+        PreambleIncludes = $PreambleIncludes
+    })
+}
+
+$coreHeaders = @()
+foreach ($glob in $CoreHeaderGlobs) {
     $root = Split-Path -Path $glob -Parent
     $leaf = Split-Path -Path $glob -Leaf
     if (-not (Test-Path -LiteralPath $root -PathType Container)) {
         throw "Header smoke root not found: $root"
     }
-    $headers += @(Get-ChildItem -LiteralPath $root -Filter $leaf -File | Sort-Object FullName)
+    $coreHeaders += @(Get-ChildItem -LiteralPath $root -Filter $leaf -File | Sort-Object FullName)
 }
-$headers = @($headers | Sort-Object FullName -Unique)
-if ($headers.Count -eq 0) {
+$coreHeaders = @($coreHeaders | Sort-Object FullName -Unique)
+
+if (-not (Test-Path -LiteralPath $InstructionDir -PathType Container)) {
+    throw "Instruction smoke root not found: $InstructionDir"
+}
+$instructionUmbrellas = @(Get-ChildItem -LiteralPath $InstructionDir -Filter '*_instructions.hpp' -File | ForEach-Object { $_.Name })
+$instructionExcluded = @('instruction_common.hpp', 'all_instructions.hpp') + $instructionUmbrellas
+$instructionHeaders = @(Get-ChildItem -LiteralPath $InstructionDir -Filter '*.hpp' -File |
+    Where-Object { $_.Name -notin $instructionExcluded } |
+    Sort-Object FullName)
+
+$smokeCases = New-Object 'System.Collections.Generic.List[object]'
+foreach ($header in $coreHeaders) {
+    Add-SmokeCase -Cases $smokeCases -Header $header
+}
+foreach ($header in $instructionHeaders) {
+    Add-SmokeCase -Cases $smokeCases -Header $header -PreambleIncludes @('cpueaxh/instructions/instruction_common.hpp')
+}
+
+if ($smokeCases.Count -eq 0) {
     throw 'No headers selected for smoke validation.'
 }
 
@@ -43,15 +74,19 @@ if (Test-Path -LiteralPath $logPath) {
     Remove-Item -LiteralPath $logPath -Force
 }
 
-foreach ($header in $headers) {
+foreach ($case in $smokeCases) {
+    $header = $case.Header
     $relative = $header.FullName.Substring($repoRoot.Length + 1).Replace('\\', '/')
     $safe = $relative -replace '[^A-Za-z0-9_]', '_'
     $source = Join-Path $WorkDir "$safe.cpp"
     $object = Join-Path $WorkDir "$safe.obj"
-    @"
-#include "$relative"
-int cpueaxh_individual_header_smoke_$safe() { return 0; }
-"@ | Set-Content -LiteralPath $source -Encoding utf8
+    $sourceLines = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($include in $case.PreambleIncludes) {
+        $sourceLines.Add('#include "' + $include + '"')
+    }
+    $sourceLines.Add('#include "' + $relative + '"')
+    $sourceLines.Add('int cpueaxh_individual_header_smoke_' + $safe + '() { return 0; }')
+    $sourceLines | Set-Content -LiteralPath $source -Encoding utf8
 
     "## $relative" | Tee-Object -FilePath $logPath -Append
     $cmd = '"' + $vcvarsPath + '" >nul && cl.exe /nologo /W3 /WX /std:c++20 /permissive- /EHsc /c "' + (Resolve-Path $source) + '" /Fo"' + (Join-Path $repoRoot $object) + '" /I "' + $repoRoot + '"'
@@ -61,4 +96,4 @@ int cpueaxh_individual_header_smoke_$safe() { return 0; }
     }
 }
 
-Write-Host "cpueaxh header smoke validation passed. Headers: $($headers.Count)"
+Write-Host "cpueaxh header smoke validation passed. Core headers: $($coreHeaders.Count). Instruction headers: $($instructionHeaders.Count)."

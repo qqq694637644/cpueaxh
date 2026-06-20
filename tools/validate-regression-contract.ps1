@@ -92,6 +92,8 @@ function Assert-CoreHeaderSmokeTranslationUnits {
 function Assert-IndividualHeaderSmokeScript {
     Assert-FileContains -Path 'tools/validate-cpueaxh-header-smoke.ps1' -Pattern 'cpueaxh/cpu/\*\.hpp' -Message 'cpueaxh header smoke script must cover cpu headers.'
     Assert-FileContains -Path 'tools/validate-cpueaxh-header-smoke.ps1' -Pattern 'cpueaxh/memory/\*\.hpp' -Message 'cpueaxh header smoke script must cover memory headers.'
+    Assert-FileContains -Path 'tools/validate-cpueaxh-header-smoke.ps1' -Pattern 'cpueaxh/instructions' -Message 'cpueaxh header smoke script must cover instruction implementation headers.'
+    Assert-FileContains -Path 'tools/validate-cpueaxh-header-smoke.ps1' -Pattern 'instruction_common\.hpp' -Message 'instruction header smoke must include the instruction prerequisite header.'
     Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-cpueaxh-header-smoke\.ps1' -Message 'required CI must compile core header smoke.'
     Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'validate-cpueaxh-header-smoke\.ps1' -Message 'extended CI must compile core header smoke.'
     Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'cpueaxh-header-smoke\.log' -Message 'required CI must preserve header smoke logs.'
