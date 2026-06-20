@@ -286,6 +286,142 @@ families:
               regression_replay: false
               manual: false
             unsafe_native_reason: null
+          - name: imul_r10_r11
+            encoding: "REX.W 0F AF /r"
+            operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: imul_r12_r13_imm8
+            encoding: "REX.W 6B /r ib"
+            operands: ["r64", "r64", "imm8"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: imul_r14_r15_imm32
+            encoding: "REX.W 69 /r id"
+            operands: ["r64", "r64", "imm32"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: DIV
+        forms:
+          - name: div_rax
+            encoding: "REX.W F7 /6"
+            operands: ["RDX:RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: div_r8
+            encoding: "REX.W F7 /6"
+            operands: ["RDX:RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: div_r10
+            encoding: "REX.W F7 /6"
+            operands: ["RDX:RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: div_r13
+            encoding: "REX.W F7 /6"
+            operands: ["RDX:RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: IDIV
+        forms:
+          - name: idiv_rax
+            encoding: "REX.W F7 /7"
+            operands: ["RDX:RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: idiv_r8
+            encoding: "REX.W F7 /7"
+            operands: ["RDX:RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: idiv_r10
+            encoding: "REX.W F7 /7"
+            operands: ["RDX:RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: idiv_r13
+            encoding: "REX.W F7 /7"
+            operands: ["RDX:RAX", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
       - mnemonic: CRC32
         forms:
           - name: crc32_r32_r8
@@ -1637,6 +1773,74 @@ families:
               manual: false
             unsafe_native_reason: null
 
+  memory_rmw:
+    status: in_progress
+    regression_gate: test.exe full suite
+    entries:
+      - mnemonic: XADD
+        forms:
+          - name: xadd_mem
+            encoding: "REX.W 0F C1 /r"
+            operands: ["m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: xadd_reg_r8_r9
+            encoding: "REX.W 0F C1 /r"
+            operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+      - mnemonic: CMPXCHG
+        forms:
+          - name: cmpxchg_mem
+            encoding: "REX.W 0F B1 /r"
+            operands: ["m64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cmpxchg_reg_equal
+            encoding: "REX.W 0F B1 /r"
+            operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
+          - name: cmpxchg_reg_not_equal
+            encoding: "REX.W 0F B1 /r"
+            operands: ["r64", "r64"]
+            operand_size: 64
+            mode: long64
+            feature_gate: base
+            status: implemented
+            coverage:
+              generated_differential: true
+              regression_replay: false
+              manual: false
+            unsafe_native_reason: null
   stack:
     status: in_progress
     regression_gate: test.exe full suite
