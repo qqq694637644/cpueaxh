@@ -106,6 +106,11 @@ function Assert-CpueaxhInternalUsesInstructionModules {
     }
 }
 
+function Assert-InstructionModuleCoverage {
+    Assert-FileContains -Path 'tools/validate-instruction-module-coverage.ps1' -Pattern 'Instruction module coverage validation passed' -Message 'instruction module coverage validator must exist.'
+    & ./tools/validate-instruction-module-coverage.ps1
+}
+
 function Assert-StrictReplayFixtures {
     foreach ($path in @('test/replay-fixtures/valid', 'test/replay-fixtures/invalid')) {
         if (-not (Test-Path -LiteralPath $path -PathType Container)) {
@@ -359,6 +364,7 @@ Assert-CoreHeadersHavePragmaOnce
 Assert-CoreHeaderSmokeTranslationUnits
 Assert-IndividualHeaderSmokeScript
 Assert-CpueaxhInternalUsesInstructionModules
+Assert-InstructionModuleCoverage
 Assert-StrictReplayFixtures
 Assert-GeneratedManifestPolicyFields
 Assert-RequiredCoverageGates
