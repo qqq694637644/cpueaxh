@@ -2,6 +2,8 @@
 
 // instrusments/avx_vex.hpp - Minimal two-byte / three-byte VEX / AVX instruction support
 
+#include "simd_sse_instructions.hpp"
+
 struct AVXRegister256 {
     XMMRegister low;
     XMMRegister high;
