@@ -76,6 +76,7 @@ if ($manifest.schema -ne 'cpueaxh.generated-specs.v1') {
     throw "Unexpected generated spec manifest schema: $($manifest.schema)"
 }
 $specNames = @($manifest.specs | ForEach-Object { [string]$_.name })
+$manifestInstructionForms = @($manifest.specs | ForEach-Object { [string]$_.instruction_form })
 
 $regressionSelectors = @{}
 if (Test-Path -LiteralPath $RegressionDir -PathType Container) {
@@ -106,6 +107,7 @@ if ($formMatches.Count -eq 0) {
 }
 
 $formNames = @{}
+$generatedFormNames = @{}
 foreach ($match in $formMatches) {
     $name = $match.Groups[1].Value.Trim().Trim('"')
     $block = $match.Value
@@ -133,6 +135,10 @@ foreach ($match in $formMatches) {
 
     if ($generatedDifferential -and $featureGate -eq 'controlled_environment') {
         throw "Instruction-status form '$name' cannot claim generated_differential under controlled_environment."
+    }
+
+    if ($generatedDifferential) {
+        $generatedFormNames[$name] = $true
     }
 
     if ($generatedDifferential -and (Test-FeatureGateEnabled -FeatureGate $featureGate -ManifestFeatures $manifest.features)) {
@@ -164,6 +170,18 @@ foreach ($match in $formMatches) {
     if ($formStatus -in @('implemented', 'implemented_partial', 'differential_tested', 'manual_tested', 'feature_gated') -and
         -not ($generatedDifferential -or $regressionReplay -or $manualCoverage)) {
         throw "Instruction-status form '$name' has status '$formStatus' but no coverage is marked."
+    }
+}
+
+foreach ($manifestForm in $manifestInstructionForms) {
+    if ([string]::IsNullOrWhiteSpace($manifestForm)) {
+        throw 'Generated spec manifest contains an empty instruction_form.'
+    }
+    if (-not $formNames.ContainsKey($manifestForm)) {
+        throw "Generated spec manifest references unknown instruction_form '$manifestForm'."
+    }
+    if (-not $generatedFormNames.ContainsKey($manifestForm)) {
+        throw "Generated spec manifest references instruction_form '$manifestForm' but instruction-status does not mark generated_differential=true."
     }
 }
 
