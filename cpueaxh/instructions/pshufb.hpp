@@ -2,6 +2,8 @@
 
 // instrusments/pshufb.hpp - PSHUFB implementation
 
+#include "sse2_pack.hpp"
+
 static int decode_pshufb_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int reg = (modrm >> 3) & 0x07;
     if (ctx->rex_r) {

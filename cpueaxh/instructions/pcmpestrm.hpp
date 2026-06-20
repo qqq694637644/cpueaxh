@@ -2,6 +2,8 @@
 
 // instrusments/pcmpestrm.hpp - PCMPESTRM instruction implementation
 
+#include "avx_vex.hpp"
+
 static int decode_pcmpestrm_segment_override(uint8_t prefix) {
     switch (prefix) {
     case 0x26: return SEG_ES;
