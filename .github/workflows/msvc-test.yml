@@ -68,6 +68,10 @@ jobs:
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
 
+      - name: Validate cpueaxh core header smoke
+        shell: pwsh
+        run: ./tools/validate-cpueaxh-header-smoke.ps1
+
       - name: Build test project
         shell: pwsh
         run: |
@@ -201,6 +205,7 @@ jobs:
           path: |
             cpu-features.json
             build.log
+            .header-smoke/cpueaxh-header-smoke.log
             generated-specs.json
             test-specs.log
             manual-index.log
@@ -222,6 +227,7 @@ jobs:
             manual-replay-bundle/**
             cpu-features.json
             build.log
+            .header-smoke/cpueaxh-header-smoke.log
             generated-specs.json
             test-specs.log
             manual-index.log

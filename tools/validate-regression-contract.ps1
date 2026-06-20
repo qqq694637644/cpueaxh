@@ -89,6 +89,14 @@ function Assert-CoreHeaderSmokeTranslationUnits {
     }
 }
 
+function Assert-IndividualHeaderSmokeScript {
+    Assert-FileContains -Path 'tools/validate-cpueaxh-header-smoke.ps1' -Pattern 'cpueaxh/cpu/\*\.hpp' -Message 'cpueaxh header smoke script must cover cpu headers.'
+    Assert-FileContains -Path 'tools/validate-cpueaxh-header-smoke.ps1' -Pattern 'cpueaxh/memory/\*\.hpp' -Message 'cpueaxh header smoke script must cover memory headers.'
+    Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-cpueaxh-header-smoke\.ps1' -Message 'required CI must compile core header smoke.'
+    Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'validate-cpueaxh-header-smoke\.ps1' -Message 'extended CI must compile core header smoke.'
+    Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'cpueaxh-header-smoke\.log' -Message 'required CI must preserve header smoke logs.'
+}
+
 function Assert-CpueaxhInternalUsesInstructionModules {
     Assert-FileContains -Path 'cpueaxh/cpueaxh_internal.hpp' -Pattern 'cpu/core\.hpp' -Message 'cpueaxh_internal.hpp must include cpu/core.hpp.'
     Assert-FileContains -Path 'cpueaxh/cpueaxh_internal.hpp' -Pattern 'instructions/all_instructions\.hpp' -Message 'cpueaxh_internal.hpp must include instruction family umbrella.'
@@ -349,6 +357,7 @@ Assert-NonEmptyJsonCorpus
 Assert-ManualIndexRecords
 Assert-CoreHeadersHavePragmaOnce
 Assert-CoreHeaderSmokeTranslationUnits
+Assert-IndividualHeaderSmokeScript
 Assert-CpueaxhInternalUsesInstructionModules
 Assert-StrictReplayFixtures
 Assert-GeneratedManifestPolicyFields
