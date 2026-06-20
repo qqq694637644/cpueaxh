@@ -4,7 +4,7 @@ Use this template when adding a new generated true-CPU differential instruction 
 
 ## 1. Status entry
 
-Add or update `docs/instruction-status.yml` at form granularity:
+Add or update `docs/instruction-status.json` at form granularity:
 
 ```yaml
 - mnemonic: ADD

@@ -48,6 +48,6 @@ They require one of these strategies:
 1. software/model tests;
 2. escape callback tests;
 3. manual special tests;
-4. explicit `unsafe_for_native` status in `docs/instruction-status.yml`.
+4. explicit `unsafe_for_native` status in `docs/instruction-status.json`.
 
 The current PR gate is intentionally hosted-runner-only and should not introduce self-hosted hardware requirements.
