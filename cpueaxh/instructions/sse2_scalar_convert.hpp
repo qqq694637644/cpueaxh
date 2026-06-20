@@ -2,6 +2,10 @@
 
 // instrusments/sse2_scalar_convert.hpp - scalar SSE2 conversion implementation
 
+#include "sse_convert.hpp"
+#include "sse2_convert.hpp"
+#include "sse_arith.hpp"
+
 int decode_sse2_scalar_convert_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int reg = (modrm >> 3) & 0x07;
     if (ctx->rex_r) {
