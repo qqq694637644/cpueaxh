@@ -11,6 +11,7 @@
 
 #include "../cpueaxh_platform.hpp"
 #include "def.h"
+#include "helper.hpp"
 
 #define MAX_INST_FETCH 15
 
