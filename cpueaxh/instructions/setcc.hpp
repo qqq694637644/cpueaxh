@@ -2,6 +2,8 @@
 
 // instrusments/setcc.hpp - SETcc instruction implementation
 
+#include "jcc.hpp"
+
 int decode_setcc_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int rm = modrm & 0x07;
     if (ctx->rex_b) {

@@ -2,6 +2,8 @@
 
 // instrusments/cmovcc.hpp - CMOVcc instruction implementation
 
+#include "jcc.hpp"
+
 int decode_cmovcc_rm_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int rm = modrm & 0x07;
     if (ctx->rex_b) {
