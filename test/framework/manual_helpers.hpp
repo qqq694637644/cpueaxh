@@ -733,6 +733,64 @@ inline bool run_manual_rdseed_internal_case(
     return ok;
 }
 
+inline bool run_manual_serialize_internal_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        std::vector<std::uint8_t> image = code;
+        image.push_back(0x90);
+        image.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, image, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepOk || cpu_has_exception(&context)) {
+            failure.case_name = name;
+            failure.detail = "expected successful cpu_step";
+            break;
+        }
+        if (context.rip != kGuestCodeBase + static_cast<std::uint64_t>(code.size())) {
+            failure.case_name = name;
+            failure.detail = "serialize internal rip mismatch";
+            break;
+        }
+        for (std::size_t index = 0; index < 16; ++index) {
+            if (index == static_cast<std::size_t>(REG_RSP)) {
+                if (context.regs[index] != guest_rsp) {
+                    failure.case_name = name;
+                    failure.detail = "serialize internal rsp changed unexpectedly";
+                    goto cleanup;
+                }
+                continue;
+            }
+            if (context.regs[index] != initial.regs[index]) {
+                failure.case_name = name;
+                failure.detail = "serialize internal register changed unexpectedly";
+                goto cleanup;
+            }
+        }
+        if ((context.rflags & kStatusMask) != (initial.rflags & kStatusMask)) {
+            failure.case_name = name;
+            failure.detail = "serialize internal changed flags unexpectedly";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+cleanup:
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
 inline bool run_manual_rdpmc_public_case(
     const std::string& name,
     const std::vector<std::uint8_t>& code,
