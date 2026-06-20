@@ -219,6 +219,8 @@ public:
         case UnaryOp::Neg: reg_field = 3; opcode = 0xF7; break;
         case UnaryOp::Mul: reg_field = 4; opcode = 0xF7; break;
         case UnaryOp::Imul: reg_field = 5; opcode = 0xF7; break;
+        case UnaryOp::Div: reg_field = 6; opcode = 0xF7; break;
+        case UnaryOp::Idiv: reg_field = 7; opcode = 0xF7; break;
         }
         emit_rex(true, reg_field, 0, static_cast<std::uint8_t>(reg));
         emit8(opcode);
@@ -364,6 +366,27 @@ public:
         emit8(static_cast<std::uint8_t>(0xC8u + (static_cast<std::uint8_t>(reg) & 7u)));
     }
 
+    void imul_reg_reg(Reg dst, Reg src) {
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x0F);
+        emit8(0xAF);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+    }
+
+    void imul_reg_reg_imm8(Reg dst, Reg src, std::uint8_t imm) {
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x6B);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+        emit8(imm);
+    }
+
+    void imul_reg_reg_imm32(Reg dst, Reg src, std::uint32_t imm) {
+        emit_rex(true, static_cast<std::uint8_t>(dst), 0, static_cast<std::uint8_t>(src));
+        emit8(0x69);
+        emit_modrm(3, static_cast<std::uint8_t>(dst), static_cast<std::uint8_t>(src));
+        emit32(imm);
+    }
+
     void setcc(std::uint8_t cc, Reg reg) {
         emit_rex(false, 0, 0, static_cast<std::uint8_t>(reg));
         emit8(0x0F);
@@ -479,12 +502,26 @@ public:
         rip_rel32(label);
     }
 
+    void xadd_reg_reg(Reg dst, Reg src) {
+        emit_rex(true, static_cast<std::uint8_t>(src), 0, static_cast<std::uint8_t>(dst));
+        emit8(0x0F);
+        emit8(0xC1);
+        emit_modrm(3, static_cast<std::uint8_t>(src), static_cast<std::uint8_t>(dst));
+    }
+
     void cmpxchg_mem_reg(Label label, Reg src) {
         emit_rex(true, static_cast<std::uint8_t>(src), 0, 5);
         emit8(0x0F);
         emit8(0xB1);
         emit_modrm(0, static_cast<std::uint8_t>(src), 5);
         rip_rel32(label);
+    }
+
+    void cmpxchg_reg_reg(Reg dst, Reg src) {
+        emit_rex(true, static_cast<std::uint8_t>(src), 0, static_cast<std::uint8_t>(dst));
+        emit8(0x0F);
+        emit8(0xB1);
+        emit_modrm(3, static_cast<std::uint8_t>(src), static_cast<std::uint8_t>(dst));
     }
 
     void push_reg(Reg reg) {

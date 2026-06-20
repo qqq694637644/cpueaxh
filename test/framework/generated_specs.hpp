@@ -16,7 +16,7 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
         BinaryOp::Add, BinaryOp::Sub, BinaryOp::And, BinaryOp::Or,
         BinaryOp::Xor, BinaryOp::Cmp, BinaryOp::Test
     };
-    const UnaryOp unary_ops[] = { UnaryOp::Inc, UnaryOp::Dec, UnaryOp::Neg, UnaryOp::Not, UnaryOp::Mul, UnaryOp::Imul };
+    const UnaryOp unary_ops[] = { UnaryOp::Inc, UnaryOp::Dec, UnaryOp::Neg, UnaryOp::Not, UnaryOp::Mul, UnaryOp::Imul, UnaryOp::Div, UnaryOp::Idiv };
     const ShiftOp shift_ops[] = { ShiftOp::Rol, ShiftOp::Ror, ShiftOp::Rcl, ShiftOp::Rcr, ShiftOp::Shl, ShiftOp::Shr, ShiftOp::Sar };
     for (const BinaryOp op : binary_ops) {
         for (std::size_t index = 0; index < kBinaryPairs.size(); ++index) {
@@ -62,6 +62,9 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::BswapAlt), 0, kStatusMask, "bswap_rax" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Tzcnt), 0, features.bmi1 ? kBitCountMask : kBitScanMask, features.bmi1 ? "tzcnt_rdx_rbx" : "f3_bsf_rdx_rbx" });
     specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::Lzcnt), 0, features.lzcnt ? kBitCountMask : kBitScanMask, features.lzcnt ? "lzcnt_r9_r10" : "f3_bsr_r9_r10" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::ImulRegReg), 0, kRotationMask, "imul_r10_r11" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::ImulRegImm8), 0, kRotationMask, "imul_r12_r13_imm8" });
+    specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(BitOp::ImulRegImm32), 0, kRotationMask, "imul_r14_r15_imm32" });
     if (features.sse42) {
         for (const Crc32CaseSpec& crc32_case : kCrc32Cases) {
             specs.push_back({ Family::BitOps, static_cast<std::uint32_t>(crc32_case.op), 0, 0, crc32_case.name });
@@ -112,6 +115,9 @@ inline std::vector<ProgramSpec> make_specs(const HostFeatures& features) {
     specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::XorMem), 0, kLogicMask, "xor_mem" });
     specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::XaddMem), 0, kStatusMask, "xadd_mem" });
     specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::CmpxchgMem), 0, kStatusMask, "cmpxchg_mem" });
+    specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::XaddReg), 0, kStatusMask, "xadd_reg_r8_r9" });
+    specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::CmpxchgRegEqual), 0, kStatusMask, "cmpxchg_reg_equal" });
+    specs.push_back({ Family::MemoryOps, static_cast<std::uint32_t>(MemoryProgram::CmpxchgRegNotEqual), 0, kStatusMask, "cmpxchg_reg_not_equal" });
     specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::PushPopPair), 0, 0, "push_pop_pair" });
     specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::PushPopFlags), 0, 0, "pushf_pop_lahf" });
     specs.push_back({ Family::StackOps, static_cast<std::uint32_t>(StackProgram::EnterLeave), 0, 0, "enter_leave" });
@@ -269,6 +275,13 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
     case Family::UnaryReg: {
         const auto op = static_cast<UnaryOp>(spec.op);
         const Reg reg = kUnaryRegs[spec.variant % kUnaryRegs.size()].reg;
+        if (op == UnaryOp::Div || op == UnaryOp::Idiv) {
+            built.initial_context.regs[static_cast<std::size_t>(Reg::RAX)] = 0x12345ull;
+            built.initial_context.regs[static_cast<std::size_t>(Reg::RDX)] = 0;
+            if (reg != Reg::RAX) {
+                built.initial_context.regs[static_cast<std::size_t>(reg)] = 0x123ull;
+            }
+        }
         code.unary_reg(op, reg);
         break;
     }
@@ -358,6 +371,15 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
             break;
         case BitOp::Lzcnt:
             code.lzcnt(Reg::R9, Reg::R10);
+            break;
+        case BitOp::ImulRegReg:
+            code.imul_reg_reg(Reg::R10, Reg::R11);
+            break;
+        case BitOp::ImulRegImm8:
+            code.imul_reg_reg_imm8(Reg::R12, Reg::R13, 7);
+            break;
+        case BitOp::ImulRegImm32:
+            code.imul_reg_reg_imm32(Reg::R14, Reg::R15, 0x12345u);
             break;
         }
         break;
@@ -504,6 +526,19 @@ inline BuiltCase build_case(const ProgramSpec& spec, std::uint64_t seed) {
         case MemoryProgram::CmpxchgMem:
             code.cmpxchg_mem_reg(buffer0, Reg::R14);
             code.mov_reg_mem(Reg::RDX, buffer0);
+            break;
+        case MemoryProgram::XaddReg:
+            code.xadd_reg_reg(Reg::R8, Reg::R9);
+            break;
+        case MemoryProgram::CmpxchgRegEqual:
+            built.initial_context.regs[static_cast<std::size_t>(Reg::R8)] = seeded(seed, 0x8C0);
+            built.initial_context.regs[static_cast<std::size_t>(Reg::RAX)] = built.initial_context.regs[static_cast<std::size_t>(Reg::R8)];
+            code.cmpxchg_reg_reg(Reg::R8, Reg::R9);
+            break;
+        case MemoryProgram::CmpxchgRegNotEqual:
+            built.initial_context.regs[static_cast<std::size_t>(Reg::R8)] = seeded(seed, 0x8C1);
+            built.initial_context.regs[static_cast<std::size_t>(Reg::RAX)] = built.initial_context.regs[static_cast<std::size_t>(Reg::R8)] ^ 0x5A5A5A5A5A5A5A5Aull;
+            code.cmpxchg_reg_reg(Reg::R8, Reg::R9);
             break;
         }
         break;

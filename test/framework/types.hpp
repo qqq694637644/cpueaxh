@@ -246,6 +246,8 @@ enum class UnaryOp : std::uint8_t {
     Not,
     Mul,
     Imul,
+    Div,
+    Idiv,
 };
 
 enum class ShiftOp : std::uint8_t {
@@ -279,6 +281,9 @@ enum class BitOp : std::uint8_t {
     BswapAlt,
     Tzcnt,
     Lzcnt,
+    ImulRegReg,
+    ImulRegImm8,
+    ImulRegImm32,
     Crc32Byte,
     Crc32Word,
     Crc32WordF2Then66,
@@ -337,6 +342,9 @@ enum class MemoryProgram : std::uint8_t {
     XorMem,
     XaddMem,
     CmpxchgMem,
+    XaddReg,
+    CmpxchgRegEqual,
+    CmpxchgRegNotEqual,
 };
 
 enum class StackProgram : std::uint8_t {
@@ -1630,7 +1638,9 @@ inline const char* unary_name(UnaryOp op) {
     case UnaryOp::Neg: return "neg";
     case UnaryOp::Not: return "not";
     case UnaryOp::Mul: return "mul";
-    default: return "imul";
+    case UnaryOp::Imul: return "imul";
+    case UnaryOp::Div: return "div";
+    default: return "idiv";
     }
 }
 
@@ -1668,6 +1678,9 @@ inline std::uint64_t unary_flag_mask(UnaryOp op) {
     case UnaryOp::Mul:
     case UnaryOp::Imul:
         return kRotationMask;
+    case UnaryOp::Div:
+    case UnaryOp::Idiv:
+        return 0;
     default:
         return 0;
     }
