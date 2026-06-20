@@ -7,6 +7,10 @@
 // cpu/inst_cache.hpp). On a hit we skip prefix scanning, opcode classification
 // and the long if/else dispatch ladder, going straight to the cached handler.
 
+#include "core.hpp"
+#include "inst_cache.hpp"
+#include "decoder.hpp"
+
 // Maximum bytes we fetch ahead per instruction (Intel max is 15 bytes). The
 // canonical definition lives in dispatch_helpers.hpp; we re-affirm the value
 // here so other translation units that include just executor.hpp keep working.
