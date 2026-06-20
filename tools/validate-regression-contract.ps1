@@ -181,7 +181,7 @@ function Assert-FrameworkHeadersDoNotRequireUmbrellaOrder {
 }
 
 function Assert-RoundSwitchesUseUnreachableDefault {
-    foreach ($path in @('cpueaxh/instructions/roundsd.hpp', 'cpueaxh/instructions/roundss.hpp', 'cpueaxh/instructions/avx_vex.hpp')) {
+    foreach ($path in @('cpueaxh/instructions/roundsd.hpp', 'cpueaxh/instructions/roundss.hpp', 'cpueaxh/instructions/avx_vex_ops.hpp')) {
         $content = Get-Content -LiteralPath $path -Raw
         $sameLineFallbacks = @(Get-Content -LiteralPath $path | Where-Object { $_ -cmatch 'default:\s*return\s+_mm_round' })
         if ($sameLineFallbacks.Count -ne 0) {
@@ -201,6 +201,37 @@ function Assert-CheckedMemoryReadHelpers {
     Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_qword_checked' -Message 'memory helpers must expose read_memory_qword_checked.'
     Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_operand_checked' -Message 'shared memory operand readers must have a checked variant.'
     Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'CpuReadResult64 read_result' -Message 'atomic RMW helpers must use checked memory reads before consuming values.'
+}
+
+function Assert-AvxVexModuleSplit {
+    $required = @(
+        'avx_vex_common.hpp',
+        'avx_vex_decode.hpp',
+        'avx_vex_ops.hpp',
+        'avx_vex_execute.hpp',
+        'avx_vex.hpp'
+    )
+    foreach ($name in $required) {
+        $path = Join-Path 'cpueaxh/instructions' $name
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Missing AVX/VEX module header: $path"
+        }
+        $firstNonBlank = Get-Content -LiteralPath $path | Where-Object { $_.Trim().Length -ne 0 } | Select-Object -First 1
+        if ($firstNonBlank -notmatch '^\s*#pragma\s+once\b') {
+            throw "AVX/VEX module header lacks #pragma once: $path"
+        }
+        Assert-FileContains -Path 'cpueaxh/instructions/simd_avx_instructions.hpp' -Pattern ([regex]::Escape($name)) -Message "simd AVX umbrella must include $name."
+    }
+
+    $umbrellaLines = @(Get-Content -LiteralPath 'cpueaxh/instructions/avx_vex.hpp')
+    if ($umbrellaLines.Count -gt 40) {
+        throw 'avx_vex.hpp must remain a small umbrella; put implementation into avx_vex_* modules.'
+    }
+    Assert-FileContains -Path 'cpueaxh/instructions/avx_vex.hpp' -Pattern 'avx_vex_execute\.hpp' -Message 'avx_vex.hpp must include the execution module.'
+    Assert-FileContains -Path 'cpueaxh/instructions/avx_vex_common.hpp' -Pattern 'struct AVXRegister256' -Message 'AVX/VEX common module must own shared register types.'
+    Assert-FileContains -Path 'cpueaxh/instructions/avx_vex_decode.hpp' -Pattern 'decode_avx_vex_modrm' -Message 'AVX/VEX decode module must own decode helpers.'
+    Assert-FileContains -Path 'cpueaxh/instructions/avx_vex_ops.hpp' -Pattern 'apply_avx_round_ps_intrinsic' -Message 'AVX/VEX ops module must own operation helpers.'
+    Assert-FileContains -Path 'cpueaxh/instructions/avx_vex_execute.hpp' -Pattern 'execute_avx_vex' -Message 'AVX/VEX execute module must own dispatch.'
 }
 
 function Assert-SetEquals {
@@ -414,5 +445,6 @@ Assert-NoLegacyFrameworkJsonExtractors
 Assert-FrameworkHeadersDoNotRequireUmbrellaOrder
 Assert-RoundSwitchesUseUnreachableDefault
 Assert-CheckedMemoryReadHelpers
+Assert-AvxVexModuleSplit
 
 Write-Host 'Regression contract validation passed.'
