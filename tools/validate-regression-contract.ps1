@@ -183,73 +183,72 @@ function Get-YamlNamedBlocks {
 }
 
 function Assert-Stage3GateManifest {
-    $path = 'docs/stage3-regression-gates.yml'
+    $path = 'docs/stage3-regression-gates.json'
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Missing required file: $path"
     }
-    $content = Get-Content -LiteralPath $path -Raw
-    if ($content -notmatch '(?m)^schema:\s*cpueaxh\.stage3-regression-gates\.v1\s*$') {
-        throw 'stage3-regression-gates.yml has an invalid or missing schema.'
+    $manifest = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+    if ($manifest.schema -ne 'cpueaxh.stage3-regression-gates.v1') {
+        throw 'stage3-regression-gates.json has an invalid or missing schema.'
     }
-    foreach ($field in @('policy:', 'required_gates:', 'high_risk_files:')) {
-        if ($content -notmatch [regex]::Escape($field)) {
-            throw "stage3-regression-gates.yml is missing required section: $field"
+    foreach ($section in @('policy', 'required_gates')) {
+        if ($null -eq $manifest.PSObject.Properties[$section]) {
+            throw "stage3-regression-gates.json is missing required section: $section"
         }
     }
+    if ($null -eq $manifest.policy.high_risk_files -or $manifest.policy.high_risk_files.Count -eq 0) {
+        throw 'stage3-regression-gates.json must list high_risk_files.'
+    }
 
-    $blocks = Get-YamlNamedBlocks -Content $content
-    Assert-SetEquals -Actual ([string[]]$blocks.Keys) -Expected $RequiredStage3Gates -Label 'Stage3 gate name set'
+    $gates = @($manifest.required_gates | ForEach-Object { [string]$_.name })
+    Assert-SetEquals -Actual $gates -Expected $RequiredStage3Gates -Label 'Stage3 gate name set'
 
-    foreach ($gate in $RequiredStage3Gates) {
-        $block = $blocks[$gate]
+    foreach ($gate in $manifest.required_gates) {
         foreach ($field in @('category', 'purpose', 'command')) {
-            if ($block -notmatch "(?m)^\s+${field}:\s*\S+") {
-                throw "Stage3 gate '$gate' missing required field '$field'."
+            if ($null -eq $gate.PSObject.Properties[$field] -or [string]::IsNullOrWhiteSpace([string]$gate.$field)) {
+                throw "Stage3 gate '$($gate.name)' missing required field '$field'."
             }
         }
     }
 }
 
 function Assert-GeneratorTemplates {
-    $path = 'docs/generator-templates.yml'
+    $path = 'docs/generator-templates.json'
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Missing required file: $path"
     }
-    $content = Get-Content -LiteralPath $path -Raw
-    if ($content -notmatch '(?m)^schema:\s*cpueaxh\.generator-templates\.v1\s*$') {
-        throw 'generator-templates.yml has an invalid or missing schema.'
+    $manifest = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+    if ($manifest.schema -ne 'cpueaxh.generator-templates.v1') {
+        throw 'generator-templates.json has an invalid or missing schema.'
     }
-    foreach ($section in @('naming:', 'shared_requirements:', 'families:')) {
-        if ($content -notmatch [regex]::Escape($section)) {
-            throw "generator-templates.yml is missing required section: $section"
+    foreach ($section in @('naming', 'shared_requirements', 'families')) {
+        if ($null -eq $manifest.PSObject.Properties[$section]) {
+            throw "generator-templates.json is missing required section: $section"
         }
     }
-    foreach ($requirement in @('exact_selector_required: true', 'stable_names: true', 'deterministic_seed: true', 'safe_return_path: true', 'flag_mask_required: true')) {
-        if ($content -notmatch [regex]::Escape($requirement)) {
-            throw "generator-templates.yml missing shared requirement: $requirement"
+    foreach ($requirement in @('exact_selector_required', 'stable_names')) {
+        if (-not [bool]$manifest.naming.$requirement) {
+            throw "generator-templates.json missing naming requirement: $requirement"
         }
     }
-
-    $familiesSectionMatch = [regex]::Match($content, '(?ms)^families:\s*$.*\z')
-    if (-not $familiesSectionMatch.Success) {
-        throw 'generator-templates.yml is missing a parseable families section.'
+    foreach ($requirement in @('deterministic_seed', 'safe_return_path', 'flag_mask_required')) {
+        if (-not [bool]$manifest.shared_requirements.$requirement) {
+            throw "generator-templates.json missing shared requirement: $requirement"
+        }
     }
-    $familiesSection = $familiesSectionMatch.Value
-    $familyMatches = [regex]::Matches($familiesSection, '(?m)^\s{2}([a-z0-9_]+):\s*$')
-    $families = @($familyMatches | ForEach-Object { $_.Groups[1].Value })
+    $families = @($manifest.families.PSObject.Properties | ForEach-Object { $_.Name })
     Assert-SetEquals -Actual $families -Expected $RequiredGeneratorFamilies -Label 'Generator template family set'
 
     foreach ($family in $RequiredGeneratorFamilies) {
-        $escapedFamily = [regex]::Escape($family)
-        $blockMatch = [regex]::Match($content, "(?ms)^\s{2}${escapedFamily}:\s*$.*?(?=^\s{2}[a-z0-9_]+:\s*$|\z)")
-        if (-not $blockMatch.Success) {
-            throw "Generator family '$family' block not found."
+        $entry = $manifest.families.$family
+        if ($null -eq $entry.examples -or $entry.examples.Count -eq 0) {
+            throw "generator family '$family' must list examples."
         }
-        $block = $blockMatch.Value
-        foreach ($field in @('examples:', 'required_fields:', 'special_rules:')) {
-            if ($block -notmatch [regex]::Escape($field)) {
-                throw "Generator family '$family' missing required section '$field'."
-            }
+        if ($null -eq $entry.required_fields -or $entry.required_fields.Count -eq 0) {
+            throw "generator family '$family' must list required_fields."
+        }
+        if ($null -eq $entry.special_rules -or $entry.special_rules.Count -eq 0) {
+            throw "generator family '$family' must list special_rules."
         }
     }
 }
