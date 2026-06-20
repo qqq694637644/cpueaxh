@@ -6518,6 +6518,382 @@
         "manual": false
       },
       "unsafe_native_reason": "null"
+    },
+    {
+      "name": "ud2",
+      "encoding": "0F 0B",
+      "operands_raw": "[]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "manual_tested",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": true
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "int3",
+      "encoding": "CC",
+      "operands_raw": "[\"imm8=3\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "manual_tested",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": true
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "int1",
+      "encoding": "F1",
+      "operands_raw": "[]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "manual_tested",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": true
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "int",
+      "encoding": "CD ib",
+      "operands_raw": "[\"imm8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "manual_tested",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": true
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rorx",
+      "encoding": "VEX.LZ.F2.0F3A.W1 F0 /r ib",
+      "operands_raw": "[\"r64\", \"r/m64\", \"imm8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi2",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "shlx",
+      "encoding": "VEX.LZ.66.0F38.W1 F7 /r",
+      "operands_raw": "[\"r64\", \"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi2",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "shrx",
+      "encoding": "VEX.LZ.F2.0F38.W1 F7 /r",
+      "operands_raw": "[\"r64\", \"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi2",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "sarx",
+      "encoding": "VEX.LZ.F3.0F38.W1 F7 /r",
+      "operands_raw": "[\"r64\", \"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi2",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "bextr",
+      "encoding": "VEX.LZ.0F38.W1 F7 /r",
+      "operands_raw": "[\"r64\", \"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi1",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "bzhi",
+      "encoding": "VEX.LZ.0F38.W1 F5 /r",
+      "operands_raw": "[\"r64\", \"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi2",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "pext",
+      "encoding": "VEX.LZ.F3.0F38.W1 F5 /r",
+      "operands_raw": "[\"r64\", \"r64\", \"r/m64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi2",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "pdep",
+      "encoding": "VEX.LZ.F2.0F38.W1 F5 /r",
+      "operands_raw": "[\"r64\", \"r64\", \"r/m64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi2",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "blsi",
+      "encoding": "VEX.LZ.0F38.W1 F3 /3",
+      "operands_raw": "[\"r64\", \"r/m64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi1",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "blsr",
+      "encoding": "VEX.LZ.0F38.W1 F3 /1",
+      "operands_raw": "[\"r64\", \"r/m64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi1",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "blsmsk",
+      "encoding": "VEX.LZ.0F38.W1 F3 /2",
+      "operands_raw": "[\"r64\", \"r/m64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi1",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "mulx",
+      "encoding": "VEX.LZ.F2.0F38.W1 F6 /r",
+      "operands_raw": "[\"r64\", \"r64\", \"r/m64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi2",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "rdfsbase",
+      "encoding": "F3 REX.W 0F AE /0",
+      "operands_raw": "[\"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "fsgsbase",
+      "status": "implemented_partial",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": true
+      },
+      "unsafe_native_reason": "manual coverage currently verifies CR4.FSGSBASE disabled #UD gate; success-path coverage pending"
+    },
+    {
+      "name": "rdgsbase",
+      "encoding": "F3 REX.W 0F AE /1",
+      "operands_raw": "[\"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "fsgsbase",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "rdseed",
+      "encoding": "REX.W 0F C7 /7",
+      "operands_raw": "[\"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "rdseed",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "rdpmc",
+      "encoding": "0F 33",
+      "operands_raw": "[\"ECX\", \"EDX:EAX\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "deterministic software model; host RDPMC is not used in CI/user-mode tests"
+    },
+    {
+      "name": "serialize",
+      "encoding": "0F 01 E8",
+      "operands_raw": "[]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "serialize",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "lfence",
+      "encoding": "0F AE /5",
+      "operands_raw": "[]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "mfence",
+      "encoding": "0F AE /6",
+      "operands_raw": "[]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "sfence",
+      "encoding": "0F AE /7",
+      "operands_raw": "[]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+    },
+    {
+      "name": "prefetchwt1",
+      "encoding": "0F 0D /2",
+      "operands_raw": "[\"m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "blocked",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
     }
   ]
 }
+

@@ -532,6 +532,10 @@ struct Failure {
     bool host_feature_aes = false;
     bool host_feature_rdpid = false;
     bool host_feature_bmi1 = false;
+    bool host_feature_bmi2 = false;
+    bool host_feature_rdseed = false;
+    bool host_feature_fsgsbase = false;
+    bool host_feature_serialize = false;
     bool host_feature_lzcnt = false;
     bool host_feature_movbe = false;
     bool has_seed = false;
@@ -844,6 +848,10 @@ inline bool write_failure_record(const std::string& path, const Failure& failure
         file << "      \"aes\": " << json_bool(failure.host_feature_aes) << ",\n";
         file << "      \"rdpid\": " << json_bool(failure.host_feature_rdpid) << ",\n";
         file << "      \"bmi1\": " << json_bool(failure.host_feature_bmi1) << ",\n";
+        file << "      \"bmi2\": " << json_bool(failure.host_feature_bmi2) << ",\n";
+        file << "      \"rdseed\": " << json_bool(failure.host_feature_rdseed) << ",\n";
+        file << "      \"fsgsbase\": " << json_bool(failure.host_feature_fsgsbase) << ",\n";
+        file << "      \"serialize\": " << json_bool(failure.host_feature_serialize) << ",\n";
         file << "      \"lzcnt\": " << json_bool(failure.host_feature_lzcnt) << ",\n";
         file << "      \"movbe\": " << json_bool(failure.host_feature_movbe) << "\n";
         file << "    }\n";
@@ -1256,7 +1264,7 @@ inline std::vector<std::string> json_gpr_field_names() {
 inline std::vector<std::string> json_host_feature_field_names() {
     return {
         "avx", "avx2", "fma", "sha", "popcnt", "ssse3", "sse41", "sse42",
-        "aes", "rdpid", "bmi1", "lzcnt", "movbe"
+        "aes", "rdpid", "bmi1", "bmi2", "rdseed", "fsgsbase", "serialize", "lzcnt", "movbe"
     };
 }
 
@@ -1678,6 +1686,10 @@ struct HostFeatures {
     bool aes = false;
     bool rdpid = false;
     bool bmi1 = false;
+    bool bmi2 = false;
+    bool rdseed = false;
+    bool fsgsbase = false;
+    bool serialize = false;
     bool lzcnt = false;
     bool movbe = false;
 };
@@ -2012,8 +2024,12 @@ inline HostFeatures query_host_features() {
         features.max_leaf7 = static_cast<std::uint32_t>(cpu_info[0]);
         features.avx2 = features.avx && (cpu_info[1] & (1 << 5)) != 0;
         features.bmi1 = (cpu_info[1] & (1 << 3)) != 0;
+        features.bmi2 = (cpu_info[1] & (1 << 8)) != 0;
+        features.rdseed = (cpu_info[1] & (1 << 18)) != 0;
+        features.fsgsbase = (cpu_info[1] & (1 << 0)) != 0;
         features.sha = (cpu_info[1] & (1 << 29)) != 0;
         features.rdpid = (cpu_info[2] & (1 << 22)) != 0;
+        features.serialize = (cpu_info[3] & (1 << 14)) != 0;
     }
     __cpuid(cpu_info, 0x80000000);
     const std::uint32_t max_extended_leaf = static_cast<std::uint32_t>(cpu_info[0]);
@@ -2069,6 +2085,10 @@ inline bool write_host_feature_record(const std::string& path, const HostFeature
     file << "    \"aes\": " << json_bool(features.aes) << ",\n";
     file << "    \"rdpid\": " << json_bool(features.rdpid) << ",\n";
     file << "    \"bmi1\": " << json_bool(features.bmi1) << ",\n";
+    file << "    \"bmi2\": " << json_bool(features.bmi2) << ",\n";
+    file << "    \"rdseed\": " << json_bool(features.rdseed) << ",\n";
+    file << "    \"fsgsbase\": " << json_bool(features.fsgsbase) << ",\n";
+    file << "    \"serialize\": " << json_bool(features.serialize) << ",\n";
     file << "    \"lzcnt\": " << json_bool(features.lzcnt) << ",\n";
     file << "    \"movbe\": " << json_bool(features.movbe) << "\n";
     file << "  }\n";
@@ -2100,6 +2120,10 @@ inline void attach_host_features_to_failure(Failure& failure, const HostFeatures
     failure.host_feature_aes = features.aes;
     failure.host_feature_rdpid = features.rdpid;
     failure.host_feature_bmi1 = features.bmi1;
+    failure.host_feature_bmi2 = features.bmi2;
+    failure.host_feature_rdseed = features.rdseed;
+    failure.host_feature_fsgsbase = features.fsgsbase;
+    failure.host_feature_serialize = features.serialize;
     failure.host_feature_lzcnt = features.lzcnt;
     failure.host_feature_movbe = features.movbe;
     failure.has_host_features = true;
@@ -2144,6 +2168,15 @@ inline const char* generated_feature_gate(const ProgramSpec& spec) {
     if (name.find("movbe") != std::string::npos) return "movbe";
     if (name.find("popcnt") != std::string::npos) return "popcnt";
     if (name.find("rdpid") != std::string::npos) return "rdpid";
+    if (name.find("rdseed") != std::string::npos) return "rdseed";
+    if (name.find("rdfsbase") != std::string::npos || name.find("rdgsbase") != std::string::npos) return "fsgsbase";
+    if (name.find("serialize") != std::string::npos) return "serialize";
+    if (name.find("rorx") != std::string::npos || name.find("shlx") != std::string::npos ||
+        name.find("shrx") != std::string::npos || name.find("sarx") != std::string::npos ||
+        name.find("bzhi") != std::string::npos || name.find("pext") != std::string::npos ||
+        name.find("pdep") != std::string::npos || name.find("mulx") != std::string::npos) return "bmi2";
+    if (name.find("bextr") != std::string::npos || name.find("blsi") != std::string::npos ||
+        name.find("blsr") != std::string::npos || name.find("blsmsk") != std::string::npos) return "bmi1";
     if (name.find("lzcnt") != std::string::npos) return "lzcnt";
     if (name.find("tzcnt") != std::string::npos) return "bmi1";
     if (name.find("sha") != std::string::npos) return "sha";
@@ -2244,6 +2277,10 @@ inline bool write_generated_spec_manifest(const std::string& path, const std::ve
     file << "    \"aes\": " << json_bool(features.aes) << ",\n";
     file << "    \"rdpid\": " << json_bool(features.rdpid) << ",\n";
     file << "    \"bmi1\": " << json_bool(features.bmi1) << ",\n";
+    file << "    \"bmi2\": " << json_bool(features.bmi2) << ",\n";
+    file << "    \"rdseed\": " << json_bool(features.rdseed) << ",\n";
+    file << "    \"fsgsbase\": " << json_bool(features.fsgsbase) << ",\n";
+    file << "    \"serialize\": " << json_bool(features.serialize) << ",\n";
     file << "    \"lzcnt\": " << json_bool(features.lzcnt) << ",\n";
     file << "    \"movbe\": " << json_bool(features.movbe) << "\n";
     file << "  },\n";

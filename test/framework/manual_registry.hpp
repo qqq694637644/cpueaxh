@@ -34,7 +34,7 @@ inline std::uint64_t manual_special_case_count(const HostFeatures& features, con
         + (features.aes ? 6ull : 0ull)
         + ((features.aes && features.avx) ? 2ull : 0ull)
         + 5ull;
-    const std::uint64_t exception_special = 80ull + ((features.aes && features.avx) ? 2ull : 0ull);
+    const std::uint64_t exception_special = 90ull + ((features.aes && features.avx) ? 2ull : 0ull);
     std::uint64_t total = 0;
     if (manual_case_runs_per_seed_group(manual_case)) {
         total += kSeedCount * per_seed_special;
@@ -69,7 +69,14 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     };
     const std::vector<std::uint8_t> invalid_endbr_lock = { 0xF0, 0xF3, 0x0F, 0x1E, 0xFA };
     const std::vector<std::uint8_t> invalid_rdssp_lock = { 0xF0, 0xF3, 0x48, 0x0F, 0x1E, 0xC8 };
-    const std::vector<std::uint8_t> invalid_rdpid_no_f3 = { 0x48, 0x0F, 0xC7, 0xF8 };
+    // Keep the missing-F3 RDPID negative case away from the register /7 form,
+    // because REX.W 0F C7 /7 is RDSEED r64 on RDSEED-capable hosts.
+    const std::vector<std::uint8_t> invalid_rdpid_no_f3 = { 0x48, 0x0F, 0xC7, 0x38 };
+    const std::vector<std::uint8_t> ud2 = { 0x0F, 0x0B };
+    const std::vector<std::uint8_t> int3 = { 0xCC };
+    const std::vector<std::uint8_t> int1 = { 0xF1 };
+    const std::vector<std::uint8_t> int_imm8 = { 0xCD, 0x80 };
+    const std::vector<std::uint8_t> rdfsbase_rax = { 0xF3, 0x48, 0x0F, 0xAE, 0xC0 };
     const std::vector<std::uint8_t> xgetbv = { 0x0F, 0x01, 0xD0 };
     const std::vector<std::uint8_t> shl_unmapped = { 0x48, 0xC1, 0x24, 0x25, 0x00, 0x00, 0x40, 0x00, 0x01 };
     const std::vector<std::uint8_t> mul_unmapped = { 0x48, 0xF7, 0x24, 0x25, 0x00, 0x00, 0x40, 0x00 };
@@ -1472,6 +1479,26 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         const std::uint64_t seed5 = seeded(seed_index, 0xE006);
         if (!tick(run_manual_exception_case_public("public_rdpid_no_f3_ud:" + std::to_string(seed5), invalid_rdpid_no_f3, seed5, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
         if (!tick(run_manual_exception_case("rdpid_no_f3_ud:" + std::to_string(seed5), invalid_rdpid_no_f3, seed5, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+
+        const std::uint64_t seed_ud2 = seeded(seed_index, 0xE080);
+        if (!tick(run_manual_exception_case_public("public_ud2_default_ud:" + std::to_string(seed_ud2), ud2, seed_ud2, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+        if (!tick(run_manual_exception_case("ud2_default_ud:" + std::to_string(seed_ud2), ud2, seed_ud2, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+
+        const std::uint64_t seed_int3 = seeded(seed_index, 0xE081);
+        if (!tick(run_manual_exception_case_public("public_int3_default_bp:" + std::to_string(seed_int3), int3, seed_int3, CPUEAXH_EXCEPTION_BP, failure), failure)) return false;
+        if (!tick(run_manual_exception_case("int3_default_bp:" + std::to_string(seed_int3), int3, seed_int3, CPUEAXH_EXCEPTION_BP, failure), failure)) return false;
+
+        const std::uint64_t seed_int1 = seeded(seed_index, 0xE082);
+        if (!tick(run_manual_exception_case_public("public_int1_default_db:" + std::to_string(seed_int1), int1, seed_int1, CPUEAXH_EXCEPTION_DB, failure), failure)) return false;
+        if (!tick(run_manual_exception_case("int1_default_db:" + std::to_string(seed_int1), int1, seed_int1, CPUEAXH_EXCEPTION_DB, failure), failure)) return false;
+
+        const std::uint64_t seed_int = seeded(seed_index, 0xE083);
+        if (!tick(run_manual_exception_case_public("public_int_default_ud:" + std::to_string(seed_int), int_imm8, seed_int, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+        if (!tick(run_manual_exception_case("int_default_ud:" + std::to_string(seed_int), int_imm8, seed_int, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+
+        const std::uint64_t seed_fsgsbase_cr4 = seeded(seed_index, 0xE084);
+        if (!tick(run_manual_public_cr4_exception_case("public_rdfsbase_cr4_disabled_ud:" + std::to_string(seed_fsgsbase_cr4), rdfsbase_rax, seed_fsgsbase_cr4, 0, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+        if (!tick(run_manual_cr4_exception_case("rdfsbase_cr4_disabled_ud:" + std::to_string(seed_fsgsbase_cr4), rdfsbase_rax, seed_fsgsbase_cr4, 0, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
 
         const std::uint64_t seed_xgetbv_osxsave = seeded(seed_index, 0xE007);
         if (!tick(run_manual_public_cr4_exception_case("public_xgetbv_osxsave_ud:" + std::to_string(seed_xgetbv_osxsave), xgetbv, seed_xgetbv_osxsave, 0, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;

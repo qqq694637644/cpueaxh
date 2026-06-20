@@ -61,8 +61,9 @@ static DecodedInstruction decode_fsgsbase_instruction(CPU_CONTEXT* ctx, uint8_t*
         }
     }
 
+    const bool cr4_fsgsbase_enabled = (ctx->control_regs[REG_CR4] & (1ULL << 16)) != 0;
     if (has_lock_prefix || has_unsupported_simd_prefix || !has_f3_prefix ||
-        !ctx->cs.descriptor.long_mode || !cpu_has_fsgsbase_feature()) {
+        !ctx->cs.descriptor.long_mode || !cpu_has_fsgsbase_feature() || !cr4_fsgsbase_enabled) {
         raise_ud_ctx(ctx);
         return inst;
     }
