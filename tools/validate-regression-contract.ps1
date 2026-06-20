@@ -106,6 +106,9 @@ function Assert-CpueaxhInternalUsesInstructionModules {
     if ($internal -match 'instructions/(add|mov|avx_vex|sse2_|x87_)') {
         throw 'cpueaxh_internal.hpp must not return to direct per-instruction includes.'
     }
+    if ($internal -match '#include\s+"[^"]*\\') {
+        throw 'cpueaxh_internal.hpp include paths must use forward slashes.'
+    }
 }
 
 function Assert-InstructionModuleCoverage {
@@ -125,6 +128,12 @@ function Assert-StrictReplayFixtures {
     }
     Assert-FileContains -Path 'tools/validate-strict-replay.ps1' -Pattern 'test/replay-fixtures' -Message 'strict replay validator must consume checked-in fixtures.'
     Assert-FileContains -Path 'tools/validate-strict-replay.ps1' -Pattern 'Get-ChildItem' -Message 'strict replay validator must enumerate checked-in fixtures.'
+    Assert-FileContains -Path 'test/replay-fixtures/invalid/generated-unknown-nested-field.json' -Pattern '"unexpected"' -Message 'strict replay fixtures must reject unknown nested diagnostic fields.'
+    Assert-FileContains -Path 'test/replay-fixtures/valid/generated-host-features.json' -Pattern 'cpueaxh\.host-features\.v1' -Message 'strict replay fixtures must accept well-formed nested host feature diagnostics.'
+    Assert-TestFrameworkContains -Pattern 'json_validate_generated_replay_diagnostics' -Message 'replay parser must validate generated diagnostic fields.'
+    Assert-TestFrameworkContains -Pattern 'json_validate_generated_initial_state' -Message 'replay parser must validate nested initial_state diagnostics.'
+    Assert-TestFrameworkContains -Pattern 'json_validate_generated_result_state' -Message 'replay parser must validate nested result_state diagnostics.'
+    Assert-TestFrameworkContains -Pattern 'json_validate_host_features_value' -Message 'replay parser must validate nested host_features diagnostics.'
 }
 
 function Assert-GeneratedManifestPolicyFields {
@@ -169,6 +178,29 @@ function Assert-FrameworkHeadersDoNotRequireUmbrellaOrder {
     if ($bad.Count -ne 0) {
         throw "Framework headers still claim umbrella include-order dependence: $($bad.Name -join ', ')"
     }
+}
+
+function Assert-RoundSwitchesUseUnreachableDefault {
+    foreach ($path in @('cpueaxh/instructions/roundsd.hpp', 'cpueaxh/instructions/roundss.hpp', 'cpueaxh/instructions/avx_vex.hpp')) {
+        $content = Get-Content -LiteralPath $path -Raw
+        $sameLineFallbacks = @(Get-Content -LiteralPath $path | Where-Object { $_ -cmatch 'default:\s*return\s+_mm_round' })
+        if ($sameLineFallbacks.Count -ne 0) {
+            throw "Round mode switch still uses a silent default fallback: $path"
+        }
+        if ($content -notmatch 'CPUEAXH_UNREACHABLE\(\)') {
+            throw "Round mode switch must mark masked default as unreachable: $path"
+        }
+    }
+}
+
+function Assert-CheckedMemoryReadHelpers {
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'struct CpuReadResult8' -Message 'memory helpers must expose checked byte reads.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_byte_checked' -Message 'memory helpers must expose read_memory_byte_checked.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_word_checked' -Message 'memory helpers must expose read_memory_word_checked.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_dword_checked' -Message 'memory helpers must expose read_memory_dword_checked.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_qword_checked' -Message 'memory helpers must expose read_memory_qword_checked.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'read_memory_operand_checked' -Message 'shared memory operand readers must have a checked variant.'
+    Assert-FileContains -Path 'cpueaxh/cpu/memory.hpp' -Pattern 'CpuReadResult64 read_result' -Message 'atomic RMW helpers must use checked memory reads before consuming values.'
 }
 
 function Assert-SetEquals {
@@ -352,6 +384,13 @@ Assert-FileContains -Path '.github/workflows/msvc-test.yml' -Pattern 'validate-s
 Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'if-no-files-found:\s*error' -Message 'extended regression diagnostics must fail when expected evidence is missing.'
 Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'build\.log' -Message 'extended regression must capture build.log.'
 Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'validate-strict-replay\.ps1' -Message 'extended regression must validate strict replay schema rejection.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'strict-replay\.log' -Message 'extended regression must preserve strict replay logs.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'manual-replay\.log' -Message 'extended regression must preserve manual replay logs.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'manual-index\.log' -Message 'extended regression must preserve manual index logs.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'stage3-gates\.log' -Message 'extended regression must preserve stage3 gate logs.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'cpu-features\.json' -Message 'extended regression must preserve CPU feature evidence.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'generated-specs\.json' -Message 'extended regression must preserve generated spec evidence.'
+Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'extended-test-run\.log' -Message 'extended regression must preserve long regression logs.'
 Assert-FileContains -Path 'tools/validate-generated-spec-manifest.ps1' -Pattern 'cpueaxh\.generated-specs\.v1' -Message 'generated spec manifest validator must check schema.'
 Assert-FileContains -Path 'tools/validate-instruction-status.ps1' -Pattern 'instruction-status\.json has an invalid or missing schema' -Message 'instruction status validator must check JSON schema.'
 Assert-FileContains -Path 'cpueaxh/cpu/executor.hpp' -Pattern 'CPUEAXH_STRICT_INTERNAL' -Message 'executor must keep strict internal decode checks enabled.'
@@ -373,5 +412,7 @@ Assert-RequiredCoverageGates
 Assert-AllFailuresCollection
 Assert-NoLegacyFrameworkJsonExtractors
 Assert-FrameworkHeadersDoNotRequireUmbrellaOrder
+Assert-RoundSwitchesUseUnreachableDefault
+Assert-CheckedMemoryReadHelpers
 
 Write-Host 'Regression contract validation passed.'

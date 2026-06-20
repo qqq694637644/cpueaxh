@@ -104,7 +104,9 @@ static __m128 apply_roundss_intrinsic(__m128 destination, __m128 source, uint8_t
     case 1: return _mm_round_ss(destination, source, _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
     case 2: return _mm_round_ss(destination, source, _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
     case 3: return _mm_round_ss(destination, source, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-    default: return _mm_round_ss(destination, source, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+    default:
+        CPUEAXH_UNREACHABLE();
+        return _mm_round_ss(destination, source, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     }
 }
 

@@ -103,7 +103,9 @@ static __m128d apply_roundsd_intrinsic(__m128d destination, __m128d source, uint
     case 1: return _mm_round_sd(destination, source, _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC);
     case 2: return _mm_round_sd(destination, source, _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
     case 3: return _mm_round_sd(destination, source, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-    default: return _mm_round_sd(destination, source, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+    default:
+        CPUEAXH_UNREACHABLE();
+        return _mm_round_sd(destination, source, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
     }
 }
 

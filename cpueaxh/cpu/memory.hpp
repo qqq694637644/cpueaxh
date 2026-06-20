@@ -542,6 +542,35 @@ inline uint64_t read_memory_operand(CPU_CONTEXT* ctx, uint64_t address, int oper
     }
 }
 
+inline CpuReadResult64 read_memory_operand_checked(CPU_CONTEXT* ctx, uint64_t address, int operand_size) {
+    CpuReadResult64 result = { false, 0 };
+    switch (operand_size) {
+    case 8: {
+        const CpuReadResult8 value = read_memory_byte_checked(ctx, address);
+        result.ok = value.ok;
+        result.value = value.value;
+        return result;
+    }
+    case 16: {
+        const CpuReadResult16 value = read_memory_word_checked(ctx, address);
+        result.ok = value.ok;
+        result.value = value.value;
+        return result;
+    }
+    case 32: {
+        const CpuReadResult32 value = read_memory_dword_checked(ctx, address);
+        result.ok = value.ok;
+        result.value = value.value;
+        return result;
+    }
+    case 64:
+        return read_memory_qword_checked(ctx, address);
+    default:
+        raise_ud_ctx(ctx);
+        return result;
+    }
+}
+
 inline void write_memory_operand(CPU_CONTEXT* ctx, uint64_t address, int operand_size, uint64_t value) {
     switch (operand_size) {
     case 8:  write_memory_byte(ctx, address, (uint8_t)value); break;
@@ -592,10 +621,11 @@ inline bool cpu_atomic_rmw_memory(CPU_CONTEXT* ctx, uint64_t address, int operan
                                   cpu_atomic_rmw_callback callback, void* user_data,
                                   uint64_t* old_value_out, uint64_t* new_value_out) {
     uint64_t mask = cpu_memory_operand_mask(ctx, operand_size);
-    uint64_t current_value = read_memory_operand(ctx, address, operand_size) & mask;
-    if (cpu_has_exception(ctx)) {
+    const CpuReadResult64 read_result = read_memory_operand_checked(ctx, address, operand_size);
+    if (!read_result.ok) {
         return false;
     }
+    uint64_t current_value = read_result.value & mask;
 
     for (;;) {
         uint64_t desired_value = callback(current_value, user_data) & mask;

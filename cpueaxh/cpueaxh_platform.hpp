@@ -1,5 +1,15 @@
 #pragma once
 
+#ifndef CPUEAXH_UNREACHABLE
+#if defined(_MSC_VER)
+#define CPUEAXH_UNREACHABLE() __assume(0)
+#elif defined(__GNUC__) || defined(__clang__)
+#define CPUEAXH_UNREACHABLE() __builtin_unreachable()
+#else
+#define CPUEAXH_UNREACHABLE() do { } while (0)
+#endif
+#endif
+
 #if defined(CPUEAXH_PLATFORM_KERNEL) || defined(_KERNEL_MODE) || defined(_NTDDK_) || defined(_WDM_INCLUDED_) || defined(_NTIFS_)
 
 #include <ntddk.h>
