@@ -802,6 +802,152 @@ inline bool run_manual_rdpmc_internal_case(
     return ok;
 }
 
+inline bool run_manual_fsgsbase_public_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    int dest_reg,
+    bool read_gs,
+    Failure& failure) {
+    cpueaxh_engine* engine = nullptr;
+    cpueaxh_err err = cpueaxh_open(CPUEAXH_ARCH_X86, CPUEAXH_MODE_64, &engine);
+    if (err != CPUEAXH_ERR_OK) {
+        failure.case_name = name;
+        failure.detail = "cpueaxh_open failed";
+        return false;
+    }
+
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        if (!initialize_manual_engine(engine, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        const std::uint64_t fs_base = 0x00007FF000000000ull | (seeded(seed, 0xF510) & 0x00000000FFFFFFFFull);
+        const std::uint64_t gs_base = 0x00006EE000000000ull | (seeded(seed, 0xF511) & 0x00000000FFFFFFFFull);
+        const std::uint64_t dest_initial = seeded(seed, 0xF512);
+        if (!write_engine_reg(engine, dest_reg, dest_initial) ||
+            !write_engine_reg(engine, CPUEAXH_X86_REG_FS_BASE, fs_base) ||
+            !write_engine_reg(engine, CPUEAXH_X86_REG_GS_BASE, gs_base) ||
+            !write_engine_reg(engine, CPUEAXH_X86_REG_CR4, 0x00010020ull)) {
+            failure.case_name = name;
+            failure.detail = "fsgsbase register initialization failed";
+            break;
+        }
+
+        err = cpueaxh_emu_start_function(engine, kGuestCodeBase, 0, 1000);
+        if (err != CPUEAXH_ERR_OK) {
+            failure.case_name = name;
+            failure.detail = "execution failed";
+            break;
+        }
+        if (cpueaxh_code_exception(engine) != CPUEAXH_EXCEPTION_NONE) {
+            failure.case_name = name;
+            failure.detail = "unexpected exception";
+            break;
+        }
+
+        std::uint64_t actual_dest = 0;
+        std::uint64_t actual_fs = 0;
+        std::uint64_t actual_gs = 0;
+        std::uint64_t actual_flags = 0;
+        if (!read_engine_reg(engine, dest_reg, actual_dest) ||
+            !read_engine_reg(engine, CPUEAXH_X86_REG_FS_BASE, actual_fs) ||
+            !read_engine_reg(engine, CPUEAXH_X86_REG_GS_BASE, actual_gs) ||
+            !read_engine_reg(engine, CPUEAXH_X86_REG_EFLAGS, actual_flags)) {
+            failure.case_name = name;
+            failure.detail = "fsgsbase readback failed";
+            break;
+        }
+        const std::uint64_t expected_dest = read_gs ? gs_base : fs_base;
+        if (actual_dest != expected_dest) {
+            failure.case_name = name;
+            failure.detail = "fsgsbase destination mismatch";
+            break;
+        }
+        if (actual_fs != fs_base || actual_gs != gs_base) {
+            failure.case_name = name;
+            failure.detail = "fsgsbase segment base changed unexpectedly";
+            break;
+        }
+        if ((actual_flags & kStatusMask) != (initial.rflags & kStatusMask)) {
+            failure.case_name = name;
+            failure.detail = "fsgsbase changed flags unexpectedly";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    cpueaxh_close(engine);
+    return ok;
+}
+
+inline bool run_manual_fsgsbase_internal_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    int dest_reg,
+    bool read_gs,
+    Failure& failure) {
+    MEMORY_MANAGER memory_manager = {};
+    CPU_CONTEXT context = {};
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        std::vector<std::uint8_t> image = code;
+        image.push_back(0x90);
+        image.push_back(0x90);
+        if (!initialize_manual_cpu_context(context, memory_manager, image, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        const std::uint64_t fs_base = 0x00007FF100000000ull | (seeded(seed, 0xF520) & 0x00000000FFFFFFFFull);
+        const std::uint64_t gs_base = 0x00006EE100000000ull | (seeded(seed, 0xF521) & 0x00000000FFFFFFFFull);
+        const std::uint64_t dest_initial = seeded(seed, 0xF522);
+        context.regs[static_cast<std::size_t>(dest_reg)] = dest_initial;
+        context.fs.descriptor.base = fs_base;
+        context.gs.descriptor.base = gs_base;
+        context.control_regs[REG_CR4] = 0x00010020ull;
+
+        const int status = cpu_step(&context);
+        if (status != kCpuStepOk || cpu_has_exception(&context)) {
+            failure.case_name = name;
+            failure.detail = "expected successful cpu_step";
+            break;
+        }
+        const std::uint64_t expected_dest = read_gs ? gs_base : fs_base;
+        if (context.regs[static_cast<std::size_t>(dest_reg)] != expected_dest) {
+            failure.case_name = name;
+            failure.detail = "fsgsbase internal destination mismatch";
+            break;
+        }
+        if (context.fs.descriptor.base != fs_base || context.gs.descriptor.base != gs_base) {
+            failure.case_name = name;
+            failure.detail = "fsgsbase internal segment base changed unexpectedly";
+            break;
+        }
+        if ((context.rflags & kStatusMask) != (initial.rflags & kStatusMask)) {
+            failure.case_name = name;
+            failure.detail = "fsgsbase internal changed flags unexpectedly";
+            break;
+        }
+        if (context.rip != kGuestCodeBase + static_cast<std::uint64_t>(code.size())) {
+            failure.case_name = name;
+            failure.detail = "fsgsbase internal rip mismatch";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    mm_destroy(&memory_manager);
+    return ok;
+}
+
 inline bool run_manual_rotate_carry_case(
     const std::string& name,
     const std::vector<std::uint8_t>& code,

@@ -34,6 +34,7 @@ inline std::uint64_t manual_special_case_count(const HostFeatures& features, con
         + (features.aes ? 6ull : 0ull)
         + ((features.aes && features.avx) ? 2ull : 0ull)
         + (features.bmi2 ? 4ull : 0ull)
+        + (features.fsgsbase ? 4ull : 0ull)
         + 5ull;
     const std::uint64_t exception_special = 94ull + ((features.aes && features.avx) ? 2ull : 0ull);
     std::uint64_t total = 0;
@@ -84,6 +85,9 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> rdpmc_only = { 0x0F, 0x33 };
     const std::vector<std::uint8_t> rdpmc_ret = { 0x0F, 0x33, 0xC3 };
     const std::vector<std::uint8_t> rdfsbase_rax = { 0xF3, 0x48, 0x0F, 0xAE, 0xC0 };
+    const std::vector<std::uint8_t> rdfsbase_rax_ret = { 0xF3, 0x48, 0x0F, 0xAE, 0xC0, 0xC3 };
+    const std::vector<std::uint8_t> rdgsbase_rdx = { 0xF3, 0x48, 0x0F, 0xAE, 0xCA };
+    const std::vector<std::uint8_t> rdgsbase_rdx_ret = { 0xF3, 0x48, 0x0F, 0xAE, 0xCA, 0xC3 };
     const std::vector<std::uint8_t> xgetbv = { 0x0F, 0x01, 0xD0 };
     const std::vector<std::uint8_t> shl_unmapped = { 0x48, 0xC1, 0x24, 0x25, 0x00, 0x00, 0x40, 0x00, 0x01 };
     const std::vector<std::uint8_t> mul_unmapped = { 0x48, 0xF7, 0x24, 0x25, 0x00, 0x00, 0x40, 0x00 };
@@ -390,6 +394,40 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
                 true,
                 sarx_control,
                 manual_bmi2_sar64(sarx_source, static_cast<unsigned int>(sarx_control)),
+                failure), failure)) return false;
+        }
+
+        if (features.fsgsbase) {
+            const std::uint64_t seed_rdfsbase = seeded(seed_index, 0xE094);
+            if (!tick(run_manual_fsgsbase_public_case(
+                "public_rdfsbase_rax_success:" + std::to_string(seed_rdfsbase),
+                rdfsbase_rax_ret,
+                seed_rdfsbase,
+                CPUEAXH_X86_REG_RAX,
+                false,
+                failure), failure)) return false;
+            if (!tick(run_manual_fsgsbase_internal_case(
+                "rdfsbase_rax_success:" + std::to_string(seed_rdfsbase),
+                rdfsbase_rax,
+                seed_rdfsbase,
+                REG_RAX,
+                false,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_rdgsbase = seeded(seed_index, 0xE095);
+            if (!tick(run_manual_fsgsbase_public_case(
+                "public_rdgsbase_rdx_success:" + std::to_string(seed_rdgsbase),
+                rdgsbase_rdx_ret,
+                seed_rdgsbase,
+                CPUEAXH_X86_REG_RDX,
+                true,
+                failure), failure)) return false;
+            if (!tick(run_manual_fsgsbase_internal_case(
+                "rdgsbase_rdx_success:" + std::to_string(seed_rdgsbase),
+                rdgsbase_rdx,
+                seed_rdgsbase,
+                REG_RDX,
+                true,
                 failure), failure)) return false;
         }
 
