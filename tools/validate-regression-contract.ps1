@@ -308,9 +308,9 @@ function Assert-ManualIndexRecords {
     }
 }
 
-Assert-FileContains -Path 'docs/instruction-status.yml' -Pattern 'required_identity_fields' -Message 'instruction-status.yml must define form-level identity fields.'
-Assert-FileContains -Path 'docs/instruction-status.yml' -Pattern 'unsafe_for_native' -Message 'instruction-status.yml must keep unsafe_for_native status available.'
-Assert-FileContains -Path 'docs/instruction-status.yml' -Pattern 'stage3_contracts' -Message 'instruction-status.yml must link stage3 contracts.'
+Assert-FileContains -Path 'docs/instruction-status.json' -Pattern 'required_identity_fields' -Message 'instruction-status.json must define form-level identity fields.'
+Assert-FileContains -Path 'docs/instruction-status.json' -Pattern 'unsafe_for_native' -Message 'instruction-status.json must keep unsafe_for_native status available.'
+Assert-FileContains -Path 'docs/instruction-status.json' -Pattern 'stage3_contracts' -Message 'instruction-status.json must link stage3 contracts.'
 Assert-FileContains -Path 'docs/replay-schema.md' -Pattern 'cpueaxh\.host-features\.v1' -Message 'replay schema must document host feature records.'
 Assert-FileContains -Path 'docs/replay-schema.md' -Pattern 'cpueaxh\.generated-initial-state\.v1' -Message 'replay schema must document generated initial-state records.'
 Assert-FileContains -Path 'docs/replay-schema.md' -Pattern 'cpueaxh\.generated-result-state\.v1' -Message 'replay schema must document generated result-state records.'
@@ -339,7 +339,7 @@ Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern '
 Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'build\.log' -Message 'extended regression must capture build.log.'
 Assert-FileContains -Path '.github/workflows/extended-regression.yml' -Pattern 'validate-strict-replay\.ps1' -Message 'extended regression must validate strict replay schema rejection.'
 Assert-FileContains -Path 'tools/validate-generated-spec-manifest.ps1' -Pattern 'cpueaxh\.generated-specs\.v1' -Message 'generated spec manifest validator must check schema.'
-Assert-FileContains -Path 'tools/validate-instruction-status.ps1' -Pattern 'instruction-status\.yml has an invalid or missing schema' -Message 'instruction status validator must check schema.'
+Assert-FileContains -Path 'tools/validate-instruction-status.ps1' -Pattern 'instruction-status\.json has an invalid or missing schema' -Message 'instruction status validator must check JSON schema.'
 Assert-FileContains -Path 'cpueaxh/cpu/executor.hpp' -Pattern 'CPUEAXH_STRICT_INTERNAL' -Message 'executor must keep strict internal decode checks enabled.'
 Assert-FileContains -Path 'docs/hardware-runner-matrix.md' -Pattern 'GitHub hosted runner feature matrix' -Message 'runner matrix doc must describe hosted-runner validation.'
 Assert-FileContains -Path 'docs/hardware-runner-matrix.md' -Pattern 'hosted-runner-only' -Message 'runner matrix doc must avoid self-hosted hardware requirements.'

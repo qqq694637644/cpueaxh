@@ -1,0 +1,6298 @@
+{
+  "schema": "cpueaxh.instruction-status.v1",
+  "required_identity_fields": [
+    "name",
+    "encoding",
+    "operands",
+    "operand_size",
+    "mode",
+    "feature_gate"
+  ],
+  "status_values": [
+    "todo",
+    "implemented",
+    "implemented_partial",
+    "differential_tested",
+    "manual_tested",
+    "feature_gated",
+    "unsafe_for_native",
+    "blocked"
+  ],
+  "stage3_contracts": [
+    "generated_differential",
+    "regression_replay",
+    "manual"
+  ],
+  "forms": [
+    {
+      "name": "add_rr_rax_rbx",
+      "encoding": "REX.W 01 /r",
+      "operands_raw": "[\"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": true,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "add_mem",
+      "encoding": "REX.W 01 /r memory destination",
+      "operands_raw": "[\"m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "adc_rr_rax_rbx",
+      "encoding": "REX.W 11 /r",
+      "operands_raw": "[\"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sub_rr_rax_rbx",
+      "encoding": "REX.W 29 /r",
+      "operands_raw": "[\"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sbb_rr_rax_rbx",
+      "encoding": "REX.W 19 /r",
+      "operands_raw": "[\"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "and_rr_rax_rbx",
+      "encoding": "REX.W 21 /r",
+      "operands_raw": "[\"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "or_rr_rax_rbx",
+      "encoding": "REX.W 09 /r",
+      "operands_raw": "[\"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "xor_rr_rax_rbx",
+      "encoding": "REX.W 31 /r",
+      "operands_raw": "[\"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmp_rr_rax_rbx",
+      "encoding": "REX.W 39 /r",
+      "operands_raw": "[\"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "test_rr_rax_rbx",
+      "encoding": "REX.W 85 /r",
+      "operands_raw": "[\"r/m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "mul_rax",
+      "encoding": "REX.W F7 /4",
+      "operands_raw": "[\"RDX:RAX\", \"RAX\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "mul_r8",
+      "encoding": "REX.W F7 /4",
+      "operands_raw": "[\"RDX:RAX\", \"RAX\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "mul_r10",
+      "encoding": "REX.W F7 /4",
+      "operands_raw": "[\"RDX:RAX\", \"RAX\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "mul_r13",
+      "encoding": "REX.W F7 /4",
+      "operands_raw": "[\"RDX:RAX\", \"RAX\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "imul_rax",
+      "encoding": "REX.W F7 /5",
+      "operands_raw": "[\"RDX:RAX\", \"RAX\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "imul_r8",
+      "encoding": "REX.W F7 /5",
+      "operands_raw": "[\"RDX:RAX\", \"RAX\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "imul_r10",
+      "encoding": "REX.W F7 /5",
+      "operands_raw": "[\"RDX:RAX\", \"RAX\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "imul_r13",
+      "encoding": "REX.W F7 /5",
+      "operands_raw": "[\"RDX:RAX\", \"RAX\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "crc32_r32_r8",
+      "encoding": "F2 0F 38 F0 /r",
+      "operands_raw": "[\"r32\", \"r8\"]",
+      "operand_size": "32",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "crc32_r32_r16",
+      "encoding": "F2 66 0F 38 F1 /r",
+      "operands_raw": "[\"r32\", \"r16\"]",
+      "operand_size": "32",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "crc32_r32_r16_f2_66",
+      "encoding": "F2 66 0F 38 F1 /r",
+      "operands_raw": "[\"r32\", \"r16\"]",
+      "operand_size": "32",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "crc32_r32_r32",
+      "encoding": "F2 0F 38 F1 /r",
+      "operands_raw": "[\"r32\", \"r32\"]",
+      "operand_size": "32",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "crc32_r64_r64",
+      "encoding": "F2 REX.W 0F 38 F1 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "crc32_r32_m8",
+      "encoding": "F2 0F 38 F0 /r",
+      "operands_raw": "[\"r32\", \"m8\"]",
+      "operand_size": "32",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "crc32_r32_m16",
+      "encoding": "F2 66 0F 38 F1 /r",
+      "operands_raw": "[\"r32\", \"m16\"]",
+      "operand_size": "32",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "crc32_r32_m32",
+      "encoding": "F2 0F 38 F1 /r",
+      "operands_raw": "[\"r32\", \"m32\"]",
+      "operand_size": "32",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "crc32_r64_m64",
+      "encoding": "F2 REX.W 0F 38 F1 /r",
+      "operands_raw": "[\"r64\", \"m64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "bt_imm_rax",
+      "encoding": "REX.W 0F BA /4 ib",
+      "operands_raw": "[\"r64\", \"imm8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "bt_reg_r8_rcx",
+      "encoding": "REX.W 0F A3 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "bt_imm_m64",
+      "encoding": "REX.W 0F BA /4 ib",
+      "operands_raw": "[\"m64\", \"imm8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "bts_imm_r10",
+      "encoding": "REX.W 0F BA /5 ib",
+      "operands_raw": "[\"r64\", \"imm8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "bts_reg_r11_rcx",
+      "encoding": "REX.W 0F AB /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "bts_imm_m64",
+      "encoding": "REX.W 0F BA /5 ib",
+      "operands_raw": "[\"m64\", \"imm8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "btr_imm_r12",
+      "encoding": "REX.W 0F BA /6 ib",
+      "operands_raw": "[\"r64\", \"imm8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "btr_reg_r13_rcx",
+      "encoding": "REX.W 0F B3 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "btr_imm_m64",
+      "encoding": "REX.W 0F BA /6 ib",
+      "operands_raw": "[\"m64\", \"imm8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "btc_imm_r14",
+      "encoding": "REX.W 0F BA /7 ib",
+      "operands_raw": "[\"r64\", \"imm8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "btc_reg_r15_rcx",
+      "encoding": "REX.W 0F BB /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "btc_imm_m64",
+      "encoding": "REX.W 0F BA /7 ib",
+      "operands_raw": "[\"m64\", \"imm8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "bsr_r9_r10",
+      "encoding": "REX.W 0F BD /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "popcnt_rdx_rbx",
+      "encoding": "F3 REX.W 0F B8 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "popcnt",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "seto_true",
+      "encoding": "0F 90 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "seto_false",
+      "encoding": "0F 90 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setno_true",
+      "encoding": "0F 91 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setno_false",
+      "encoding": "0F 91 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setb_true",
+      "encoding": "0F 92 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setb_false",
+      "encoding": "0F 92 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setae_true",
+      "encoding": "0F 93 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setae_false",
+      "encoding": "0F 93 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setz_true",
+      "encoding": "0F 94 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setz_false",
+      "encoding": "0F 94 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setnz_true",
+      "encoding": "0F 95 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setnz_false",
+      "encoding": "0F 95 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setbe_true",
+      "encoding": "0F 96 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setbe_false",
+      "encoding": "0F 96 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "seta_true",
+      "encoding": "0F 97 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "seta_false",
+      "encoding": "0F 97 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sets_true",
+      "encoding": "0F 98 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sets_false",
+      "encoding": "0F 98 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setns_true",
+      "encoding": "0F 99 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setns_false",
+      "encoding": "0F 99 /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setp_true",
+      "encoding": "0F 9A /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setp_false",
+      "encoding": "0F 9A /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setnp_true",
+      "encoding": "0F 9B /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setnp_false",
+      "encoding": "0F 9B /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setl_true",
+      "encoding": "0F 9C /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setl_false",
+      "encoding": "0F 9C /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setge_true",
+      "encoding": "0F 9D /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setge_false",
+      "encoding": "0F 9D /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setle_true",
+      "encoding": "0F 9E /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setle_false",
+      "encoding": "0F 9E /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setg_true",
+      "encoding": "0F 9F /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "setg_false",
+      "encoding": "0F 9F /r",
+      "operands_raw": "[\"r/m8\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovo_true",
+      "encoding": "REX.W 0F 40 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovo_false",
+      "encoding": "REX.W 0F 40 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovno_true",
+      "encoding": "REX.W 0F 41 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovno_false",
+      "encoding": "REX.W 0F 41 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovb_true",
+      "encoding": "REX.W 0F 42 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovb_false",
+      "encoding": "REX.W 0F 42 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovae_true",
+      "encoding": "REX.W 0F 43 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovae_false",
+      "encoding": "REX.W 0F 43 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovz_true",
+      "encoding": "REX.W 0F 44 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovz_false",
+      "encoding": "REX.W 0F 44 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovnz_true",
+      "encoding": "REX.W 0F 45 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovnz_false",
+      "encoding": "REX.W 0F 45 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovbe_true",
+      "encoding": "REX.W 0F 46 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovbe_false",
+      "encoding": "REX.W 0F 46 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmova_true",
+      "encoding": "REX.W 0F 47 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmova_false",
+      "encoding": "REX.W 0F 47 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovs_true",
+      "encoding": "REX.W 0F 48 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovs_false",
+      "encoding": "REX.W 0F 48 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovns_true",
+      "encoding": "REX.W 0F 49 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovns_false",
+      "encoding": "REX.W 0F 49 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovp_true",
+      "encoding": "REX.W 0F 4A /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovp_false",
+      "encoding": "REX.W 0F 4A /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovnp_true",
+      "encoding": "REX.W 0F 4B /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovnp_false",
+      "encoding": "REX.W 0F 4B /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovl_true",
+      "encoding": "REX.W 0F 4C /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovl_false",
+      "encoding": "REX.W 0F 4C /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovge_true",
+      "encoding": "REX.W 0F 4D /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovge_false",
+      "encoding": "REX.W 0F 4D /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovle_true",
+      "encoding": "REX.W 0F 4E /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovle_false",
+      "encoding": "REX.W 0F 4E /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovg_true",
+      "encoding": "REX.W 0F 4F /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmovg_false",
+      "encoding": "REX.W 0F 4F /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "clc",
+      "encoding": "F8",
+      "operands_raw": "[\"CF\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "stc",
+      "encoding": "F9",
+      "operands_raw": "[\"CF\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmc",
+      "encoding": "F5",
+      "operands_raw": "[\"CF\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cld",
+      "encoding": "FC",
+      "operands_raw": "[\"DF\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "lahf",
+      "encoding": "9F",
+      "operands_raw": "[\"AH\", \"RFLAGS\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sahf",
+      "encoding": "9E",
+      "operands_raw": "[\"RFLAGS\", \"AH\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cbw",
+      "encoding": "66 98",
+      "operands_raw": "[\"AX\", \"AL\"]",
+      "operand_size": "16",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cwde",
+      "encoding": "98",
+      "operands_raw": "[\"EAX\", \"AX\"]",
+      "operand_size": "32",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cdqe",
+      "encoding": "REX.W 98",
+      "operands_raw": "[\"RAX\", \"EAX\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cwd",
+      "encoding": "66 99",
+      "operands_raw": "[\"DX:AX\", \"AX\"]",
+      "operand_size": "16",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cdq",
+      "encoding": "99",
+      "operands_raw": "[\"EDX:EAX\", \"EAX\"]",
+      "operand_size": "32",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cqo",
+      "encoding": "REX.W 99",
+      "operands_raw": "[\"RDX:RAX\", \"RAX\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "xchg_r8_r9",
+      "encoding": "REX.W 87 /r",
+      "operands_raw": "[\"r64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "xchg_rax_r8",
+      "encoding": "REX.W 90+rd",
+      "operands_raw": "[\"RAX\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movbe_r16_m16",
+      "encoding": "66 0F 38 F0 /r",
+      "operands_raw": "[\"r16\", \"m16\"]",
+      "operand_size": "16",
+      "mode": "long64",
+      "feature_gate": "movbe",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movbe_r32_m32",
+      "encoding": "0F 38 F0 /r",
+      "operands_raw": "[\"r32\", \"m32\"]",
+      "operand_size": "32",
+      "mode": "long64",
+      "feature_gate": "movbe",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movbe_r64_m64",
+      "encoding": "REX.W 0F 38 F0 /r",
+      "operands_raw": "[\"r64\", \"m64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "movbe",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movbe_m16_r16",
+      "encoding": "66 0F 38 F1 /r",
+      "operands_raw": "[\"m16\", \"r16\"]",
+      "operand_size": "16",
+      "mode": "long64",
+      "feature_gate": "movbe",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movbe_m32_r32",
+      "encoding": "0F 38 F1 /r",
+      "operands_raw": "[\"m32\", \"r32\"]",
+      "operand_size": "32",
+      "mode": "long64",
+      "feature_gate": "movbe",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movbe_m64_r64",
+      "encoding": "REX.W 0F 38 F1 /r",
+      "operands_raw": "[\"m64\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "movbe",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "xlat",
+      "encoding": "D7",
+      "operands_raw": "[\"AL\", \"RBX + AL\"]",
+      "operand_size": "8",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "push_imm8_pop",
+      "encoding": "6A ib / 58+rd",
+      "operands_raw": "[\"imm8\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "push_imm32_pop",
+      "encoding": "68 id / 58+rd",
+      "operands_raw": "[\"imm32\", \"r64\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jmp_skip",
+      "encoding": "E9 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": true
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "call_add",
+      "encoding": "E8 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": true
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "ret_near",
+      "encoding": "C3 / C2 imm16",
+      "operands_raw": "[\"stack target\"]",
+      "operand_size": "16/32/64 by mode and prefixes",
+      "mode": "long64_and_compat32",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": true
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jo_true",
+      "encoding": "0F 80 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jo_false",
+      "encoding": "0F 80 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jno_true",
+      "encoding": "0F 81 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jno_false",
+      "encoding": "0F 81 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jb_true",
+      "encoding": "0F 82 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jb_false",
+      "encoding": "0F 82 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jae_true",
+      "encoding": "0F 83 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jae_false",
+      "encoding": "0F 83 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jz_true",
+      "encoding": "0F 84 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jz_false",
+      "encoding": "0F 84 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jnz_true",
+      "encoding": "0F 85 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jnz_false",
+      "encoding": "0F 85 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jbe_true",
+      "encoding": "0F 86 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jbe_false",
+      "encoding": "0F 86 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "ja_true",
+      "encoding": "0F 87 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "ja_false",
+      "encoding": "0F 87 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "js_true",
+      "encoding": "0F 88 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "js_false",
+      "encoding": "0F 88 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jns_true",
+      "encoding": "0F 89 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jns_false",
+      "encoding": "0F 89 rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jp_true",
+      "encoding": "0F 8A rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jp_false",
+      "encoding": "0F 8A rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jnp_true",
+      "encoding": "0F 8B rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jnp_false",
+      "encoding": "0F 8B rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jl_true",
+      "encoding": "0F 8C rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jl_false",
+      "encoding": "0F 8C rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jge_true",
+      "encoding": "0F 8D rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jge_false",
+      "encoding": "0F 8D rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jle_true",
+      "encoding": "0F 8E rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jle_false",
+      "encoding": "0F 8E rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jg_true",
+      "encoding": "0F 8F rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "jg_false",
+      "encoding": "0F 8F rel32",
+      "operands_raw": "[\"rel32\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "nop",
+      "encoding": "90",
+      "operands_raw": "[]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "nop_modrm",
+      "encoding": "0F 1F /0",
+      "operands_raw": "[\"r/m\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pause",
+      "encoding": "F3 90",
+      "operands_raw": "[]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "aesenc",
+      "encoding": "66 0F 38 DC /r",
+      "operands_raw": "[\"xmm\", \"xmm/m128\"]",
+      "operand_size": "128",
+      "mode": "long64",
+      "feature_gate": "aes",
+      "status": "feature_gated",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "privileged_system_index",
+      "encoding": "various",
+      "operands_raw": "[]",
+      "operand_size": "null",
+      "mode": "system",
+      "feature_gate": "controlled_environment",
+      "status": "unsafe_for_native",
+      "coverage": {
+        "generated_differential": false,
+        "regression_replay": false,
+        "manual": true
+      },
+      "unsafe_native_reason": "Privileged/MSR/VMX/SVM/system instructions are not executed directly in normal user-mode CI."
+    },
+    {
+      "name": "adc_rr_r10_r11",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "adc_rr_r8_r9",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "add_ri_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "add_ri_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "add_ri_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "add_rr_r10_r11",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "add_rr_r8_r9",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "aesdec",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "aes",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "aesdeclast",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "aes",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "aesenclast",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "aes",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "aeskeygenassist_imm1",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "aes",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "aeskeygenassist_imm128",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "aes",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "aeskeygenassist_imm27",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "aes",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "aeskeygenassist_imm54",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "aes",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "and_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "and_ri_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "and_ri_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "and_ri_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "and_rr_r10_r11",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "and_rr_r8_r9",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "bsf_r9_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "bsf_rdx_rbx",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "bswap_r11",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "bswap_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "call_lea",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "call_xor",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmp_ri_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmp_ri_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmp_ri_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmp_rr_r10_r11",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmp_rr_r8_r9",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmpsb",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "cmpxchg_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "dec_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "dec_r13",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "dec_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "dec_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "enter_leave",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "inc_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "inc_r13",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "inc_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "inc_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "lea_scale2",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "lea_scale4",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "lodsb",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "lodsq",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "loop_taken",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "loopnz_taken",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "loopz_taken",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "lzcnt_r9_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "lzcnt",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "mov_mem_roundtrip",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "mov_r9_rbx",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "mov_rax_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movaps_mem_disp8_neg_xmm6",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movd_mm_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movd_mm_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movd_xmm_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movd_xmm_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movdqu_roundtrip",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movq_mm_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movq_mm_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movq_xmm_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movq_xmm_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movsb",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movsd",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movsq",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movsw",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movsx_byte",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movsx_word",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movsxd_dword",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movzx_byte",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "movzx_word",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "neg_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "neg_r13",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "neg_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "neg_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "not_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "not_r13",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "not_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "not_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "or_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "or_ri_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "or_ri_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "or_ri_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "or_rr_r10_r11",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "or_rr_r8_r9",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "paddq",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "paddq_pxor",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pand",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pblendw_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pblendw_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpeqb",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpeqd",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpeqw",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestri_imm0",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestri_imm112",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestri_imm120",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestri_imm16",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestri_imm24",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestri_imm64",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestri_imm72",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestri_imm8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestrm_imm0",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestrm_imm112",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestrm_imm120",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestrm_imm16",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestrm_imm24",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestrm_imm64",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestrm_imm72",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpestrm_imm8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpistrm_imm0",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpistrm_imm112",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpistrm_imm120",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpistrm_imm16",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpistrm_imm24",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpistrm_imm64",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpistrm_imm72",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pcmpistrm_imm8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse42",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "por",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufb",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "ssse3",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_mem_imm0",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_mem_imm114",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_mem_imm147",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_mem_imm198",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_mem_imm255",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_mem_imm27",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_mem_imm57",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_mem_imm78",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_reg_imm0",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_reg_imm114",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_reg_imm147",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_reg_imm198",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_reg_imm255",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_reg_imm27",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_reg_imm57",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pshufd_reg_imm78",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pslldq",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "psrldq",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "punpcklbw",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "punpckldq",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "punpcklqdq",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "punpcklwd",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "push_chain",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "push_pop_pair",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pushf_pop_lahf",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "pxor",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcl_cl_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcl_cl_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcl_cl_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcl_imm_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcl_imm_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcl_imm_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcr_cl_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcr_cl_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcr_cl_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcr_imm_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcr_imm_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rcr_imm_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rep_movsb",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rep_movsw",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rol_cl_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rol_cl_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rol_cl_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rol_imm_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rol_imm_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "rol_imm_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "ror_cl_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "ror_cl_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "ror_cl_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "ror_imm_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "ror_imm_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "ror_imm_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundsd_imm0",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundsd_imm1",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundsd_imm2",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundsd_imm3",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundsd_imm4",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundsd_imm8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundss_imm0",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundss_imm1",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundss_imm2",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundss_imm3",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundss_imm4",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "roundss_imm8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sar_cl_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sar_cl_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sar_cl_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sar_imm_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sar_imm_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sar_imm_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sbb_rr_r10_r11",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sbb_rr_r8_r9",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "scasb",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sha256msg1_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sha",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sha256msg1_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sha",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sha256msg2_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sha",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sha256msg2_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sha",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sha256rnds2_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sha",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sha256rnds2_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sha",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shl_cl_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shl_cl_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shl_cl_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shl_imm_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shl_imm_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shl_imm_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shr_cl_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shr_cl_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shr_cl_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shr_imm_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shr_imm_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "shr_imm_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "stosb",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "stosq",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sub_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sub_ri_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sub_ri_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sub_ri_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sub_rr_r10_r11",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "sub_rr_r8_r9",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "test_ri_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "test_ri_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "test_ri_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "test_rr_r10_r11",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "test_rr_r8_r9",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "tzcnt_rdx_rbx",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "bmi1",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vfmadd132sd_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "fma",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vfmadd132sd_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "fma",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vfmadd213sd_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "fma",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vfmadd213sd_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "fma",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vfmadd231sd_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "fma",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vfmadd231sd_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "fma",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vinsertf128_mem_imm0",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "avx",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vinsertf128_mem_imm1",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "avx",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vinsertf128_mem_imm127",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "avx",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vinsertf128_mem_imm64",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "avx",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vinsertf128_reg_imm0",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "avx",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vinsertf128_reg_imm1",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "avx",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vinsertf128_reg_imm127",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "avx",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vinsertf128_reg_imm64",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "avx",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vpblendw_xmm_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vpblendw_xmm_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vpblendw_ymm_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "vpblendw_ymm_reg",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "sse41",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "xadd_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "xor_mem",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "xor_ri_r10",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "xor_ri_r8",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "xor_ri_rax",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "xor_rr_r10_r11",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    },
+    {
+      "name": "xor_rr_r8_r9",
+      "encoding": "generated_by_case_builder",
+      "operands_raw": "[\"generated\"]",
+      "operand_size": "64",
+      "mode": "long64",
+      "feature_gate": "base",
+      "status": "implemented",
+      "coverage": {
+        "generated_differential": true,
+        "regression_replay": false,
+        "manual": false
+      },
+      "unsafe_native_reason": "null"
+    }
+  ]
+}
