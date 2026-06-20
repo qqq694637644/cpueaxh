@@ -3,6 +3,7 @@
 // instrusments/roundss.hpp - ROUNDSS instruction implementation
 
 #include <intrin.h>
+#include "sse_math.hpp"
 
 static int decode_roundss_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int reg = (modrm >> 3) & 0x07;

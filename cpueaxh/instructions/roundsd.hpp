@@ -3,6 +3,7 @@
 // instrusments/roundsd.hpp - ROUNDSD instruction implementation
 
 #include <intrin.h>
+#include "sse2_math_pd.hpp"
 
 static int decode_roundsd_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int reg = (modrm >> 3) & 0x07;
