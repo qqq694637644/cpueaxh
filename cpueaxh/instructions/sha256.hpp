@@ -2,6 +2,8 @@
 
 // instrusments/sha256.hpp - SHA256RNDS2/SHA256MSG1/SHA256MSG2 implementation
 
+#include "movdq.hpp"
+
 static inline bool cpu_has_sha_feature() {
     int cpu_info[4] = {};
     cpu_query_cpuid(cpu_info, 7, 0);
