@@ -33,6 +33,7 @@ inline std::uint64_t manual_special_case_count(const HostFeatures& features, con
     const std::uint64_t per_seed_special = (features.avx ? 57ull : 44ull) + (features.popcnt ? 3ull : 0ull) + 12ull + (features.rdpid ? 3ull : 0ull)
         + (features.aes ? 6ull : 0ull)
         + ((features.aes && features.avx) ? 2ull : 0ull)
+        + (features.bmi2 ? 4ull : 0ull)
         + 5ull;
     const std::uint64_t exception_special = 90ull + ((features.aes && features.avx) ? 2ull : 0ull);
     std::uint64_t total = 0;
@@ -63,6 +64,10 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> rdpid64 = { 0xF3, 0x48, 0x0F, 0xC7, 0xF8, 0xC3 };
     const std::vector<std::uint8_t> rdpid32 = { 0xF3, 0x0F, 0xC7, 0xF8, 0xC3 };
     const std::vector<std::uint8_t> rdpid_with_66 = { 0x66, 0xF3, 0x48, 0x0F, 0xC7, 0xF8, 0xC3 };
+    const std::vector<std::uint8_t> rorx_rax_rbx_13 = { 0xC4, 0xE3, 0xFB, 0xF0, 0xC3, 0x0D, 0xC3 };
+    const std::vector<std::uint8_t> shlx_rax_rbx_rcx = { 0xC4, 0xE2, 0xF1, 0xF7, 0xC3, 0xC3 };
+    const std::vector<std::uint8_t> sarx_rax_rbx_rcx = { 0xC4, 0xE2, 0xF2, 0xF7, 0xC3, 0xC3 };
+    const std::vector<std::uint8_t> shrx_rax_rbx_rcx = { 0xC4, 0xE2, 0xF3, 0xF7, 0xC3, 0xC3 };
     const std::vector<std::uint8_t> setcc_ignored_modrm_reg = {
         0x0F, 0x94, 0x64, 0x24, 0x40, // setz byte ptr [rsp+0x40] with ModRM.reg=4; SETcc ignores reg bits
         0xC3
@@ -331,6 +336,59 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
             const std::uint64_t seed_rdpid66 = seeded(seed_index, 0xE017);
             const std::uint32_t processor_id66 = static_cast<std::uint32_t>(seeded(seed_rdpid66, 0x92));
             if (!tick(run_manual_special_case("rdpid66:" + std::to_string(seed_rdpid66), rdpid_with_66, seed_rdpid66, processor_id66, true, failure), failure)) return false;
+        }
+
+        if (features.bmi2) {
+            const std::uint64_t seed_rorx = seeded(seed_index, 0xE090);
+            const std::uint64_t rorx_source = 0x0123456789ABCDEFull ^ seeded(seed_rorx, 0x10);
+            if (!tick(run_manual_bmi2_shift_case(
+                "rorx_rax_rbx_13:" + std::to_string(seed_rorx),
+                rorx_rax_rbx_13,
+                seed_rorx,
+                rorx_source,
+                false,
+                0,
+                manual_bmi2_rotr64(rorx_source, 13),
+                failure), failure)) return false;
+
+            const std::uint64_t seed_shlx = seeded(seed_index, 0xE091);
+            const std::uint64_t shlx_source = 0x0000F00D00C0FFEEull ^ seeded(seed_shlx, 0x11);
+            const std::uint64_t shlx_control = 0x43ull;
+            if (!tick(run_manual_bmi2_shift_case(
+                "shlx_rax_rbx_rcx:" + std::to_string(seed_shlx),
+                shlx_rax_rbx_rcx,
+                seed_shlx,
+                shlx_source,
+                true,
+                shlx_control,
+                shlx_source << (shlx_control & 0x3Full),
+                failure), failure)) return false;
+
+            const std::uint64_t seed_shrx = seeded(seed_index, 0xE092);
+            const std::uint64_t shrx_source = 0xF123456789ABCDEFull ^ seeded(seed_shrx, 0x12);
+            const std::uint64_t shrx_control = 0x47ull;
+            if (!tick(run_manual_bmi2_shift_case(
+                "shrx_rax_rbx_rcx:" + std::to_string(seed_shrx),
+                shrx_rax_rbx_rcx,
+                seed_shrx,
+                shrx_source,
+                true,
+                shrx_control,
+                shrx_source >> (shrx_control & 0x3Full),
+                failure), failure)) return false;
+
+            const std::uint64_t seed_sarx = seeded(seed_index, 0xE093);
+            const std::uint64_t sarx_source = 0xF00000000000D00Dull ^ (seeded(seed_sarx, 0x13) & 0x00FFFFFFFFFFFFFFull);
+            const std::uint64_t sarx_control = 0x44ull;
+            if (!tick(run_manual_bmi2_shift_case(
+                "sarx_rax_rbx_rcx:" + std::to_string(seed_sarx),
+                sarx_rax_rbx_rcx,
+                seed_sarx,
+                sarx_source,
+                true,
+                sarx_control,
+                manual_bmi2_sar64(sarx_source, static_cast<unsigned int>(sarx_control)),
+                failure), failure)) return false;
         }
 
 

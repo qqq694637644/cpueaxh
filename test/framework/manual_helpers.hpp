@@ -501,6 +501,116 @@ cleanup:
     return ok;
 }
 
+inline std::uint64_t manual_bmi2_rotr64(std::uint64_t value, unsigned int count) {
+    const unsigned int amount = count & 0x3Fu;
+    if (amount == 0) {
+        return value;
+    }
+    return (value >> amount) | (value << (64u - amount));
+}
+
+inline std::uint64_t manual_bmi2_sar64(std::uint64_t value, unsigned int count) {
+    const unsigned int amount = count & 0x3Fu;
+    if (amount == 0) {
+        return value;
+    }
+    std::uint64_t result = value >> amount;
+    if ((value & 0x8000000000000000ull) != 0) {
+        result |= (~0ull << (64u - amount));
+    }
+    return result;
+}
+
+inline bool run_manual_bmi2_shift_case(
+    const std::string& name,
+    const std::vector<std::uint8_t>& code,
+    std::uint64_t seed,
+    std::uint64_t source_value,
+    bool has_control,
+    std::uint64_t control_value,
+    std::uint64_t expected_dest,
+    Failure& failure) {
+    cpueaxh_engine* engine = nullptr;
+    cpueaxh_err err = cpueaxh_open(CPUEAXH_ARCH_X86, CPUEAXH_MODE_64, &engine);
+    if (err != CPUEAXH_ERR_OK) {
+        failure.case_name = name;
+        failure.detail = "cpueaxh_open failed";
+        return false;
+    }
+
+    bool ok = false;
+    do {
+        cpueaxh_x86_context initial = make_initial_context(seed);
+        const std::uint64_t guest_rsp = kGuestStackBase + kInitialRspOffset;
+        if (!initialize_manual_engine(engine, code, initial, guest_rsp, failure, name)) {
+            break;
+        }
+
+        const std::uint64_t initial_dest = seeded(seed, 0xB121);
+        if (!write_engine_reg(engine, CPUEAXH_X86_REG_RAX, initial_dest) ||
+            !write_engine_reg(engine, CPUEAXH_X86_REG_RBX, source_value)) {
+            failure.case_name = name;
+            failure.detail = "source/destination initialization failed";
+            break;
+        }
+        if (has_control && !write_engine_reg(engine, CPUEAXH_X86_REG_RCX, control_value)) {
+            failure.case_name = name;
+            failure.detail = "control initialization failed";
+            break;
+        }
+
+        err = cpueaxh_emu_start_function(engine, kGuestCodeBase, 0, 1000);
+        if (err != CPUEAXH_ERR_OK) {
+            failure.case_name = name;
+            failure.detail = "execution failed";
+            break;
+        }
+        if (cpueaxh_code_exception(engine) != CPUEAXH_EXCEPTION_NONE) {
+            failure.case_name = name;
+            failure.detail = "unexpected exception";
+            break;
+        }
+
+        std::uint64_t actual_dest = 0;
+        std::uint64_t actual_source = 0;
+        std::uint64_t actual_control = 0;
+        std::uint64_t actual_flags = 0;
+        if (!read_engine_reg(engine, CPUEAXH_X86_REG_RAX, actual_dest) ||
+            !read_engine_reg(engine, CPUEAXH_X86_REG_RBX, actual_source) ||
+            !read_engine_reg(engine, CPUEAXH_X86_REG_RCX, actual_control) ||
+            !read_engine_reg(engine, CPUEAXH_X86_REG_EFLAGS, actual_flags)) {
+            failure.case_name = name;
+            failure.detail = "readback failed";
+            break;
+        }
+        if (actual_dest != expected_dest) {
+            failure.case_name = name;
+            failure.detail = "destination result mismatch";
+            break;
+        }
+        if (actual_source != source_value) {
+            failure.case_name = name;
+            failure.detail = "source register changed unexpectedly";
+            break;
+        }
+        if (has_control && actual_control != control_value) {
+            failure.case_name = name;
+            failure.detail = "control register changed unexpectedly";
+            break;
+        }
+        if ((actual_flags & kStatusMask) != (initial.rflags & kStatusMask)) {
+            failure.case_name = name;
+            failure.detail = "flags changed unexpectedly";
+            break;
+        }
+
+        ok = true;
+    } while (false);
+
+    cpueaxh_close(engine);
+    return ok;
+}
+
 inline bool run_manual_rotate_carry_case(
     const std::string& name,
     const std::vector<std::uint8_t>& code,

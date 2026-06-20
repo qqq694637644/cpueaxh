@@ -6586,13 +6586,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi2",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "shlx",
@@ -6601,13 +6601,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi2",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "shrx",
@@ -6616,13 +6616,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi2",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "sarx",
@@ -6631,13 +6631,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi2",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "bextr",
