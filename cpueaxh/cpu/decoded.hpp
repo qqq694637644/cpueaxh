@@ -10,8 +10,6 @@
 // dispatcher would have selected, plus the cached instruction bytes so the
 // fetch path can be skipped on cache hits.
 
-#pragma once
-
 #include "../cpueaxh_platform.hpp"
 #include "def.h"
 

@@ -85,7 +85,8 @@ static unsigned int roundsd_host_rounding_mode(uint32_t mxcsr) {
     case 1: return _MM_ROUND_DOWN;
     case 2: return _MM_ROUND_UP;
     case 3: return _MM_ROUND_TOWARD_ZERO;
-    default: return _MM_ROUND_TOWARD_ZERO;
+    default:
+        CPUEAXH_UNREACHABLE();
     }
 }
 

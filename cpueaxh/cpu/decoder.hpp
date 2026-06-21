@@ -13,8 +13,6 @@
 // when needed. The decoder reports failure paths (UD, fetch error) by setting
 // DECODED_FLAG_UD or by leaving handler == NULL with byte_count == 0.
 
-#pragma once
-
 #include "../cpueaxh_platform.hpp"
 #include "def.h"
 #include "decoded.hpp"
