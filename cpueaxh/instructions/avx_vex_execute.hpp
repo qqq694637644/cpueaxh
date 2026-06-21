@@ -3,6 +3,7 @@
 // instructions/avx_vex_execute.hpp - AVX/VEX instruction dispatch.
 
 #include "avx_vex_ops.hpp"
+#include "bmi.hpp"
 
 void execute_avx_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     AVXVexPrefix prefix = decode_avx_vex_prefix(ctx, code, code_size);
@@ -11,6 +12,10 @@ void execute_avx_vex(CPU_CONTEXT* ctx, uint8_t* code, size_t code_size) {
     bool is_256 = avx_vex_is_256(&prefix);
     uint8_t map_select = avx_vex_map_select(&prefix);
     apply_avx_vex_state(ctx, &prefix);
+
+    if (try_execute_bmi_vex(ctx, code, code_size, &prefix)) {
+        return;
+    }
 
     if (map_select == 0x03) {
         if ((opcode == 0x14 || opcode == 0x15 || opcode == 0x16) && mandatory_prefix == 1) {

@@ -10,8 +10,6 @@
 // dispatcher would have selected, plus the cached instruction bytes so the
 // fetch path can be skipped on cache hits.
 
-#pragma once
-
 #include "../cpueaxh_platform.hpp"
 #include "def.h"
 
@@ -98,6 +96,10 @@ enum DecodedFlags : uint16_t {
     // iteration faults. The exception path must preserve scalar progress
     // (RCX/RSI/RDI/RFLAGS), unlike ordinary single-instruction rollback.
     DECODED_FLAG_PARTIAL_PROGRESS = 1u << 7,
+
+    // Cached INT1 / ICEBP default escape path. The executor raises #DB when
+    // this bit is set, matching INT3's #BP path without re-decoding.
+    DECODED_FLAG_DB = 1u << 8,
 };
 
 // Inline kind discriminator for the small set of instructions the executor

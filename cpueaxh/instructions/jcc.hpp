@@ -45,7 +45,9 @@ bool eval_condition(CPU_CONTEXT* ctx, uint8_t cond) {
     case 0xD: return sf == of;                  // JGE / JNL
     case 0xE: return zf || (sf != of);          // JLE / JNG
     case 0xF: return !zf && (sf == of);         // JG / JNLE
-    default:  return false;
+    default:
+        CPUEAXH_UNREACHABLE();
+        return false;
     }
 }
 

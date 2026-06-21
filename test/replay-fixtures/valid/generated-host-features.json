@@ -24,6 +24,10 @@
       "aes": false,
       "rdpid": false,
       "bmi1": false,
+      "bmi2": false,
+      "rdseed": false,
+      "fsgsbase": false,
+      "serialize": false,
       "lzcnt": false,
       "movbe": false
     }

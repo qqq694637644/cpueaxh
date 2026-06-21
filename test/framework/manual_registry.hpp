@@ -33,8 +33,13 @@ inline std::uint64_t manual_special_case_count(const HostFeatures& features, con
     const std::uint64_t per_seed_special = (features.avx ? 57ull : 44ull) + (features.popcnt ? 3ull : 0ull) + 12ull + (features.rdpid ? 3ull : 0ull)
         + (features.aes ? 6ull : 0ull)
         + ((features.aes && features.avx) ? 2ull : 0ull)
-        + 4ull;
-    const std::uint64_t exception_special = 80ull + ((features.aes && features.avx) ? 2ull : 0ull);
+        + (features.bmi1 ? 4ull : 0ull)
+        + (features.bmi2 ? 8ull : 0ull)
+        + (features.fsgsbase ? 4ull : 0ull)
+        + (features.rdseed ? 2ull : 0ull)
+        + (features.serialize ? 2ull : 0ull)
+        + 9ull;
+    const std::uint64_t exception_special = 94ull + ((features.aes && features.avx) ? 2ull : 0ull);
     std::uint64_t total = 0;
     if (manual_case_runs_per_seed_group(manual_case)) {
         total += kSeedCount * per_seed_special;
@@ -63,13 +68,45 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> rdpid64 = { 0xF3, 0x48, 0x0F, 0xC7, 0xF8, 0xC3 };
     const std::vector<std::uint8_t> rdpid32 = { 0xF3, 0x0F, 0xC7, 0xF8, 0xC3 };
     const std::vector<std::uint8_t> rdpid_with_66 = { 0x66, 0xF3, 0x48, 0x0F, 0xC7, 0xF8, 0xC3 };
+    const std::vector<std::uint8_t> rorx_rax_rbx_13 = { 0xC4, 0xE3, 0xFB, 0xF0, 0xC3, 0x0D, 0xC3 };
+    const std::vector<std::uint8_t> shlx_rax_rbx_rcx = { 0xC4, 0xE2, 0xF1, 0xF7, 0xC3, 0xC3 };
+    const std::vector<std::uint8_t> sarx_rax_rbx_rcx = { 0xC4, 0xE2, 0xF2, 0xF7, 0xC3, 0xC3 };
+    const std::vector<std::uint8_t> shrx_rax_rbx_rcx = { 0xC4, 0xE2, 0xF3, 0xF7, 0xC3, 0xC3 };
+    const std::vector<std::uint8_t> bextr_rax_rbx_rcx = { 0xC4, 0xE2, 0xF0, 0xF7, 0xC3, 0xC3 };
+    const std::vector<std::uint8_t> bzhi_rax_rbx_rcx = { 0xC4, 0xE2, 0xF0, 0xF5, 0xC3, 0xC3 };
+    const std::vector<std::uint8_t> pext_rax_rcx_rbx = { 0xC4, 0xE2, 0xF2, 0xF5, 0xC3, 0xC3 };
+    const std::vector<std::uint8_t> pdep_rax_rcx_rbx = { 0xC4, 0xE2, 0xF3, 0xF5, 0xC3, 0xC3 };
+    const std::vector<std::uint8_t> blsr_rax_rbx = { 0xC4, 0xE2, 0xF8, 0xF3, 0xCB, 0xC3 };
+    const std::vector<std::uint8_t> blsmsk_rax_rbx = { 0xC4, 0xE2, 0xF8, 0xF3, 0xD3, 0xC3 };
+    const std::vector<std::uint8_t> blsi_rax_rbx = { 0xC4, 0xE2, 0xF8, 0xF3, 0xDB, 0xC3 };
+    const std::vector<std::uint8_t> mulx_rax_rcx_rbx = { 0xC4, 0xE2, 0xFB, 0xF6, 0xCB, 0xC3 };
+    const std::vector<std::uint8_t> lfence_ret = { 0x0F, 0xAE, 0xE8, 0xC3 };
+    const std::vector<std::uint8_t> mfence_ret = { 0x0F, 0xAE, 0xF0, 0xC3 };
+    const std::vector<std::uint8_t> sfence_ret = { 0x0F, 0xAE, 0xF8, 0xC3 };
+    const std::vector<std::uint8_t> prefetchwt1_rsp_40 = { 0x0F, 0x0D, 0x54, 0x24, 0x40, 0xC3 };
     const std::vector<std::uint8_t> setcc_ignored_modrm_reg = {
         0x0F, 0x94, 0x64, 0x24, 0x40, // setz byte ptr [rsp+0x40] with ModRM.reg=4; SETcc ignores reg bits
         0xC3
     };
     const std::vector<std::uint8_t> invalid_endbr_lock = { 0xF0, 0xF3, 0x0F, 0x1E, 0xFA };
     const std::vector<std::uint8_t> invalid_rdssp_lock = { 0xF0, 0xF3, 0x48, 0x0F, 0x1E, 0xC8 };
-    const std::vector<std::uint8_t> invalid_rdpid_no_f3 = { 0x48, 0x0F, 0xC7, 0xF8 };
+    // Keep the missing-F3 RDPID negative case away from the register /7 form,
+    // because REX.W 0F C7 /7 is RDSEED r64 on RDSEED-capable hosts.
+    const std::vector<std::uint8_t> invalid_rdpid_no_f3 = { 0x48, 0x0F, 0xC7, 0x38 };
+    const std::vector<std::uint8_t> ud2 = { 0x0F, 0x0B };
+    const std::vector<std::uint8_t> int3 = { 0xCC };
+    const std::vector<std::uint8_t> int1 = { 0xF1 };
+    const std::vector<std::uint8_t> int_imm8 = { 0xCD, 0x80 };
+    const std::vector<std::uint8_t> rdpmc_only = { 0x0F, 0x33 };
+    const std::vector<std::uint8_t> rdpmc_ret = { 0x0F, 0x33, 0xC3 };
+    const std::vector<std::uint8_t> rdseed_rax = { 0x48, 0x0F, 0xC7, 0xF8 };
+    const std::vector<std::uint8_t> rdseed_rax_ret = { 0x48, 0x0F, 0xC7, 0xF8, 0xC3 };
+    const std::vector<std::uint8_t> serialize_only = { 0x0F, 0x01, 0xE8 };
+    const std::vector<std::uint8_t> serialize_ret = { 0x0F, 0x01, 0xE8, 0xC3 };
+    const std::vector<std::uint8_t> rdfsbase_rax = { 0xF3, 0x48, 0x0F, 0xAE, 0xC0 };
+    const std::vector<std::uint8_t> rdfsbase_rax_ret = { 0xF3, 0x48, 0x0F, 0xAE, 0xC0, 0xC3 };
+    const std::vector<std::uint8_t> rdgsbase_rdx = { 0xF3, 0x48, 0x0F, 0xAE, 0xCA };
+    const std::vector<std::uint8_t> rdgsbase_rdx_ret = { 0xF3, 0x48, 0x0F, 0xAE, 0xCA, 0xC3 };
     const std::vector<std::uint8_t> xgetbv = { 0x0F, 0x01, 0xD0 };
     const std::vector<std::uint8_t> shl_unmapped = { 0x48, 0xC1, 0x24, 0x25, 0x00, 0x00, 0x40, 0x00, 0x01 };
     const std::vector<std::uint8_t> mul_unmapped = { 0x48, 0xF7, 0x24, 0x25, 0x00, 0x00, 0x40, 0x00 };
@@ -89,6 +126,7 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
     const std::vector<std::uint8_t> push_stack_unmapped = { 0x50 };
     const std::vector<std::uint8_t> call_stack_unmapped = { 0xE8, 0x00, 0x00, 0x00, 0x00 };
     const std::vector<std::uint8_t> fninit = { 0xDB, 0xE3 };
+    const std::vector<std::uint8_t> emms = { 0x0F, 0x77 };
     const std::vector<std::uint8_t> fnstsw_ax_only = { 0xDF, 0xE0 };
     const std::vector<std::uint8_t> finit_only = { 0x9B, 0xDB, 0xE3 };
     const std::vector<std::uint8_t> fstsw_ax_only = { 0x9B, 0xDF, 0xE0 };
@@ -311,6 +349,18 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         const std::uint64_t seed_rdsspd = seeded(seed_index, 0xE012);
         if (!tick(run_manual_special_case("rdsspd:" + std::to_string(seed_rdsspd), rdsspd, seed_rdsspd, 0, false, failure), failure)) return false;
 
+        const std::uint64_t seed_lfence = seeded(seed_index, 0xE098);
+        if (!tick(run_manual_special_case("lfence_noop:" + std::to_string(seed_lfence), lfence_ret, seed_lfence, 0, false, failure), failure)) return false;
+
+        const std::uint64_t seed_mfence = seeded(seed_index, 0xE099);
+        if (!tick(run_manual_special_case("mfence_noop:" + std::to_string(seed_mfence), mfence_ret, seed_mfence, 0, false, failure), failure)) return false;
+
+        const std::uint64_t seed_sfence = seeded(seed_index, 0xE09A);
+        if (!tick(run_manual_special_case("sfence_noop:" + std::to_string(seed_sfence), sfence_ret, seed_sfence, 0, false, failure), failure)) return false;
+
+        const std::uint64_t seed_prefetchwt1 = seeded(seed_index, 0xE09B);
+        if (!tick(run_manual_special_case("prefetchwt1_rsp_40_noop:" + std::to_string(seed_prefetchwt1), prefetchwt1_rsp_40, seed_prefetchwt1, 0, false, failure), failure)) return false;
+
         if (features.rdpid) {
             const std::uint64_t seed2 = seeded(seed_index, 0xE003);
             const std::uint32_t processor_id = static_cast<std::uint32_t>(seeded(seed2, 0x90));
@@ -323,6 +373,237 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
             const std::uint64_t seed_rdpid66 = seeded(seed_index, 0xE017);
             const std::uint32_t processor_id66 = static_cast<std::uint32_t>(seeded(seed_rdpid66, 0x92));
             if (!tick(run_manual_special_case("rdpid66:" + std::to_string(seed_rdpid66), rdpid_with_66, seed_rdpid66, processor_id66, true, failure), failure)) return false;
+        }
+
+        if (features.rdseed) {
+            const std::uint64_t seed_rdseed = seeded(seed_index, 0xE096);
+            if (!tick(run_manual_rdseed_public_case(
+                "public_rdseed_rax:" + std::to_string(seed_rdseed),
+                rdseed_rax_ret,
+                seed_rdseed,
+                failure), failure)) return false;
+            if (!tick(run_manual_rdseed_internal_case(
+                "rdseed_rax:" + std::to_string(seed_rdseed),
+                rdseed_rax,
+                seed_rdseed,
+                failure), failure)) return false;
+        }
+
+        if (features.serialize) {
+            const std::uint64_t seed_serialize = seeded(seed_index, 0xE097);
+            if (!tick(run_manual_special_case(
+                "serialize_noop:" + std::to_string(seed_serialize),
+                serialize_ret,
+                seed_serialize,
+                0,
+                false,
+                failure), failure)) return false;
+            if (!tick(run_manual_serialize_internal_case(
+                "serialize_internal_noop:" + std::to_string(seed_serialize),
+                serialize_only,
+                seed_serialize,
+                failure), failure)) return false;
+        }
+
+        if (features.bmi1) {
+            const std::uint64_t seed_bextr = seeded(seed_index, 0xE09C);
+            const std::uint64_t bextr_source = 0xF0F0F0F012345678ull ^ seeded(seed_bextr, 0x21);
+            const std::uint64_t bextr_control = (8ull << 8) | 4ull;
+            const std::uint64_t bextr_result = manual_bextr64(bextr_source, bextr_control);
+            if (!tick(run_manual_bmi_one_result_case(
+                "bextr_rax_rbx_rcx:" + std::to_string(seed_bextr),
+                bextr_rax_rbx_rcx,
+                seed_bextr,
+                bextr_source,
+                true,
+                bextr_control,
+                bextr_result,
+                bextr_result == 0 ? kFlagZF : 0ull,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_blsr = seeded(seed_index, 0xE09D);
+            const std::uint64_t blsr_source = 0x0000000000001010ull ^ (seeded(seed_blsr, 0x22) & 0x0000000000000F00ull);
+            const std::uint64_t blsr_result = blsr_source & (blsr_source - 1ull);
+            if (!tick(run_manual_bmi_one_result_case(
+                "blsr_rax_rbx:" + std::to_string(seed_blsr),
+                blsr_rax_rbx,
+                seed_blsr,
+                blsr_source,
+                false,
+                0,
+                blsr_result,
+                manual_bmi_status_flags(blsr_result, blsr_source == 0),
+                failure), failure)) return false;
+
+            const std::uint64_t seed_blsmsk = seeded(seed_index, 0xE09E);
+            const std::uint64_t blsmsk_source = 0x0000000000001010ull ^ (seeded(seed_blsmsk, 0x23) & 0x0000000000000F00ull);
+            const std::uint64_t blsmsk_result = blsmsk_source ^ (blsmsk_source - 1ull);
+            if (!tick(run_manual_bmi_one_result_case(
+                "blsmsk_rax_rbx:" + std::to_string(seed_blsmsk),
+                blsmsk_rax_rbx,
+                seed_blsmsk,
+                blsmsk_source,
+                false,
+                0,
+                blsmsk_result,
+                manual_bmi_status_flags(blsmsk_result, blsmsk_source == 0),
+                failure), failure)) return false;
+
+            const std::uint64_t seed_blsi = seeded(seed_index, 0xE09F);
+            const std::uint64_t blsi_source = 0x0000000000001010ull ^ (seeded(seed_blsi, 0x24) & 0x0000000000000F00ull);
+            const std::uint64_t blsi_result = blsi_source & (~blsi_source + 1ull);
+            if (!tick(run_manual_bmi_one_result_case(
+                "blsi_rax_rbx:" + std::to_string(seed_blsi),
+                blsi_rax_rbx,
+                seed_blsi,
+                blsi_source,
+                false,
+                0,
+                blsi_result,
+                manual_bmi_status_flags(blsi_result, blsi_source != 0),
+                failure), failure)) return false;
+        }
+
+        if (features.bmi2) {
+            const std::uint64_t seed_rorx = seeded(seed_index, 0xE090);
+            const std::uint64_t rorx_source = 0x0123456789ABCDEFull ^ seeded(seed_rorx, 0x10);
+            if (!tick(run_manual_bmi2_shift_case(
+                "rorx_rax_rbx_13:" + std::to_string(seed_rorx),
+                rorx_rax_rbx_13,
+                seed_rorx,
+                rorx_source,
+                false,
+                0,
+                manual_bmi2_rotr64(rorx_source, 13),
+                failure), failure)) return false;
+
+            const std::uint64_t seed_shlx = seeded(seed_index, 0xE091);
+            const std::uint64_t shlx_source = 0x0000F00D00C0FFEEull ^ seeded(seed_shlx, 0x11);
+            const std::uint64_t shlx_control = 0x43ull;
+            if (!tick(run_manual_bmi2_shift_case(
+                "shlx_rax_rbx_rcx:" + std::to_string(seed_shlx),
+                shlx_rax_rbx_rcx,
+                seed_shlx,
+                shlx_source,
+                true,
+                shlx_control,
+                shlx_source << (shlx_control & 0x3Full),
+                failure), failure)) return false;
+
+            const std::uint64_t seed_shrx = seeded(seed_index, 0xE092);
+            const std::uint64_t shrx_source = 0xF123456789ABCDEFull ^ seeded(seed_shrx, 0x12);
+            const std::uint64_t shrx_control = 0x47ull;
+            if (!tick(run_manual_bmi2_shift_case(
+                "shrx_rax_rbx_rcx:" + std::to_string(seed_shrx),
+                shrx_rax_rbx_rcx,
+                seed_shrx,
+                shrx_source,
+                true,
+                shrx_control,
+                shrx_source >> (shrx_control & 0x3Full),
+                failure), failure)) return false;
+
+            const std::uint64_t seed_sarx = seeded(seed_index, 0xE093);
+            const std::uint64_t sarx_source = 0xF00000000000D00Dull ^ (seeded(seed_sarx, 0x13) & 0x00FFFFFFFFFFFFFFull);
+            const std::uint64_t sarx_control = 0x44ull;
+            if (!tick(run_manual_bmi2_shift_case(
+                "sarx_rax_rbx_rcx:" + std::to_string(seed_sarx),
+                sarx_rax_rbx_rcx,
+                seed_sarx,
+                sarx_source,
+                true,
+                sarx_control,
+                manual_bmi2_sar64(sarx_source, static_cast<unsigned int>(sarx_control)),
+                failure), failure)) return false;
+
+            const std::uint64_t seed_bzhi = seeded(seed_index, 0xE0A1);
+            const std::uint64_t bzhi_source = 0xFFFF000000001234ull ^ (seeded(seed_bzhi, 0x31) & 0x0000000000000F00ull);
+            const std::uint64_t bzhi_control = 12ull;
+            bool bzhi_cf = false;
+            const std::uint64_t bzhi_result = manual_bzhi64(bzhi_source, bzhi_control, bzhi_cf);
+            if (!tick(run_manual_bmi_one_result_case(
+                "bzhi_rax_rbx_rcx:" + std::to_string(seed_bzhi),
+                bzhi_rax_rbx_rcx,
+                seed_bzhi,
+                bzhi_source,
+                true,
+                bzhi_control,
+                bzhi_result,
+                (bzhi_cf ? kFlagCF : 0ull) | ((bzhi_result == 0) ? kFlagZF : 0ull),
+                failure), failure)) return false;
+
+            const std::uint64_t seed_pext = seeded(seed_index, 0xE0A2);
+            const std::uint64_t pext_source = 0x0123456789ABCDEFull ^ seeded(seed_pext, 0x32);
+            const std::uint64_t pext_mask = 0x1111111111111111ull;
+            if (!tick(run_manual_bmi_one_result_case(
+                "pext_rax_rcx_rbx:" + std::to_string(seed_pext),
+                pext_rax_rcx_rbx,
+                seed_pext,
+                pext_mask,
+                true,
+                pext_source,
+                manual_pext64(pext_source, pext_mask),
+                make_initial_context(seed_pext).rflags,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_pdep = seeded(seed_index, 0xE0A3);
+            const std::uint64_t pdep_source = 0x000000000000BEEFull ^ (seeded(seed_pdep, 0x33) & 0x00000000000000FFull);
+            const std::uint64_t pdep_mask = 0x0101010101010101ull;
+            if (!tick(run_manual_bmi_one_result_case(
+                "pdep_rax_rcx_rbx:" + std::to_string(seed_pdep),
+                pdep_rax_rcx_rbx,
+                seed_pdep,
+                pdep_mask,
+                true,
+                pdep_source,
+                manual_pdep64(pdep_source, pdep_mask),
+                make_initial_context(seed_pdep).rflags,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_mulx = seeded(seed_index, 0xE0A4);
+            if (!tick(run_manual_mulx_case(
+                "mulx_rax_rcx_rbx:" + std::to_string(seed_mulx),
+                mulx_rax_rcx_rbx,
+                seed_mulx,
+                0x0000000100000000ull,
+                0x0000000100000000ull,
+                0x0000000000000000ull,
+                0x0000000000000001ull,
+                failure), failure)) return false;
+        }
+
+        if (features.fsgsbase) {
+            const std::uint64_t seed_rdfsbase = seeded(seed_index, 0xE094);
+            if (!tick(run_manual_fsgsbase_public_case(
+                "public_rdfsbase_rax_success:" + std::to_string(seed_rdfsbase),
+                rdfsbase_rax_ret,
+                seed_rdfsbase,
+                CPUEAXH_X86_REG_RAX,
+                false,
+                failure), failure)) return false;
+            if (!tick(run_manual_fsgsbase_internal_case(
+                "rdfsbase_rax_success:" + std::to_string(seed_rdfsbase),
+                rdfsbase_rax,
+                seed_rdfsbase,
+                REG_RAX,
+                false,
+                failure), failure)) return false;
+
+            const std::uint64_t seed_rdgsbase = seeded(seed_index, 0xE095);
+            if (!tick(run_manual_fsgsbase_public_case(
+                "public_rdgsbase_rdx_success:" + std::to_string(seed_rdgsbase),
+                rdgsbase_rdx_ret,
+                seed_rdgsbase,
+                CPUEAXH_X86_REG_RDX,
+                true,
+                failure), failure)) return false;
+            if (!tick(run_manual_fsgsbase_internal_case(
+                "rdgsbase_rdx_success:" + std::to_string(seed_rdgsbase),
+                rdgsbase_rdx,
+                seed_rdgsbase,
+                REG_RDX,
+                true,
+                failure), failure)) return false;
         }
 
 
@@ -340,6 +621,9 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
 
         const std::uint64_t seed_finit = seeded(seed_index, 0xE019);
         if (!tick(run_manual_x87_reset_case("finit:" + std::to_string(seed_finit), finit_reset, seed_finit, failure), failure)) return false;
+
+        const std::uint64_t seed_emms = seeded(seed_index, 0xE0A0);
+        if (!tick(run_manual_emms_case("emms:" + std::to_string(seed_emms), emms, seed_emms, failure), failure)) return false;
 
         const std::uint64_t seed_fnstsw_mem = seeded(seed_index, 0xE01A);
         const std::uint16_t fnstsw_mem_value = static_cast<std::uint16_t>(seeded(seed_fnstsw_mem, 0x94) & 0xFFFFu);
@@ -1468,6 +1752,34 @@ inline bool run_manual_special_tests(const HostFeatures& features, std::uint64_t
         const std::uint64_t seed5 = seeded(seed_index, 0xE006);
         if (!tick(run_manual_exception_case_public("public_rdpid_no_f3_ud:" + std::to_string(seed5), invalid_rdpid_no_f3, seed5, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
         if (!tick(run_manual_exception_case("rdpid_no_f3_ud:" + std::to_string(seed5), invalid_rdpid_no_f3, seed5, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+
+        const std::uint64_t seed_ud2 = seeded(seed_index, 0xE080);
+        if (!tick(run_manual_exception_case_public("public_ud2_default_ud:" + std::to_string(seed_ud2), ud2, seed_ud2, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+        if (!tick(run_manual_exception_case("ud2_default_ud:" + std::to_string(seed_ud2), ud2, seed_ud2, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+
+        const std::uint64_t seed_int3 = seeded(seed_index, 0xE081);
+        if (!tick(run_manual_exception_case_public("public_int3_default_bp:" + std::to_string(seed_int3), int3, seed_int3, CPUEAXH_EXCEPTION_BP, failure), failure)) return false;
+        if (!tick(run_manual_exception_case("int3_default_bp:" + std::to_string(seed_int3), int3, seed_int3, CPUEAXH_EXCEPTION_BP, failure), failure)) return false;
+
+        const std::uint64_t seed_int1 = seeded(seed_index, 0xE082);
+        if (!tick(run_manual_exception_case_public("public_int1_default_db:" + std::to_string(seed_int1), int1, seed_int1, CPUEAXH_EXCEPTION_DB, failure), failure)) return false;
+        if (!tick(run_manual_exception_case("int1_default_db:" + std::to_string(seed_int1), int1, seed_int1, CPUEAXH_EXCEPTION_DB, failure), failure)) return false;
+
+        const std::uint64_t seed_int = seeded(seed_index, 0xE083);
+        if (!tick(run_manual_exception_case_public("public_int_default_ud:" + std::to_string(seed_int), int_imm8, seed_int, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+        if (!tick(run_manual_exception_case("int_default_ud:" + std::to_string(seed_int), int_imm8, seed_int, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+
+        const std::uint64_t seed_rdpmc_gp = seeded(seed_index, 0xE085);
+        if (!tick(run_manual_rdpmc_public_case("public_rdpmc_cpl3_pce0_gp:" + std::to_string(seed_rdpmc_gp), rdpmc_only, seed_rdpmc_gp, 0x20ull, 3, true, failure), failure)) return false;
+        if (!tick(run_manual_rdpmc_internal_case("rdpmc_cpl3_pce0_gp:" + std::to_string(seed_rdpmc_gp), rdpmc_only, seed_rdpmc_gp, 0x20ull, 3, true, failure), failure)) return false;
+
+        const std::uint64_t seed_rdpmc_ok = seeded(seed_index, 0xE086);
+        if (!tick(run_manual_rdpmc_public_case("public_rdpmc_cpl3_pce1_zero:" + std::to_string(seed_rdpmc_ok), rdpmc_ret, seed_rdpmc_ok, 0x120ull, 3, false, failure), failure)) return false;
+        if (!tick(run_manual_rdpmc_internal_case("rdpmc_cpl3_pce1_zero:" + std::to_string(seed_rdpmc_ok), rdpmc_only, seed_rdpmc_ok, 0x120ull, 3, false, failure), failure)) return false;
+
+        const std::uint64_t seed_fsgsbase_cr4 = seeded(seed_index, 0xE084);
+        if (!tick(run_manual_public_cr4_exception_case("public_rdfsbase_cr4_disabled_ud:" + std::to_string(seed_fsgsbase_cr4), rdfsbase_rax, seed_fsgsbase_cr4, 0, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
+        if (!tick(run_manual_cr4_exception_case("rdfsbase_cr4_disabled_ud:" + std::to_string(seed_fsgsbase_cr4), rdfsbase_rax, seed_fsgsbase_cr4, 0, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;
 
         const std::uint64_t seed_xgetbv_osxsave = seeded(seed_index, 0xE007);
         if (!tick(run_manual_public_cr4_exception_case("public_xgetbv_osxsave_ud:" + std::to_string(seed_xgetbv_osxsave), xgetbv, seed_xgetbv_osxsave, 0, CPUEAXH_EXCEPTION_UD, failure), failure)) return false;

@@ -1,15 +1,5 @@
 #pragma once
 
-#ifndef CPUEAXH_UNREACHABLE
-#if defined(_MSC_VER)
-#define CPUEAXH_UNREACHABLE() __assume(0)
-#elif defined(__GNUC__) || defined(__clang__)
-#define CPUEAXH_UNREACHABLE() __builtin_unreachable()
-#else
-#define CPUEAXH_UNREACHABLE() do { } while (0)
-#endif
-#endif
-
 #if defined(CPUEAXH_PLATFORM_KERNEL) || defined(_KERNEL_MODE) || defined(_NTDDK_) || defined(_WDM_INCLUDED_) || defined(_NTIFS_)
 
 #include <ntddk.h>
@@ -144,4 +134,18 @@ inline uint64_t cpueaxh_udiv128(uint64_t high, uint64_t low, uint64_t divisor, u
 #endif
 }
 
+#endif
+
+#ifndef CPUEAXH_UNREACHABLE
+#if defined(_MSC_VER) && (defined(CPUEAXH_PLATFORM_KERNEL) || defined(_KERNEL_MODE) || defined(_NTDDK_) || defined(_WDM_INCLUDED_) || defined(_NTIFS_))
+#define CPUEAXH_UNREACHABLE() do { DbgBreakPoint(); __assume(0); } while (0)
+#elif defined(_MSC_VER)
+#define CPUEAXH_UNREACHABLE() do { __debugbreak(); __assume(0); } while (0)
+#elif defined(__GNUC__) || defined(__clang__)
+#define CPUEAXH_UNREACHABLE() do { __builtin_trap(); __builtin_unreachable(); } while (0)
+#elif defined(CPUEAXH_PLATFORM_KERNEL) || defined(_KERNEL_MODE) || defined(_NTDDK_) || defined(_WDM_INCLUDED_) || defined(_NTIFS_)
+#define CPUEAXH_UNREACHABLE() do { for (;;) { } } while (0)
+#else
+#define CPUEAXH_UNREACHABLE() abort()
+#endif
 #endif

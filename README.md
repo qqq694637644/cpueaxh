@@ -104,7 +104,7 @@ The current example project demonstrates both styles: native `asm` bridges for `
 
 The escape mechanism currently supports dispatch for these instruction classes:
 - `syscall`, `sysenter`
-- `int`, `int3`, `hlt`
+- `int`, `int1`, `int3`, `ud2`, `hlt`
 - `cpuid`, `xgetbv`, `rdtsc`, `rdtscp`, `rdrand`
 - `rdsspd`, `rdsspq`
 - port I/O instructions `in` and `out`
@@ -353,7 +353,7 @@ The example is located in [example/main.cpp](example/main.cpp) and includes:
 - a guest invalid-memory recovery demo for `READ_UNMAPPED` and `WRITE_PROT`
 - a host-mode `MessageBoxA` execution demo
 - a host-mode memory patch demo
-- default escape handlers covering `syscall`, `sysenter`, `int`, `int3`, `cpuid`, `xgetbv`, `rdtsc`, `rdtscp`, `rdrand`, `rdsspd`, `rdsspq`, `hlt`, `in`, and `out`
+- default escape handlers covering `syscall`, `sysenter`, `int`, `int1`, `int3`, `ud2`, `cpuid`, `xgetbv`, `rdtsc`, `rdtscp`, `rdrand`, `rdsspd`, `rdsspq`, `hlt`, `in`, and `out`
 
 The example project currently has no external library dependency beyond the Windows / MSVC toolchain and uses MASM for the native escape bridge samples.
 

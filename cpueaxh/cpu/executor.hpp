@@ -223,7 +223,10 @@ static inline bool cpu_executor_eval_jcc_condition(uint64_t flags, uint8_t cond)
     case 0xC: return sf != of;              // JL
     case 0xD: return sf == of;              // JGE
     case 0xE: return zf || (sf != of);      // JLE
-    default:  return !zf && (sf == of);     // JG (cond == 0xF)
+    case 0xF: return !zf && (sf == of);     // JG
+    default:
+        CPUEAXH_UNREACHABLE();
+        return false;
     }
 }
 
@@ -289,6 +292,11 @@ static inline int cpu_step_dispatch_decoded(CPU_CONTEXT* ctx, DecodedInst* decod
         }
         if (decoded->flags & DECODED_FLAG_BP) {
             raise_bp_ctx(ctx);
+            result_code = CPU_STEP_EXCEPTION;
+            goto cpu_step_finish;
+        }
+        if (decoded->flags & DECODED_FLAG_DB) {
+            raise_db_ctx(ctx);
             result_code = CPU_STEP_EXCEPTION;
             goto cpu_step_finish;
         }

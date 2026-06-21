@@ -351,6 +351,24 @@
     <ClInclude Include="instructions\xorps.hpp">
       <Filter>instructions</Filter>
     </ClInclude>
+    <ClInclude Include="instructions\bmi.hpp">
+      <Filter>instructions</Filter>
+    </ClInclude>
+    <ClInclude Include="instructions\emms.hpp">
+      <Filter>instructions</Filter>
+    </ClInclude>
+    <ClInclude Include="instructions\fsgsbase.hpp">
+      <Filter>instructions</Filter>
+    </ClInclude>
+    <ClInclude Include="instructions\rdpmc.hpp">
+      <Filter>instructions</Filter>
+    </ClInclude>
+    <ClInclude Include="instructions\rdseed.hpp">
+      <Filter>instructions</Filter>
+    </ClInclude>
+    <ClInclude Include="instructions\serialize.hpp">
+      <Filter>instructions</Filter>
+    </ClInclude>
     <ClInclude Include="cpueaxh.hpp" />
     <ClInclude Include="cpueaxh_internal.hpp" />
     <ClInclude Include="memory\manager.hpp">

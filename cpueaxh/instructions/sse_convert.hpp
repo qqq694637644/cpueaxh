@@ -344,7 +344,9 @@ bool sse_convert_round_float_to_integer(float source, int dest_bits, bool trunca
             }
             break;
         case 3:
+            break;
         default:
+            CPUEAXH_UNREACHABLE();
             break;
         }
     }

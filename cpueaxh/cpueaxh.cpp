@@ -521,9 +521,17 @@ static cpueaxh_escape_insn_id cpueaxh_classify_escape_instruction(const CPU_CONT
         *instruction_size = (uint32_t)(prefix_len + 1);
         return CPUEAXH_ESCAPE_INSN_INT3;
     }
+    if (opc == 0x00F1) {
+        *instruction_size = (uint32_t)(prefix_len + 1);
+        return CPUEAXH_ESCAPE_INSN_INT1;
+    }
     if (opc == 0x00CD && fetched >= (prefix_len + 2)) {
         *instruction_size = (uint32_t)(prefix_len + 2);
         return CPUEAXH_ESCAPE_INSN_INT;
+    }
+    if (opc == 0x0F0B) {
+        *instruction_size = (uint32_t)(prefix_len + 2);
+        return CPUEAXH_ESCAPE_INSN_UD2;
     }
     if (opc == 0x00F4) {
         *instruction_size = (uint32_t)(prefix_len + 1);
@@ -1028,6 +1036,9 @@ static bool cpueaxh_try_dispatch_escape(cpueaxh_engine* engine, uint64_t address
 
     if (instruction_id == CPUEAXH_ESCAPE_INSN_INT3) {
         cpu_raise_exception(&engine->context, CPU_EXCEPTION_BP, 0);
+    }
+    else if (instruction_id == CPUEAXH_ESCAPE_INSN_INT1) {
+        cpu_raise_exception(&engine->context, CPU_EXCEPTION_DB, 0);
     }
     else {
         cpu_raise_exception(&engine->context, CPU_EXCEPTION_UD, 0);

@@ -19,6 +19,10 @@ inline bool host_feature_available(const HostFeatures& features, const std::stri
     if (name == "aes") return features.aes;
     if (name == "rdpid") return features.rdpid;
     if (name == "bmi1") return features.bmi1;
+    if (name == "bmi2") return features.bmi2;
+    if (name == "rdseed") return features.rdseed;
+    if (name == "fsgsbase") return features.fsgsbase;
+    if (name == "serialize") return features.serialize;
     if (name == "lzcnt") return features.lzcnt;
     if (name == "movbe") return features.movbe;
     return false;

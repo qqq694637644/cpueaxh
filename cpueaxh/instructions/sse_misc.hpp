@@ -1,6 +1,6 @@
 #pragma once
 
-// instrusments/sse_misc.hpp - MOVNTPS/PREFETCHh/PREFETCHW implementation
+// instrusments/sse_misc.hpp - MOVNTPS/PREFETCHh/PREFETCHW/PREFETCHWT1 implementation
 
 int decode_sse_misc_xmm_reg_index(CPU_CONTEXT* ctx, uint8_t modrm) {
     int reg = (modrm >> 3) & 0x07;
@@ -154,7 +154,7 @@ return inst;
         }
     }
     else if (inst.opcode == 0x0D) {
-        if (reg > 1) {
+        if (reg > 2) {
             raise_ud_ctx(ctx);
         }
     }

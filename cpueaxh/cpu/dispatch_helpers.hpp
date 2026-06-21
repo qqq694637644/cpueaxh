@@ -7,8 +7,6 @@
 // hoisted here so both the legacy (per-step) decode path in the executor and
 // the new cache-aware decoder can share them.
 
-#pragma once
-
 #include "../cpueaxh_platform.hpp"
 #include "def.h"
 #include "helper.hpp"
@@ -285,7 +283,7 @@ inline bool cpu_step_may_touch_vector_state(const uint8_t* buf, int fetched, int
         opc == 0x0FA3 || opc == 0x0FAB || opc == 0x0FB3 || opc == 0x0FBB || opc == 0x0FBA ||
         opc == 0x0FC0 || opc == 0x0FC1 ||
         (opc >= 0x0FC8 && opc <= 0x0FCF) ||
-        opc == 0x0F00 || opc == 0x0F01 || opc == 0x0F05 || opc == 0x0F20 || opc == 0x0F22 || opc == 0x0F31 || opc == 0x0F34 || opc == 0x0F1F) {
+        opc == 0x0F00 || opc == 0x0F01 || opc == 0x0F05 || opc == 0x0F20 || opc == 0x0F22 || opc == 0x0F31 || opc == 0x0F33 || opc == 0x0F34 || opc == 0x0F1F) {
         return false;
     }
 
