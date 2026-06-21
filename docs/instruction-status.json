@@ -6646,13 +6646,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi1",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "bzhi",
@@ -6661,13 +6661,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi2",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "pext",
@@ -6676,13 +6676,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi2",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "pdep",
@@ -6691,13 +6691,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi2",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "blsi",
@@ -6706,13 +6706,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi1",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "blsr",
@@ -6721,13 +6721,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi1",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "blsmsk",
@@ -6736,13 +6736,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi1",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "mulx",
@@ -6751,13 +6751,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "bmi2",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "rdfsbase",
@@ -6841,13 +6841,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "base",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "mfence",
@@ -6856,13 +6856,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "base",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "sfence",
@@ -6871,13 +6871,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "base",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     },
     {
       "name": "prefetchwt1",
@@ -6886,13 +6886,13 @@
       "operand_size": "64",
       "mode": "long64",
       "feature_gate": "base",
-      "status": "blocked",
+      "status": "manual_tested",
       "coverage": {
         "generated_differential": false,
         "regression_replay": false,
-        "manual": false
+        "manual": true
       },
-      "unsafe_native_reason": "implemented in PR #9; form-level regression/manual coverage pending before merge"
+      "unsafe_native_reason": "null"
     }
   ]
 }
